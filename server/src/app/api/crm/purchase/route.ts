@@ -1,8 +1,9 @@
-import { NextRequest, NextResponse } from "next/server"
+import { NextRequest, NextResponse, after } from "next/server"
 import { z } from "zod"
 import { prisma } from "@/lib/prisma"
 import { getUserFromToken, normalizePhone } from "@/lib/crm-auth"
 import { buildContact, findContactByPhone } from "@/lib/crm"
+import { sendPurchaseEvent } from "@/lib/meta"
 
 const schema = z.object({
   phone: z.string().min(1),
@@ -46,7 +47,7 @@ export async function POST(req: NextRequest) {
     })
   }
 
-  await prisma.purchase.create({
+  const purchase = await prisma.purchase.create({
     data: {
       userId: user.id,
       contactId: contact.id,
@@ -56,6 +57,16 @@ export async function POST(req: NextRequest) {
       ctwaClid: data.ctwaClid || null,
       purchasedAt: data.purchasedAt ? new Date(data.purchasedAt) : undefined,
     },
+  })
+
+  // Envia a conversão ao Meta depois de responder. Se falhar, o erro fica salvo
+  // na compra e dá pra reenviar pelo painel; a compra em si nunca é perdida.
+  after(async () => {
+    try {
+      await sendPurchaseEvent(purchase.id)
+    } catch (e) {
+      console.error("[meta] falha inesperada ao enviar", e)
+    }
   })
 
   return NextResponse.json(await buildContact(user.id, contact.id), { status: 201 })

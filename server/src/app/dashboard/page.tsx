@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { signOut } from "next-auth/react"
+import { MetaCard } from "@/components/meta-card"
 
 export default function DashboardPage() {
   const [token, setToken] = useState<string | null>(null)
@@ -65,6 +66,8 @@ export default function DashboardPage() {
           {loading ? "Gerando..." : token ? "Gerar novo token" : "Gerar token"}
         </button>
       </div>
+
+      <MetaCard />
     </div>
   )
 }

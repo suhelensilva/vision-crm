@@ -13,6 +13,12 @@ model User {
   email     String   @unique
   password  String?
   apiToken  String?  @unique // token da extensão do Chrome
+
+  // Conversions API do Meta (cada taróloga usa o próprio Pixel/Dataset)
+  metaDatasetId     String? // ID do Pixel / conjunto de dados
+  metaAccessToken   String? // token de acesso, guardado CRIPTOGRAFADO (AES-256-GCM)
+  metaTestEventCode String? // código de "Testar eventos" do Events Manager (opcional)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -55,8 +61,10 @@ model Purchase {
 
   // Conversão Meta (CAPI)
   ctwaClid      String?
-  metaEventSent Boolean @default(false)
+  metaEventSent Boolean   @default(false)
   metaEventId   String?
+  metaSentAt    DateTime?
+  metaError     String? // último erro de envio (ou "expirado")
 
   createdAt DateTime @default(now())
 
@@ -65,6 +73,7 @@ model Purchase {
 
   @@index([userId, contactId])
   @@index([contactId, purchasedAt])
+  @@index([userId, metaEventSent])
   @@map("purchases")
 }
 

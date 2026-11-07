@@ -39,10 +39,30 @@ Abre em `http://localhost:3001`. Cadastre sua conta, entre, e gere o token.
 Em produção, adicione o domínio do CRM em `host_permissions` no
 `extension/manifest.json`.
 
+## Conversões pro Meta (Conversions API)
+
+Cada compra registrada vira um evento `Purchase` no Pixel da taróloga.
+
+- Configure em **Painel → Conversões pro Meta**: ID do Pixel e token de acesso
+  (Events Manager → seu Pixel → Configurações → API de Conversões → gerar token).
+  O token é guardado criptografado (AES-256-GCM, chave derivada do
+  `NEXTAUTH_SECRET`; se esse segredo mudar, salve o token de novo).
+- Formato: `action_source: "chat"`, com telefone/nome/ID só em SHA-256. O Meta
+  liga o evento à pessoa pelo telefone. O formato `business_messaging` exige a
+  API oficial do WhatsApp, que este projeto não usa.
+- Evento com mais de 7 dias é recusado pelo Meta (e derruba a requisição
+  inteira), então vira "Expirado" e não é reenviado.
+- Falhou? O erro fica salvo na compra e dá pra usar **Reenviar pendentes**.
+- `META_GRAPH_VERSION` (padrão `v27.0`) e `META_GRAPH_BASE` podem ser trocados
+  por variável de ambiente.
+- `test_event_code` aparece em "Testar eventos", mas o Meta ainda usa esses
+  eventos na medição. Deixe vazio no dia a dia.
+
 ## Fila de entregas
 
 1. Etiquetas/Listas (feito)
-2. Disparo pro Meta (CAPI): quem, quando, valor, origem
+2. Disparo pro Meta (feito e testado com um Meta simulado; falta testar com
+   o Pixel real)
 3. Funil kanban
 4. Cobranças
 5. Dados do lead e Notas
