@@ -4,6 +4,7 @@ import { useState } from "react"
 import { signIn } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
+import { PasswordInput } from "@/components/password-input"
 
 export default function LoginPage() {
   const router = useRouter()
@@ -19,7 +20,7 @@ export default function LoginPage() {
     const res = await signIn("credentials", { email, password, redirect: false })
     setLoading(false)
     if (res?.error) {
-      setError("Email ou senha incorretos.")
+      setError("Email ou senha incorretos. Se ainda não tem conta, clique em Cadastre-se.")
     } else {
       router.push("/dashboard")
       router.refresh()
@@ -29,12 +30,12 @@ export default function LoginPage() {
   return (
     <div style={wrap}>
       <form onSubmit={handleSubmit} style={card}>
-        <h1 style={title}>✦ Tarot CRM</h1>
+        <h1 style={title}>✦ Vision CRM</h1>
         <p style={sub}>Entre na sua conta</p>
         <label style={label}>Email</label>
         <input style={input} type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
         <label style={label}>Senha</label>
-        <input style={input} type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+        <PasswordInput value={password} onChange={setPassword} autoComplete="current-password" />
         {error && <p style={{ color: "#dc2626", fontSize: 13 }}>{error}</p>}
         <button style={button} disabled={loading}>{loading ? "Entrando..." : "Entrar"}</button>
         <p style={{ fontSize: 13, textAlign: "center", marginTop: 12 }}>

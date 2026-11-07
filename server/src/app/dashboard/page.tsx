@@ -35,7 +35,7 @@ export default function DashboardPage() {
   return (
     <div style={{ maxWidth: 640, margin: "0 auto", padding: 32 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
-        <h1 style={{ color: "#6d28d9", margin: 0 }}>✦ Tarot CRM</h1>
+        <h1 style={{ color: "#6d28d9", margin: 0 }}>✦ Vision CRM</h1>
         <button onClick={() => signOut({ callbackUrl: "/login" })} style={ghost}>Sair</button>
       </div>
 

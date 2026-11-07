@@ -4,19 +4,29 @@ import { useState } from "react"
 import { signIn } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
+import { PasswordInput } from "@/components/password-input"
 
 export default function CadastroPage() {
   const router = useRouter()
   const [name, setName] = useState("")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
+  const [confirm, setConfirm] = useState("")
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
+  const mismatch = confirm.length > 0 && password !== confirm
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    setLoading(true)
     setError(null)
+
+    if (password !== confirm) {
+      setError("As senhas não são iguais.")
+      return
+    }
+
+    setLoading(true)
     const res = await fetch("/api/auth/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -37,16 +47,19 @@ export default function CadastroPage() {
   return (
     <div style={wrap}>
       <form onSubmit={handleSubmit} style={card}>
-        <h1 style={title}>✦ Tarot CRM</h1>
+        <h1 style={title}>✦ Vision CRM</h1>
         <p style={sub}>Crie sua conta</p>
         <label style={label}>Nome</label>
         <input style={input} value={name} onChange={(e) => setName(e.target.value)} required />
         <label style={label}>Email</label>
         <input style={input} type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
-        <label style={label}>Senha</label>
-        <input style={input} type="password" value={password} onChange={(e) => setPassword(e.target.value)} minLength={6} required />
+        <label style={label}>Senha (mínimo 6 caracteres)</label>
+        <PasswordInput value={password} onChange={setPassword} minLength={6} autoComplete="new-password" />
+        <label style={label}>Confirmar senha</label>
+        <PasswordInput value={confirm} onChange={setConfirm} minLength={6} autoComplete="new-password" />
+        {mismatch && <p style={{ color: "#dc2626", fontSize: 12, margin: "6px 0 0" }}>As senhas não são iguais.</p>}
         {error && <p style={{ color: "#dc2626", fontSize: 13 }}>{error}</p>}
-        <button style={button} disabled={loading}>{loading ? "Criando..." : "Criar conta"}</button>
+        <button style={button} disabled={loading || mismatch}>{loading ? "Criando..." : "Criar conta"}</button>
         <p style={{ fontSize: 13, textAlign: "center", marginTop: 12 }}>
           Já tem conta? <Link href="/login">Entrar</Link>
         </p>

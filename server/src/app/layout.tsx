@@ -3,7 +3,7 @@ import "./globals.css"
 import { AuthProvider } from "@/components/session-provider"
 
 export const metadata: Metadata = {
-  title: "Tarot CRM",
+  title: "Vision CRM",
   description: "CRM sobre o WhatsApp para tarólogas.",
 }
 

@@ -1,5 +1,5 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// Tarot CRM — content script (roda dentro do WhatsApp Web)
+// Vision CRM — content script (roda dentro do WhatsApp Web)
 // Injeta um painel lateral que mostra o histórico de compras da cliente aberta.
 //
 // ⚠ PARTE FRÁGIL: os seletores do WhatsApp Web mudam de tempos em tempos.
@@ -79,7 +79,7 @@ function ensurePanel() {
     <button class="tcrm-fab" title="Abrir CRM">✦</button>
     <div class="tcrm-body">
       <div class="tcrm-header">
-        <span class="tcrm-logo">✦ Tarot CRM</span>
+        <span class="tcrm-logo">✦ Vision CRM</span>
         <button class="tcrm-close" title="Fechar">×</button>
       </div>
       <div class="tcrm-content"></div>
