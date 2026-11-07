@@ -171,7 +171,7 @@ Todas as cores ficam em variáveis no topo de `server/src/app/globals.css` (fund
 
 ## Extensão no WhatsApp Web (v0.2)
 
-Coluna de ícones à direita (Esta conversa, Notas, Cobranças, Respostas rápidas, Painel web) e painel que abre ao lado. Acima do campo de mensagem fica a barra de respostas rápidas (clique escreve no campo; quem aperta Enter é você) e, ao digitar `;`, abre a lista de atalhos. Texto e contato funcionam; anexos (áudio, imagem, vídeo, documento) ainda não são enviados pela extensão. Cobrar escreve a mensagem no campo, não envia sozinho.
+Coluna de ícones à direita (Esta conversa, Notas, Cobranças, Respostas rápidas, Painel web) e painel que abre ao lado. Acima do campo de mensagem fica a barra de respostas rápidas (clique escreve no campo; quem aperta Enter é você) e, ao digitar `;`, abre a lista de atalhos. Texto e contato escrevem no campo. Imagem, vídeo, documento e áudio são **colados na conversa como arquivo** (o WhatsApp abre a pré-visualização, a legenda é escrita e você envia); áudio entra como arquivo de áudio, ainda **não** como mensagem de voz gravada na hora. Cobrar escreve a mensagem no campo, não envia sozinho.
 
 Testada contra um WhatsApp simulado (fluxos de compra, lista, nota, cobrança, chips e atalho). **Ainda não testada no WhatsApp Web real**: se algo não detectar o nome/telefone ou não escrever no campo, ajuste só `getActivePhone`, `getActiveName` e `getComposer` em `extension/content.js`.
 

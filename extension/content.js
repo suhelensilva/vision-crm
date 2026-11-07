@@ -63,6 +63,10 @@ const ICONS = {
   bell: '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>',
   checklist: '<path d="m3 17 2 2 4-4"/><path d="m3 7 2 2 4-4"/><path d="M13 6h8"/><path d="M13 12h8"/><path d="M13 18h8"/>',
   chevron: '<path d="m15 18-6-6 6-6"/>',
+  mic: '<path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/>',
+  image: '<rect width="18" height="18" x="3" y="3" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21"/>',
+  film: '<rect width="18" height="18" x="3" y="3" rx="2"/><path d="M7 3v18"/><path d="M3 7.5h4"/><path d="M3 12h18"/><path d="M3 16.5h4"/><path d="M17 3v18"/><path d="M17 7.5h4"/><path d="M17 16.5h4"/>',
+  file: '<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/>',
   download: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/>',
   zap: '<path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"/>',
   ext: '<path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>',
@@ -602,7 +606,49 @@ async function useReply(r) {
     if (insertIntoComposer(t)) api("POST", `/api/crm/quick-replies/${r.id}/use`)
     return
   }
-  toast("Anexos (áudio, imagem, vídeo, documento) ainda não são enviados pela extensão.")
+  if (["IMAGE", "VIDEO", "DOCUMENT", "AUDIO"].includes(r.type)) return attachFile(r)
+  toast("Este tipo de resposta ainda não funciona pela extensão.")
+}
+
+function fileApi(path) {
+  return new Promise((resolve) => {
+    try { chrome.runtime.sendMessage({ type: "file", path }, (r) => resolve(r || { ok: false, status: 0 })) } catch { resolve({ ok: false, status: 0 }) }
+  })
+}
+
+/**
+ * Coloca o arquivo da resposta rápida na conversa, como se você tivesse colado ele no campo
+ * de mensagem. O WhatsApp abre a tela de pré-visualização; a legenda é escrita nela e QUEM
+ * ENVIA É VOCÊ (Enter). Áudio entra como arquivo de áudio, ainda não como "gravado na hora".
+ */
+async function attachFile(r) {
+  const box = getComposer()
+  if (!box) { toast("Abra uma conversa pra usar esta resposta."); return }
+  toast("Carregando o arquivo…")
+  const res = await fileApi(`/api/crm/quick-replies/${r.id}/file`)
+  if (!res.ok || !res.base64) { toast("Não consegui baixar o arquivo. Confira a conexão."); return }
+  let file
+  try {
+    const bin = atob(res.base64)
+    const bytes = new Uint8Array(bin.length)
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i)
+    file = new File([bytes], r.mediaName || "arquivo", { type: r.mediaMime || res.mime || "application/octet-stream" })
+  } catch { toast("O arquivo veio com defeito."); return }
+
+  box.focus()
+  let handled = false
+  try {
+    const dt = new DataTransfer()
+    dt.items.add(file)
+    handled = !box.dispatchEvent(new ClipboardEvent("paste", { clipboardData: dt, bubbles: true, cancelable: true }))
+  } catch { handled = false }
+  if (!handled) { toast("O WhatsApp não aceitou o arquivo colado. Use o clipe de anexo e o arquivo do painel web."); return }
+
+  api("POST", `/api/crm/quick-replies/${r.id}/use`)
+  // legenda: o WhatsApp abre a pré-visualização com o foco na legenda
+  const caption = r.type === "AUDIO" || !r.text ? "" : renderVariables(r.text)
+  if (caption) setTimeout(() => { try { document.execCommand("insertText", false, caption) } catch {} }, 1200)
+  toast(r.type === "AUDIO" ? "Áudio colocado. Confira e envie." : "Arquivo colocado. Confira a legenda e envie.")
 }
 
 // ── Barrinha lateral ao lado da conversa (atalhos pras abas) ──────────────────
@@ -745,6 +791,8 @@ async function checkWaiting() {
 
 // ── Barra de respostas acima do campo + atalho ";" ───────────────────────────
 
+const BAR_ICON = { TEXT: "text", CONTACT: "user", AUDIO: "mic", IMAGE: "image", VIDEO: "film", DOCUMENT: "file" }
+
 function ensureBar() {
   const footer = document.querySelector("#main footer")
   let bar = document.getElementById(BAR_ID)
@@ -752,7 +800,7 @@ function ensureBar() {
     if (bar) bar.remove()
     return
   }
-  const top = matchReplies("").filter((r) => r.type === "TEXT" || r.type === "CONTACT").slice(0, 10)
+  const top = matchReplies("").filter((r) => r.type !== "SEQUENCE").slice(0, 12)
   if (!top.length) { if (bar) bar.remove(); return }
   if (!bar) {
     bar = document.createElement("div")
@@ -765,7 +813,7 @@ function ensureBar() {
       if (r) useReply(r)
     })
   }
-  const html = top.map((r) => `<button data-bar-reply="${esc(r.id)}" title="${esc(replyPreview(r))}">${r.favorite ? icon("star", 11) : ""}${esc(r.name)}</button>`).join("")
+  const html = top.map((r) => `<button data-bar-reply="${esc(r.id)}" title="${esc(replyPreview(r))}">${r.favorite ? icon("star", 11) : icon(BAR_ICON[r.type] || "text", 11)}${esc(r.name)}</button>`).join("")
   if (bar.dataset.sig !== html) { bar.innerHTML = html; bar.dataset.sig = html }
   if (bar.parentNode !== footer.parentNode || bar.nextSibling !== footer) footer.parentNode.insertBefore(bar, footer)
 }
