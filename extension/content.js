@@ -14,7 +14,7 @@ const ROOT_ID = "vcrm-root"
 const BAR_ID = "vcrm-bar"
 const POP_ID = "vcrm-pop"
 const PANEL_W = 340
-const RAIL_W = 56
+const RAIL_W = 44
 
 const state = {
   open: false,
@@ -286,8 +286,12 @@ function render() {
   applyLayout()
   ensureSide()
   ensureHeaderBar()
+  // Coluna fina, só ícones (como a do Hotzapp), com uma linha separando o grupo da conversa do resto
+  const openReminders = state.reminders.filter((r) => r.state !== "feito").length
   const rail = TABS.map(
-    (t) => `<button class="vc-ico ${state.open && state.tab === t.id ? "on" : ""}" data-tab="${t.id}" title="${t.label}">${icon(t.icon, 20)}<span>${t.label.split(" ")[0]}</span></button>`
+    (t, i) =>
+      `<button class="vc-ico ${state.open && state.tab === t.id ? "on" : ""}" data-tab="${t.id}" title="${t.label}">${icon(t.icon, 19)}${t.id === "lembretes" && openReminders ? `<b class="vc-badge-n">${openReminders}</b>` : ""}</button>` +
+      (i === 3 ? '<div class="vc-sep"></div>' : "")
   ).join("")
 
   const active = TABS.find((t) => t.id === state.tab)
@@ -296,7 +300,7 @@ function render() {
       <div class="vc-logo" title="Vision CRM">${icon("spark", 20)}</div>
       ${rail}
       <div class="vc-grow"></div>
-      <button class="vc-ico" data-act="web" title="Abrir o painel web">${icon("ext", 20)}<span>Painel</span></button>
+      <button class="vc-ico" data-act="web" title="Abrir o painel web">${icon("ext", 19)}</button>
     </aside>
     ${state.open ? `
     <section class="vc-panel">

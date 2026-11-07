@@ -319,3 +319,15 @@ html.vcrm-on body { padding-right: var(--vcrm-pad, 56px) !important; background:
 #vcrm-barmenu .vm-seg button { flex: 1; justify-content: center; border: 1px solid rgba(255, 255, 255, 0.2); }
 #vcrm-barmenu .vm-seg button.on { background: #1d6ee6; color: #fff; border-color: #1d6ee6; }
 #vcrm-bar .vb-ic svg { color: inherit; }
+
+/* ═══ Coluna da direita: fina e só com ícones (como a do Hotzapp) ═══ */
+html.vcrm-on body { padding-right: var(--vcrm-pad, 44px) !important; }
+.vc-rail { width: 44px; padding: 8px 0; gap: 2px; }
+.vc-logo { width: 28px; height: 28px; border-radius: 9px; margin-bottom: 6px; }
+.vc-logo svg { width: 16px; height: 16px; }
+.vc-ico { position: relative; width: 36px; height: 36px; padding: 0; justify-content: center; border-radius: 10px; }
+.vc-ico span { display: none; }
+.vc-sep { width: 22px; height: 1px; margin: 6px 0; background: rgba(255, 255, 255, 0.14); }
+.vc-badge-n { position: absolute; top: 1px; right: 1px; min-width: 15px; height: 15px; padding: 0 4px; border-radius: 999px; font-size: 10px; line-height: 15px; font-weight: 700; text-align: center; color: #fff; background: #e0245e; }
+.vc-panel { right: 44px; }
+.vc-toast { right: 60px; }
