@@ -206,3 +206,10 @@ html.vcrm-on body { padding-right: var(--vcrm-pad, 56px) !important; background:
 #vcrm-wait .vw-foot { display: flex; justify-content: space-between; margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(255, 255, 255, 0.1); }
 #vcrm-wait .vw-foot button { border: 0; background: transparent; cursor: pointer; font-size: 13px; font-weight: 600; color: #ff8fb1; }
 #vcrm-wait .vw-foot button:last-child { color: #aebac1; }
+
+/* Recolhida: igual ao Hotzapp, os ícones ficam e só os textos somem */
+#vcrm-side.vs-min { padding: 4px 3px; border-radius: 16px; }
+#vcrm-side.vs-min button { width: 34px; padding: 8px 0; }
+#vcrm-side.vs-min button span { display: none; }
+#vcrm-side.vs-min button b { right: 1px; top: 2px; }
+#vcrm-side.vs-min .vs-top { padding: 2px 0; }

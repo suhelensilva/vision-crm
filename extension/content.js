@@ -613,8 +613,8 @@ function ensureSide() {
     { go: "conversa", icon: "user", label: "Dados" },
     { go: "cobrancas", icon: "wallet", label: "Cobrar" },
   ]
-  const html = `<button class="vs-top" data-collapse="1" title="Recolher">${icon("chevron", 12)}</button>` +
-    (sideCollapsed ? "" : items.map((i) => `<button data-go="${i.go}" title="${i.label}">${icon(i.icon, 18)}${i.badge ? `<b>${i.badge}</b>` : ""}<span>${i.label}</span></button>`).join(""))
+  const html = `<button class="vs-top" data-collapse="1" title="${sideCollapsed ? "Expandir" : "Recolher"}">${icon("chevron", 12)}</button>` +
+    (items.map((i) => `<button data-go="${i.go}" title="${i.label}">${icon(i.icon, 18)}${i.badge ? `<b>${i.badge}</b>` : ""}<span>${i.label}</span></button>`).join(""))
   if (el.dataset.sig !== html) { el.innerHTML = html; el.dataset.sig = html }
   el.classList.toggle("vs-min", sideCollapsed)
   const r = main.getBoundingClientRect()
