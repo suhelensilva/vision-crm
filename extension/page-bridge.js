@@ -175,6 +175,24 @@
     return { labels: labelsOut, chats: chatsOut, semTelefone, grupos, dbg }
   }
 
+  // ── Foto da cliente: tenta vários lugares onde o WhatsApp guarda ──
+  const okUrl = (u) => typeof u === "string" && /^(https:|blob:|data:image)/.test(u)
+  function picOf(chat, C) {
+    const holders = []
+    const add = (fn) => { try { const h = fn(); if (h) holders.push(h) } catch {} }
+    add(() => C.ProfilePicThumb && C.ProfilePicThumb.get && C.ProfilePicThumb.get(chat.id))
+    add(() => C.ProfilePicThumb && C.ProfilePicThumb.get && chat.contact && C.ProfilePicThumb.get(chat.contact.id))
+    add(() => chat.contact && chat.contact.profilePicThumb)
+    add(() => chat.profilePicThumb)
+    add(() => { const M = req("WAWebProfilePicThumbCollection"); const P = M && (M.ProfilePicThumbCollection || M.default || M); return P && P.get && P.get(chat.id) })
+    for (const h of holders) {
+      for (const k of ["eurl", "img", "previewEurl", "imgFull"]) {
+        if (okUrl(h[k])) return h[k]
+      }
+    }
+    return ""
+  }
+
   // ── Quem está esperando resposta (a última mensagem é da cliente) ──
   const TYPE_LABEL = { ptt: "Mensagem de voz", audio: "Mensagem de voz", image: "Foto", video: "Vídeo", sticker: "Figurinha", document: "Documento", location: "Localização", vcard: "Contato", gif: "GIF" }
 
@@ -200,12 +218,7 @@
         const type = String(last.type || "chat")
         let preview = TYPE_LABEL[type] || ""
         if (!preview) preview = String(last.body || last.caption || "Mensagem").replace(/\s+/g, " ").slice(0, 50)
-        let pic = ""
-        try {
-          const pp = (chat.contact && chat.contact.profilePicThumb) || chat.profilePicThumb
-          pic = (pp && (pp.eurl || pp.img || pp.imgFull)) || ""
-          if (typeof pic !== "string" || !/^(https:|blob:|data:image)/.test(pic)) pic = ""
-        } catch { pic = "" }
+        const pic = picOf(chat, C)
         out.push({
           key: serial(id),
           lastT: t,

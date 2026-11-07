@@ -398,15 +398,18 @@ function renderNotes() {
 
 // ── Aba: Importar do WhatsApp ─────────────────────────────────────────────────
 
-const imp = { phase: "idle", scan: null, result: null, msg: "", done: 0, total: 0, withoutLabel: false, archived: true, selected: new Set() }
+const imp = { phase: "idle", scan: null, result: null, msg: "", done: 0, total: 0, withoutLabel: false, archived: true, onlyNew: true, known: new Set(), selected: new Set() }
 
-/** Conversas que vão entrar, já só com as etiquetas escolhidas. */
+const tailOf = (phone) => String(phone || "").replace(/\D/g, "").slice(-8)
+
+/** Conversas que vão entrar, já só com as etiquetas escolhidas (e, no modo "só novos", sem quem já está no CRM). */
 function importable() {
   const s = imp.scan
   if (!s) return []
   const out = []
   for (const c of s.chats) {
     if (!imp.archived && c.archived) continue
+    if (imp.onlyNew && imp.known.has(tailOf(c.phone))) continue
     const mine = c.labels.filter((l) => imp.selected.has(l))
     if (mine.length) out.push({ ...c, labels: mine })
     else if (imp.withoutLabel) out.push({ ...c, labels: [] }) // sem etiqueta, ou só com etiquetas não escolhidas
@@ -425,7 +428,7 @@ function renderImport() {
   if (imp.phase === "done" && imp.result) {
     const r = imp.result
     return box(`<b style="color:#fff">Pronto!</b>
-      <p class="vc-muted">${r.created} contatos novos, ${r.updated} atualizados, ${r.listsCreated} listas criadas, ${r.memberships} ligações às listas.${r.skipped ? ` ${r.skipped} sem telefone válido foram pulados.` : ""}</p>
+      <p class="vc-muted">${r.created} contatos novos${r.existing ? `, ${r.existing} já estavam no CRM (não mexi)` : ""}${r.updated ? `, ${r.updated} atualizados` : ""}, ${r.listsCreated} listas criadas, ${r.memberships} ligações às listas.${r.skipped ? ` ${r.skipped} sem telefone válido foram pulados.` : ""}</p>
       <p class="vc-muted">Agora abra o painel web, em <b>Configurações</b>, e ligue cada lista ao pixel dela.</p>
       <button class="vc-ghost" data-act="imp-reset">Ler de novo</button>`)
   }
@@ -436,8 +439,10 @@ function renderImport() {
     const counts = new Map()
     for (const c of s.chats) for (const l of c.labels) counts.set(l, (counts.get(l) || 0) + 1)
     const names = [...new Set([...s.labels.map((l) => l.name), ...counts.keys()])]
+    const already = s.chats.filter((c) => imp.known.has(tailOf(c.phone))).length
     return box(`<b style="color:#fff">Encontrei no seu WhatsApp</b>
-      <p class="vc-muted">${s.labels.length} etiquetas · ${s.chats.length} conversas com telefone${s.semTelefone ? ` · ${s.semTelefone} sem telefone descoberto (não entram)` : ""}${s.grupos ? ` · ${s.grupos} grupos ignorados` : ""}.</p>
+      <p class="vc-muted">${s.labels.length} etiquetas · ${s.chats.length} conversas com telefone (${s.chats.length - already} novas, ${already} já estão no CRM)${s.semTelefone ? ` · ${s.semTelefone} sem telefone descoberto (não entram)` : ""}${s.grupos ? ` · ${s.grupos} grupos ignorados` : ""}.</p>
+      <label class="vc-check"><input type="checkbox" data-imp-opt="onlyNew" ${imp.onlyNew ? "checked" : ""}/> <span>Só contatos novos (não mexe em quem já está no CRM)</span></label>
       <div class="vc-sec first">Quais etiquetas importar?</div>
       <div class="vc-quick"><button class="vc-ghost" data-act="imp-all">Marcar todas</button><button class="vc-ghost" data-act="imp-none">Desmarcar todas</button></div>
       <div class="vc-labels">${names.length ? names.map((n) => `<label class="vc-check"><input type="checkbox" data-imp-label="${esc(n)}" ${imp.selected.has(n) ? "checked" : ""}/> <span>${esc(n)}</span> <em>${counts.get(n) || 0}</em></label>`).join("") : `<p class="vc-muted">Nenhuma etiqueta encontrada.</p>`}</div>
@@ -463,6 +468,8 @@ async function importScan() {
     return render()
   }
   imp.scan = r
+  const known = await api("GET", "/api/crm/import")
+  imp.known = new Set(known.ok && known.data && Array.isArray(known.data.tails) ? known.data.tails : [])
   imp.selected = new Set([...r.labels.map((l) => l.name), ...r.chats.flatMap((c) => c.labels)]) // começa com todas marcadas
   imp.phase = r.chats.length ? "ready" : "idle"
   if (!r.chats.length) imp.msg = "Não achei conversas pra importar. Clique em \"Copiar diagnóstico da leitura\" e me mande."
@@ -474,11 +481,11 @@ async function importGo() {
   const used = new Set(list.flatMap((c) => c.labels))
   const labels = imp.scan.labels.filter((l) => used.has(l.name))
   imp.phase = "importing"; imp.done = 0; imp.total = list.length
-  imp.result = { created: 0, updated: 0, skipped: 0, listsCreated: 0, memberships: 0 }
+  imp.result = { existing: 0, created: 0, updated: 0, skipped: 0, listsCreated: 0, memberships: 0 }
   render()
   const BATCH = 250
   for (let i = 0; i < list.length; i += BATCH) {
-    const res = await api("POST", "/api/crm/import", { labels: i === 0 ? labels : [], contacts: list.slice(i, i + BATCH) })
+    const res = await api("POST", "/api/crm/import", { labels, contacts: list.slice(i, i + BATCH), onlyNew: imp.onlyNew })
     if (!res.ok || !res.data) {
       imp.phase = "idle"
       imp.msg = `Parou em ${imp.done} de ${imp.total}: ${(res.data && res.data.error) || "erro de conexão"}. Pode clicar de novo, o que já entrou não duplica.`
@@ -691,7 +698,7 @@ function renderWaiting() {
     })
     document.body.appendChild(el)
   }
-  const shown = waitList.slice(0, 5)
+  const shown = waitList.slice(0, 8)
   const more = waitList.length - shown.length
   const html = `
     <b>${waitList.length} ${waitList.length === 1 ? "cliente espera" : "clientes esperam"} sua resposta</b>
@@ -710,10 +717,29 @@ function renderWaiting() {
   if (el.dataset.sig !== html) { el.innerHTML = html; el.dataset.sig = html }
 }
 
+/** Plano B da foto: pega a que o WhatsApp já mostra na lista de conversas, achando pelo nome. */
+function photoFromList(name) {
+  if (!name) return ""
+  try {
+    const side = document.querySelector("#pane-side")
+    if (!side) return ""
+    for (const t of side.querySelectorAll("span[title]")) {
+      if (t.getAttribute("title") !== name) continue
+      const row = t.closest('[role="listitem"], [role="row"], [data-testid="cell-frame-container"]') || t.parentElement?.parentElement?.parentElement
+      const img = row && row.querySelector("img[src^='https:'], img[src^='blob:']")
+      if (img) return img.getAttribute("src") || ""
+    }
+  } catch {}
+  return ""
+}
+
 async function checkWaiting() {
   if (!document.querySelector("#app")) return
   const r = await askBridge("waiting", 5000, { minMinutes: WAIT_MIN_MINUTES, maxHours: WAIT_MAX_HOURS })
-  if (r && Array.isArray(r.waiting)) waitList = r.waiting.filter((w) => !(waitHandled[w.key] >= w.lastT))
+  if (r && Array.isArray(r.waiting)) {
+    waitList = r.waiting.filter((w) => !(waitHandled[w.key] >= w.lastT))
+    for (const w of waitList) if (!w.pic) w.pic = photoFromList(w.name)
+  }
   renderWaiting()
 }
 

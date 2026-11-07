@@ -17,6 +17,7 @@ export type ImportContact = {
 export type ImportLabel = { name: string; color?: string }
 
 export type ImportResult = {
+  existing: number // já estavam no CRM (ignorados no modo "só novos")
   created: number
   updated: number
   skipped: number // telefone inválido
@@ -32,8 +33,27 @@ const GENERIC = new Set(["", "cliente whatsapp"])
  * Nunca apaga nada e nunca sobrescreve nome já cadastrado. Roda em lotes:
  * a extensão manda vários pedidos pequenos.
  */
-export async function importFromWhatsApp(userId: string, labels: ImportLabel[], contacts: ImportContact[]): Promise<ImportResult> {
-  const result: ImportResult = { created: 0, updated: 0, skipped: 0, listsCreated: 0, memberships: 0 }
+export async function importFromWhatsApp(
+  userId: string,
+  labels: ImportLabel[],
+  contacts: ImportContact[],
+  onlyNew = false // true: quem já está no CRM não é tocado (nem nome, nem estado, nem listas)
+): Promise<ImportResult> {
+  const result: ImportResult = { existing: 0, created: 0, updated: 0, skipped: 0, listsCreated: 0, memberships: 0 }
+
+  // No modo "só novos", as listas só são criadas se sobrar algum contato novo pra pôr nelas.
+  if (onlyNew) {
+    const have = await prisma.contact.findMany({ where: { userId }, select: { phone: true } })
+    const tails = new Set(have.map((c) => normalizePhone(c.phone).slice(-8)))
+    const fresh = contacts.filter((c) => {
+      const d = normalizePhone(c.phone)
+      return d.length >= 8 && !tails.has(d.slice(-8))
+    })
+    result.existing = contacts.filter((c) => normalizePhone(c.phone).length >= 8).length - fresh.length
+    contacts = fresh
+    const used = new Set(fresh.flatMap((c) => c.labels.map((n) => n.trim().toLowerCase())))
+    labels = labels.filter((l) => used.has(l.name.trim().toLowerCase()))
+  }
 
   // ── Listas: usa a que já existe com o mesmo nome; senão cria ──
   const existingLists = await prisma.crmList.findMany({ where: { userId }, orderBy: { order: "desc" } })
