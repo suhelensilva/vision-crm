@@ -3,6 +3,7 @@
  * Sem imports de servidor: a tela também usa este arquivo.
  */
 import { withCountryCode } from "@/lib/phone"
+import { firstName } from "@/lib/names"
 
 export type ChargeMessageInput = {
   name: string
@@ -13,14 +14,6 @@ export type ChargeMessageInput = {
 }
 
 const TZ = "America/Sao_Paulo"
-
-function firstName(name: string) {
-  const parts = name
-    .replace(/[^\p{L}\s]/gu, " ")
-    .split(/\s+/)
-    .filter((p) => p && !/^clientes?$/i.test(p))
-  return parts[0] ?? ""
-}
 
 export function buildChargeMessage(c: ChargeMessageInput): string {
   const value = c.amount.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })

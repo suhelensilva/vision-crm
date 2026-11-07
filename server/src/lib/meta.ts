@@ -2,6 +2,7 @@ import { createHash } from "crypto"
 import { prisma } from "@/lib/prisma"
 import { decryptSecret } from "@/lib/crypto"
 import { withCountryCode } from "@/lib/phone"
+import { cleanNameParts } from "@/lib/names"
 
 /**
  * Envio de conversões para o Meta (Conversions API).
@@ -33,12 +34,7 @@ export function phoneForMeta(raw: string): string | null {
 
 /** Nome e sobrenome em minúsculas, sem pontuação. Ignora nome genérico e a palavra "cliente". */
 export function nameForMeta(name: string): { fn?: string; ln?: string } {
-  if (!name || name === "Cliente WhatsApp") return {}
-  const parts = name
-    .toLowerCase()
-    .replace(/[^\p{L}\s]/gu, " ")
-    .split(/\s+/)
-    .filter((p) => p && p !== "cliente" && p !== "clientes")
+  const parts = cleanNameParts(name).map((p) => p.toLowerCase())
   if (parts.length === 0) return {}
   return { fn: parts[0], ln: parts.length > 1 ? parts[parts.length - 1] : undefined }
 }

@@ -117,6 +117,30 @@ Regras:
 - O campo antigo `Contact.notes` (nunca usado) foi removido e trocado pelo
   modelo `Note`.
 
+## Respostas rápidas
+
+Página **Respostas rápidas** (`/dashboard/respostas`): mensagens prontas.
+
+- **Tipos disponíveis hoje: Texto e Contato.** Áudio, Imagem, Vídeo e
+  Documento precisam guardar arquivo (falta decidir onde: Supabase Storage ou
+  o próprio banco). Sequência de mensagens espera o formulário. Os campos de
+  mídia já existem no modelo `QuickReply`, mas a API recusa esses tipos (400).
+- Cada resposta tem nome, categoria (sempre em MAIÚSCULAS), favorito, contador
+  de uso e **atalho** (a palavra depois do `;`, única por conta, minúscula, sem
+  acento nem espaço).
+- **Variáveis** na mensagem: `{primeiro_nome}`, `{nome_completo}`, `{saudacao}`,
+  `{seu_nome}`, `{telefone}`, `{data_de_hoje}`, `{hora_agora}`
+  (`lib/quick-reply-vars.ts`). Saudação por horário de Brasília (5h-12h Bom dia,
+  12h-18h Boa tarde, resto Boa noite). Se o nome da cliente é desconhecido, a
+  variável some e a pontuação é arrumada ("Oi, Bom dia!").
+- Ações ao passar o mouse: duplicar (cópia sem atalho, uso zerado), editar,
+  excluir. O tipo não muda depois de criado.
+- Limites: 500 respostas por conta, texto de até 4096 caracteres.
+- **"Usar" na conversa (digitar `;`, chips acima do campo de mensagem) é papel
+  da extensão e ainda não existe.** A rota `POST .../use` já soma o contador.
+- Regra única de nomes em `lib/names.ts` (tira a palavra "cliente" e ignora
+  "Cliente WhatsApp"), usada por mensagens, cobranças e Meta.
+
 ## Fila de entregas
 
 1. Etiquetas/Listas (feito)
@@ -126,7 +150,8 @@ Regras:
 4. Cobranças (feito; falta o botão "Cobrar" no painel da extensão e a regra
    "quando pagar, mover de lista")
 5. Dados do lead e Notas (feito na gaveta do funil; falta mostrar na extensão)
-6. Respostas rápidas
+6. Respostas rápidas (Texto e Contato feitos; faltam Áudio, Imagem, Vídeo,
+   Documento, Sequência e o uso na conversa pela extensão)
 7. Lembretes e Adiadas
 8. Painel do Dia
 9. Ferramentas (wa.me, exportar, iniciar sem salvar)

@@ -27,6 +27,7 @@ model User {
   lists     CrmList[]
   charges   Charge[]
   notes     Note[]
+  quickReplies QuickReply[]
 
   @@map("users")
 }
@@ -90,6 +91,52 @@ model Purchase {
   @@index([contactId, purchasedAt])
   @@index([userId, metaEventSent])
   @@map("purchases")
+}
+
+enum QuickReplyType {
+  TEXT
+  AUDIO
+  IMAGE
+  VIDEO
+  DOCUMENT
+  CONTACT
+  SEQUENCE
+}
+
+/// Resposta rápida: mensagem pronta pra usar na conversa (digitando ";" na extensão).
+/// Hoje só TEXT é criado; os outros tipos já têm lugar no modelo.
+model QuickReply {
+  id         String         @id @default(cuid())
+  userId     String
+  type       QuickReplyType @default(TEXT)
+  name       String // como ela acha a mensagem depois
+  category   String? // só ela vê (ex.: PROMOCIONAL), sempre em maiúsculas
+  favorite   Boolean        @default(false)
+  usageCount Int            @default(0)
+  position   Int            @default(0) // ordem manual (arrastar), ainda não usada pela tela
+  shortcut   String? // palavra depois do ";" (minúscula, única por conta)
+  text       String? // mensagem (TEXT) ou legenda (IMAGE, VIDEO, DOCUMENT)
+
+  // Mídia (AUDIO, IMAGE, VIDEO, DOCUMENT). Ainda não usado: falta decidir onde guardar os arquivos.
+  mediaPath   String?
+  mediaName   String?
+  mediaMime   String?
+  mediaSize   Int?
+  viewOnce    Boolean @default(false) // imagem/vídeo: visualização única
+  asVoiceNote Boolean @default(false) // áudio: "enviar como áudio gravado na hora"
+
+  // Contato (CONTACT): chega como cartão de contato
+  contactName  String?
+  contactPhone String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, shortcut])
+  @@index([userId, category])
+  @@map("quick_replies")
 }
 
 /// Anotação sobre uma cliente (várias por contato, em ordem de data).
