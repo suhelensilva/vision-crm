@@ -1,11 +1,11 @@
 import { z } from "zod"
 import { withCountryCode } from "@/lib/phone"
-import { QUICK_REPLY_TYPES, TYPE_INFO, type QuickReplyKind } from "@/lib/quick-reply-types"
+import { MAX_CAPTION, QUICK_REPLY_TYPES, TYPE_INFO, type QuickReplyKind } from "@/lib/quick-reply-types"
 
 export const MAX_QUICK_REPLIES = 500
 export const MAX_TEXT = 4096
 
-/** O que a tela e a extensão recebem. Não expõe o caminho do arquivo. */
+/** O que a tela e a extensão recebem. Nunca inclui o conteúdo do arquivo (ele vem de /file). */
 export type QuickReplyView = {
   id: string
   type: QuickReplyKind
@@ -14,10 +14,12 @@ export type QuickReplyView = {
   favorite: boolean
   usageCount: number
   shortcut: string | null
-  text: string | null
+  text: string | null // mensagem (Texto) ou legenda (Imagem, Vídeo, Documento)
   contactName: string | null
   contactPhone: string | null
   mediaName: string | null
+  mediaMime: string | null
+  mediaSize: number | null
   viewOnce: boolean
   asVoiceNote: boolean
 }
@@ -34,6 +36,8 @@ type Row = {
   contactName: string | null
   contactPhone: string | null
   mediaName: string | null
+  mediaMime: string | null
+  mediaSize: number | null
   viewOnce: boolean
   asVoiceNote: boolean
 }
@@ -50,6 +54,8 @@ export const toView = (r: Row): QuickReplyView => ({
   contactName: r.contactName,
   contactPhone: r.contactPhone,
   mediaName: r.mediaName,
+  mediaMime: r.mediaMime,
+  mediaSize: r.mediaSize,
   viewOnce: r.viewOnce,
   asVoiceNote: r.asVoiceNote,
 })
@@ -99,6 +105,13 @@ export const contactPhoneField = z
     return d.length >= 8 && d.length <= 15
   }, { message: "Telefone inválido. Use DDD + número (com 55 se quiser)." })
   .transform((v) => withCountryCode(v))
+
+/** Legenda de imagem, vídeo e documento: opcional, até 1024 caracteres. Vazia vira null. */
+export const captionField = z
+  .string()
+  .trim()
+  .max(MAX_CAPTION, `A legenda passou de ${MAX_CAPTION} caracteres`)
+  .transform((v) => (v ? v : null))
 
 export const kindField = z.enum(QUICK_REPLY_TYPES)
 

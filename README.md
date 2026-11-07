@@ -121,10 +121,32 @@ Regras:
 
 Página **Respostas rápidas** (`/dashboard/respostas`): mensagens prontas.
 
-- **Tipos disponíveis hoje: Texto e Contato.** Áudio, Imagem, Vídeo e
-  Documento precisam guardar arquivo (falta decidir onde: Supabase Storage ou
-  o próprio banco). Sequência de mensagens espera o formulário. Os campos de
-  mídia já existem no modelo `QuickReply`, mas a API recusa esses tipos (400).
+- **Tipos disponíveis: Texto, Contato, Áudio, Imagem, Vídeo e Documento.**
+  Sequência de mensagens espera o formulário do Hotzapp (a API recusa, 400).
+- **Arquivos ficam no banco** (tabela `QuickReplyFile`, separada de propósito
+  pra a lista nunca ler o conteúdo). Foi a escolha da usuária. Consequências:
+  - **4 MB por arquivo** (a Vercel recusa envios acima de ~4,5 MB) e
+    **40 MB por conta** (o banco grátis tem 500 MB). Vídeo só cabe se for curto.
+    Se precisar de mais, migrar pro Supabase Storage.
+  - Envio em `POST /api/crm/quick-replies/upload` (multipart); trocar arquivo em
+    `PUT .../[id]/file`; baixar em `GET .../[id]/file` (aceita login ou token da
+    extensão, e pedidos de trecho `Range` pro player pular).
+  - Formatos: Áudio `.ogg .mp3`, Imagem `.png .jpg .webp`, Vídeo `.mp4 .3gp`,
+    Documento qualquer um **menos** programas e páginas (`.exe .bat .js .html
+    .svg ...`, ver `BLOCKED_EXTS`).
+  - **O conteúdo é conferido**, não só o nome: os primeiros bytes têm que
+    bater com a extensão (`lib/quick-reply-files.ts`). Um HTML chamado
+    `.png` é recusado.
+  - O tipo (MIME) vem de uma tabela por extensão, nunca do navegador. O
+    download sai com `nosniff` e `Content-Security-Policy: sandbox`, e
+    documentos sempre baixam (`attachment`).
+  - Imagem e vídeo têm "visualização única"; áudio tem "enviar como áudio
+    gravado na hora"; imagem, vídeo e documento têm legenda (até 1024
+    caracteres) com as mesmas variáveis do texto.
+  - **"Gravar agora" (áudio) não existe**: o Chrome grava em webm, formato que o
+    WhatsApp não aceita, e converter exigiria ffmpeg.
+  - Apagar uma resposta apaga o arquivo (cascade). Duplicar copia o arquivo e
+    conta no limite da conta.
 - Cada resposta tem nome, categoria (sempre em MAIÚSCULAS), favorito, contador
   de uso e **atalho** (a palavra depois do `;`, única por conta, minúscula, sem
   acento nem espaço).
@@ -150,8 +172,10 @@ Página **Respostas rápidas** (`/dashboard/respostas`): mensagens prontas.
 4. Cobranças (feito; falta o botão "Cobrar" no painel da extensão e a regra
    "quando pagar, mover de lista")
 5. Dados do lead e Notas (feito na gaveta do funil; falta mostrar na extensão)
-6. Respostas rápidas (Texto e Contato feitos; faltam Áudio, Imagem, Vídeo,
-   Documento, Sequência e o uso na conversa pela extensão)
+6. Respostas rápidas (Texto, Contato, Áudio, Imagem, Vídeo e Documento feitos;
+   faltam Sequência e o uso na conversa pela extensão)
+   Próxima etapa combinada: tema Vision (azul-marinho + vinho fluorescente,
+   claro e escuro) em todas as telas.
 7. Lembretes e Adiadas
 8. Painel do Dia
 9. Ferramentas (wa.me, exportar, iniciar sem salvar)

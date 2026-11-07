@@ -3,16 +3,19 @@ import { z } from "zod"
 import { prisma } from "@/lib/prisma"
 import { getAuthUser } from "@/lib/crm-auth"
 import {
-  SHORTCUT_TAKEN, categoryField, contactNameField, contactPhoneField, isUniqueViolation,
+  SHORTCUT_TAKEN, captionField, categoryField, contactNameField, contactPhoneField, isUniqueViolation,
   nameField, shortcutField, textField, toView,
 } from "@/lib/quick-replies"
+import { MEDIA_RULES, isMediaKind } from "@/lib/quick-reply-types"
 
 const schema = z.object({
   name: nameField.optional(),
   category: categoryField,
   shortcut: shortcutField,
   favorite: z.boolean().optional(),
-  text: z.string().optional(),
+  text: z.string().optional(), // mensagem (Texto) ou legenda (Imagem, Vídeo, Documento)
+  viewOnce: z.boolean().optional(),
+  asVoiceNote: z.boolean().optional(),
   contactName: z.string().optional(),
   contactPhone: z.string().optional(),
 })
@@ -39,10 +42,30 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
   if (d.favorite !== undefined) data.favorite = d.favorite
 
   if (d.text !== undefined) {
-    if (current.type !== "TEXT") return NextResponse.json({ error: "Esta resposta não tem texto." }, { status: 400 })
-    const t = textField.safeParse(d.text)
-    if (!t.success) return NextResponse.json({ error: firstIssue(t.error) }, { status: 400 })
-    data.text = t.data
+    if (current.type === "TEXT") {
+      const t = textField.safeParse(d.text)
+      if (!t.success) return NextResponse.json({ error: firstIssue(t.error) }, { status: 400 })
+      data.text = t.data
+    } else if (isMediaKind(current.type) && MEDIA_RULES[current.type].hasCaption) {
+      // legenda: pode ficar vazia
+      const c = captionField.safeParse(d.text)
+      if (!c.success) return NextResponse.json({ error: firstIssue(c.error) }, { status: 400 })
+      data.text = c.data
+    } else {
+      return NextResponse.json({ error: "Esta resposta não tem texto nem legenda." }, { status: 400 })
+    }
+  }
+  if (d.viewOnce !== undefined) {
+    if (current.type !== "IMAGE" && current.type !== "VIDEO") {
+      return NextResponse.json({ error: "Visualização única só vale pra imagem e vídeo." }, { status: 400 })
+    }
+    data.viewOnce = d.viewOnce
+  }
+  if (d.asVoiceNote !== undefined) {
+    if (current.type !== "AUDIO") {
+      return NextResponse.json({ error: "\"Áudio gravado na hora\" só vale pra áudio." }, { status: 400 })
+    }
+    data.asVoiceNote = d.asVoiceNote
   }
   if (d.contactName !== undefined || d.contactPhone !== undefined) {
     if (current.type !== "CONTACT") return NextResponse.json({ error: "Esta resposta não é um contato." }, { status: 400 })

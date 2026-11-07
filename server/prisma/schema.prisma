@@ -117,11 +117,11 @@ model QuickReply {
   shortcut   String? // palavra depois do ";" (minúscula, única por conta)
   text       String? // mensagem (TEXT) ou legenda (IMAGE, VIDEO, DOCUMENT)
 
-  // Mídia (AUDIO, IMAGE, VIDEO, DOCUMENT). Ainda não usado: falta decidir onde guardar os arquivos.
-  mediaPath   String?
+  // Mídia (AUDIO, IMAGE, VIDEO, DOCUMENT). O arquivo em si fica na tabela QuickReplyFile,
+  // pra a lista nunca carregar o conteúdo.
   mediaName   String?
-  mediaMime   String?
-  mediaSize   Int?
+  mediaMime   String? // sempre um tipo da lista permitida (nunca o que o navegador disse)
+  mediaSize   Int? // bytes
   viewOnce    Boolean @default(false) // imagem/vídeo: visualização única
   asVoiceNote Boolean @default(false) // áudio: "enviar como áudio gravado na hora"
 
@@ -132,11 +132,23 @@ model QuickReply {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  file QuickReplyFile?
 
   @@unique([userId, shortcut])
   @@index([userId, category])
   @@map("quick_replies")
+}
+
+/// Conteúdo do arquivo de uma resposta rápida (guardado no banco).
+/// Tabela separada de propósito: a lista de respostas nunca lê esta tabela.
+model QuickReplyFile {
+  quickReplyId String @id
+  data         Bytes
+
+  quickReply QuickReply @relation(fields: [quickReplyId], references: [id], onDelete: Cascade)
+
+  @@map("quick_reply_files")
 }
 
 /// Anotação sobre uma cliente (várias por contato, em ordem de data).

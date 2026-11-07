@@ -2,8 +2,12 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import type { QuickReplyView } from "@/lib/quick-replies"
-import { QUICK_REPLY_TYPES, TYPE_INFO, type QuickReplyKind } from "@/lib/quick-reply-types"
+import {
+  MAX_ACCOUNT_BYTES, MAX_CAPTION, MEDIA_RULES, QUICK_REPLY_TYPES, TYPE_INFO, formatBytes, isMediaKind,
+  type QuickReplyKind,
+} from "@/lib/quick-reply-types"
 import { VARIABLES, renderVariables } from "@/lib/quick-reply-vars"
+import { FileDrop, MediaLine, SavedPreview, Toggle } from "@/components/quick-reply-media"
 
 const NO_CATEGORY = "SEM CATEGORIA"
 const SAMPLE = { contactName: "Maria da Silva", contactPhone: "5511999998888", myName: "Seu nome" }
@@ -20,6 +24,27 @@ async function call(method: string, url: string, body?: unknown) {
   const data = await res.json().catch(() => ({}))
   if (!res.ok) throw new Error(data.error || `Erro ${res.status}`)
   return data
+}
+
+/** Envio de arquivo (multipart): o navegador define o Content-Type sozinho. */
+async function callForm(method: string, url: string, form: FormData) {
+  const res = await fetch(url, { method, body: form })
+  const data = await res.json().catch(() => ({}))
+  if (!res.ok) throw new Error(data.error || `Erro ${res.status}`)
+  return data
+}
+
+function titleFor(kind: QuickReplyKind, editing: boolean) {
+  const names: Record<QuickReplyKind, [string, string]> = {
+    TEXT: ["Nova mensagem de texto", "Editar mensagem de texto"],
+    AUDIO: ["Novo áudio", "Editar áudio"],
+    IMAGE: ["Nova imagem", "Editar imagem"],
+    VIDEO: ["Novo vídeo", "Editar vídeo"],
+    DOCUMENT: ["Novo documento", "Editar documento"],
+    CONTACT: ["Novo contato", "Editar contato"],
+    SEQUENCE: ["Nova sequência", "Editar sequência"],
+  }
+  return names[kind][editing ? 1 : 0]
 }
 
 export function QuickRepliesBoard() {
@@ -55,9 +80,12 @@ export function QuickRepliesBoard() {
       if (filter === "favoritas" && !i.favorite) return false
       if (filter !== "todas" && filter !== "favoritas" && i.type !== filter) return false
       if (!q) return true
-      return [i.name, i.text, i.shortcut, i.category, i.contactName].some((v) => v?.toLowerCase().includes(q))
+      return [i.name, i.text, i.shortcut, i.category, i.contactName, i.mediaName].some((v) => v?.toLowerCase().includes(q))
     })
   }, [items, search, filter])
+
+  // Espaço usado pelos arquivos (o limite é por conta)
+  const usedBytes = useMemo(() => (items ?? []).reduce((sum, i) => sum + (i.mediaSize ?? 0), 0), [items])
 
   // Agrupa por categoria, na ordem em que aparecem; "sem categoria" por último.
   const groups = useMemo(() => {
@@ -114,6 +142,11 @@ export function QuickRepliesBoard() {
       </div>
       <p style={{ fontSize: 13, color: "#6b7280", margin: "0 0 14px" }}>
         Mensagens prontas. Usar dentro da conversa (digitando <code>;</code> + atalho) vem com a extensão, em breve.
+        {usedBytes > 0 && (
+          <span style={{ marginLeft: 8, color: usedBytes > MAX_ACCOUNT_BYTES * 0.8 ? "#b45309" : "#9ca3af" }}>
+            Arquivos: {formatBytes(usedBytes)} de {formatBytes(MAX_ACCOUNT_BYTES)}
+          </span>
+        )}
       </p>
 
       <div style={{ display: "flex", gap: 8, marginBottom: 14, flexWrap: "wrap" }}>
@@ -169,6 +202,8 @@ export function QuickRepliesBoard() {
                         </button>
                       </div>
                       {i.type === "TEXT" && i.text && <p style={preview}>{i.text}</p>}
+                      {isMediaKind(i.type) && i.text && <p style={preview}>{i.text}</p>}
+                      {isMediaKind(i.type) && <MediaLine item={i} kind={i.type} />}
                       {i.type === "CONTACT" && (
                         <p style={preview}>Cartão de contato: {i.contactName} · {i.contactPhone}</p>
                       )}
@@ -219,6 +254,9 @@ function EditorModal({
   const [contactName, setContactName] = useState(editing?.contactName ?? "")
   const [contactPhone, setContactPhone] = useState(editing?.contactPhone ?? "")
   const [moreOpen, setMoreOpen] = useState(Boolean(editing?.shortcut))
+  const [file, setFile] = useState<File | null>(null)
+  const [viewOnce, setViewOnce] = useState(editing?.viewOnce ?? false)
+  const [asVoiceNote, setAsVoiceNote] = useState(editing?.asVoiceNote ?? false)
   const [err, setErr] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const taRef = useRef<HTMLTextAreaElement>(null)
@@ -229,9 +267,14 @@ function EditorModal({
     return () => window.removeEventListener("keydown", onKey)
   }, [onClose])
 
+  const media = kind !== null && isMediaKind(kind) ? kind : null // tipo com arquivo, ou null
+  const hasCaption = media !== null && MEDIA_RULES[media].hasCaption
+  const hasTextBox = kind === "TEXT" || hasCaption
+
   const missing =
     (name.trim() ? 0 : 1) +
     (kind === "TEXT" ? (text.trim() ? 0 : 1) : 0) +
+    (media && !editing && !file ? 1 : 0) + // ao criar, o arquivo é obrigatório
     (kind === "CONTACT" ? (contactName.trim() ? 0 : 1) + (contactPhone.trim() ? 0 : 1) : 0)
 
   // Onde o cursor deve ficar depois de inserir uma variável. É aplicado em um
@@ -261,11 +304,41 @@ function EditorModal({
     setErr(null)
     try {
       const common = { name, category: category || null, shortcut: shortcut || null }
-      const typeFields = kind === "TEXT" ? { text } : { contactName, contactPhone }
-      if (editing) {
-        await call("PATCH", `/api/crm/quick-replies/${editing.id}`, { ...common, ...typeFields })
+
+      if (media) {
+        // Tipos com arquivo
+        if (editing) {
+          // Primeiro os dados (pega erro de atalho repetido antes de trocar o arquivo)
+          await call("PATCH", `/api/crm/quick-replies/${editing.id}`, {
+            ...common,
+            ...(hasCaption ? { text } : {}),
+            ...(media === "AUDIO" ? { asVoiceNote } : {}),
+            ...(media === "IMAGE" || media === "VIDEO" ? { viewOnce } : {}),
+          })
+          if (file) {
+            const fd = new FormData()
+            fd.set("file", file)
+            await callForm("PUT", `/api/crm/quick-replies/${editing.id}/file`, fd)
+          }
+        } else {
+          const fd = new FormData()
+          fd.set("type", media)
+          fd.set("name", name)
+          if (category) fd.set("category", category)
+          if (shortcut) fd.set("shortcut", shortcut)
+          if (hasCaption && text) fd.set("text", text)
+          if (viewOnce) fd.set("viewOnce", "true")
+          if (asVoiceNote) fd.set("asVoiceNote", "true")
+          if (file) fd.set("file", file)
+          await callForm("POST", "/api/crm/quick-replies/upload", fd)
+        }
       } else {
-        await call("POST", "/api/crm/quick-replies", { type: kind, ...common, ...typeFields })
+        const typeFields = kind === "TEXT" ? { text } : { contactName, contactPhone }
+        if (editing) {
+          await call("PATCH", `/api/crm/quick-replies/${editing.id}`, { ...common, ...typeFields })
+        } else {
+          await call("POST", "/api/crm/quick-replies", { type: kind, ...common, ...typeFields })
+        }
       }
       await onSaved()
     } catch (e) {
@@ -306,9 +379,7 @@ function EditorModal({
           </>
         ) : (
           <>
-            <h2 style={modalTitle}>
-              {editing ? "Editar" : "Nova"} {kind === "TEXT" ? "mensagem de texto" : "resposta de contato"}
-            </h2>
+            <h2 style={modalTitle}>{titleFor(kind, Boolean(editing))}</h2>
 
             <label style={label}>Nome <span style={req}>*</span></label>
             <input autoFocus value={name} onChange={(e) => setName(e.target.value)} maxLength={80} placeholder="Como você vai achar essa mensagem depois" style={field} />
@@ -319,10 +390,36 @@ function EditorModal({
               {categories.map((c) => <option key={c} value={c} />)}
             </datalist>
 
-            {kind === "TEXT" && (
+            {media && (
               <>
-                <label style={label}>Mensagem <span style={req}>*</span></label>
-                <textarea ref={taRef} value={text} onChange={(e) => setText(e.target.value)} rows={5} maxLength={4096} placeholder="Digite sua mensagem aqui…" style={{ ...field, resize: "vertical", fontFamily: "inherit" }} />
+                <label style={label}>
+                  {media === "AUDIO" ? "Áudio" : "Arquivo"} {!editing && <span style={req}>*</span>}
+                </label>
+                {editing && !file && editing.mediaName && (
+                  <div style={{ fontSize: 13, marginBottom: 8 }}>
+                    📎 {editing.mediaName} {editing.mediaSize != null && <span style={opt}>· {formatBytes(editing.mediaSize)}</span>}
+                    {media !== "DOCUMENT" && <SavedPreview id={editing.id} kind={media} name={editing.mediaName} />}
+                  </div>
+                )}
+                <FileDrop kind={media} file={file} onFile={setFile} optional={Boolean(editing)} />
+                {(media === "IMAGE" || media === "VIDEO") && (
+                  <Toggle checked={viewOnce} onChange={setViewOnce} label="Visualização única" />
+                )}
+                {media === "AUDIO" && (
+                  <>
+                    <Toggle checked={asVoiceNote} onChange={setAsVoiceNote} label="Enviar como áudio gravado na hora" />
+                    <p style={helper}>Chega como arquivo de áudio, igual a um encaminhado.</p>
+                  </>
+                )}
+              </>
+            )}
+
+            {hasTextBox && (
+              <>
+                <label style={label}>
+                  {kind === "TEXT" ? <>Mensagem <span style={req}>*</span></> : <>Legenda <span style={opt}>(opcional)</span></>}
+                </label>
+                <textarea ref={taRef} value={text} onChange={(e) => setText(e.target.value)} rows={kind === "TEXT" ? 5 : 3} maxLength={kind === "TEXT" ? 4096 : MAX_CAPTION} placeholder="Digite sua mensagem aqui…" style={{ ...field, resize: "vertical", fontFamily: "inherit" }} />
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 6 }}>
                   {VARIABLES.map((v) => (
                     <button key={v.token} type="button" onClick={() => insertToken(v.token)} style={varChip}>{v.label}</button>

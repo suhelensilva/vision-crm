@@ -6,6 +6,7 @@ import {
   MAX_QUICK_REPLIES, SHORTCUT_TAKEN, categoryField, contactNameField, contactPhoneField,
   isUniqueViolation, kindField, nameField, shortcutField, textField, toView, unavailableTypeMessage,
 } from "@/lib/quick-replies"
+import { isMediaKind } from "@/lib/quick-reply-types"
 
 // GET /api/crm/quick-replies -> todas as respostas rápidas da conta, na ordem manual.
 export async function GET(req: NextRequest) {
@@ -42,6 +43,9 @@ export async function POST(req: NextRequest) {
 
   const unavailable = unavailableTypeMessage(d.type)
   if (unavailable) return NextResponse.json({ error: unavailable }, { status: 400 })
+  if (isMediaKind(d.type)) {
+    return NextResponse.json({ error: "Para este tipo é preciso enviar o arquivo (POST /api/crm/quick-replies/upload)." }, { status: 400 })
+  }
 
   // Campos do tipo
   let text: string | null = null
