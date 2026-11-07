@@ -287,3 +287,35 @@ html.vcrm-on body { padding-right: var(--vcrm-pad, 56px) !important; background:
 #vcrm-hpop .vf-row[data-stage] svg { color: #53a6fa; }
 #vcrm-hpop .vf-empty { margin: 0; padding: 8px 16px; font-size: 13px; color: #aebac1; }
 #vcrm-hpop .vf-new { padding: 6px 16px; }
+
+/* ═══ Barra de respostas rápidas: cópia do desenho do Hotzapp (embaixo do campo de mensagem) ═══ */
+#vcrm-bar { display: flex; align-items: center; gap: 8px; padding: 8px 12px 10px; background: #111b21; border-top: 0; overflow: visible; }
+#vcrm-bar button { cursor: pointer; font-family: "Segoe UI", system-ui, sans-serif; }
+#vcrm-bar .vb-filter { flex: none; width: 34px; height: 34px; border: 0; border-radius: 50%; display: grid; place-items: center; background: #1d6ee6; color: #fff; }
+#vcrm-bar .vb-filter.on { box-shadow: 0 0 0 2px #fff; }
+#vcrm-bar .vb-min { flex: none; width: 24px; height: 24px; border: 1px solid rgba(255, 255, 255, 0.25); border-radius: 50%; background: transparent; color: #d1d7db; font-size: 15px; line-height: 1; display: grid; place-items: center; padding: 0; }
+#vcrm-bar .vb-chips { flex: 1; min-width: 0; display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: thin; scrollbar-color: rgba(255, 255, 255, 0.25) transparent; }
+#vcrm-bar .vb-none { color: #8696a0; font-size: 13px; padding: 6px; }
+#vcrm-bar .vb-chip { flex: none; display: inline-flex; align-items: center; gap: 8px; height: 36px; padding: 0 14px 0 8px; border-radius: 999px; background: #1f2a30; border: 1px solid rgba(255, 255, 255, 0.07); color: #e9edef; font-size: 14px; }
+#vcrm-bar .vb-chip:hover { background: #2a3942; }
+#vcrm-bar .vb-ic { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; flex: none; background: rgba(255, 255, 255, 0.08); }
+#vcrm-bar .t-AUDIO .vb-ic { color: #a78bfa; background: rgba(167, 139, 250, 0.16); }
+#vcrm-bar .t-TEXT .vb-ic { color: #34d399; background: rgba(52, 211, 153, 0.16); }
+#vcrm-bar .t-IMAGE .vb-ic { color: #60a5fa; background: rgba(96, 165, 250, 0.16); }
+#vcrm-bar .t-VIDEO .vb-ic { color: #fb923c; background: rgba(251, 146, 60, 0.16); }
+#vcrm-bar .t-DOCUMENT .vb-ic { color: #cbd5e1; background: rgba(203, 213, 225, 0.14); }
+#vcrm-bar .t-CONTACT .vb-ic { color: #2dd4bf; background: rgba(45, 212, 191, 0.16); }
+#vcrm-bar .vb-chip.tinted { background: hsl(var(--h) 40% 20%); border-color: hsl(var(--h) 50% 38%); }
+#vcrm-bar .vb-next { flex: none; width: 24px; height: 34px; border: 0; background: transparent; color: #aebac1; display: grid; place-items: center; }
+#vcrm-barmenu { position: fixed; z-index: 2147482992; width: 250px; display: flex; flex-direction: column; gap: 2px; padding: 8px; background: #1f2427; color: #e9edef; border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 12px; box-shadow: 0 14px 36px rgba(0, 0, 0, 0.55); font-family: "Segoe UI", system-ui, sans-serif; }
+#vcrm-barmenu > b { padding: 6px 8px; font-size: 12px; letter-spacing: 0.5px; color: #8696a0; text-transform: uppercase; }
+#vcrm-barmenu button { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border: 0; border-radius: 8px; background: transparent; color: #e9edef; font-size: 14px; text-align: left; cursor: pointer; }
+#vcrm-barmenu button:hover { background: rgba(255, 255, 255, 0.07); }
+#vcrm-barmenu button.on { color: #53a6fa; font-weight: 600; }
+#vcrm-barmenu i { width: 10px; height: 10px; border-radius: 50%; flex: none; }
+#vcrm-barmenu .vm-sep { height: 1px; margin: 6px 0; background: rgba(255, 255, 255, 0.1); }
+#vcrm-barmenu .vm-toggle { display: flex; align-items: center; gap: 8px; padding: 6px 10px; font-size: 14px; }
+#vcrm-barmenu .vm-seg { display: flex; gap: 6px; padding: 4px 8px 6px; }
+#vcrm-barmenu .vm-seg button { flex: 1; justify-content: center; border: 1px solid rgba(255, 255, 255, 0.2); }
+#vcrm-barmenu .vm-seg button.on { background: #1d6ee6; color: #fff; border-color: #1d6ee6; }
+#vcrm-bar .vb-ic svg { color: inherit; }

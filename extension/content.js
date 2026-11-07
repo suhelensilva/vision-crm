@@ -67,6 +67,8 @@ const ICONS = {
   settings: '<path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/>',
   panelleft: '<rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/>',
   chevrondown: '<path d="m6 9 6 6 6-6"/>',
+  filter: '<path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z"/>',
+  chevronright: '<path d="m9 18 6-6-6-6"/>',
   alarm: '<circle cx="12" cy="13" r="8"/><path d="M12 9v4l2 2"/><path d="M5 3 2 6"/><path d="m22 6-3-3"/><path d="M6.38 18.7 4 21"/><path d="M17.64 18.67 20 21"/>',
   circlecheck: '<circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/>',
   columns: '<rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/><path d="M15 3v18"/>',
@@ -606,13 +608,15 @@ function replyPreview(r) {
 
 /** Usa uma resposta: texto vai pro campo; anexos ainda são feitos pelo painel web. */
 async function useReply(r) {
-  if (r.type === "TEXT") {
-    if (insertIntoComposer(renderVariables(r.text || ""))) api("POST", `/api/crm/quick-replies/${r.id}/use`)
-    return
-  }
-  if (r.type === "CONTACT") {
-    const t = `${r.contactName || ""}: ${r.contactPhone || ""}`.trim()
-    if (insertIntoComposer(t)) api("POST", `/api/crm/quick-replies/${r.id}/use`)
+  if (r.type === "TEXT" || r.type === "CONTACT") {
+    const text = r.type === "TEXT" ? renderVariables(r.text || "") : `${r.contactName || ""}: ${r.contactPhone || ""}`.trim()
+    if (!insertIntoComposer(text)) return
+    api("POST", `/api/crm/quick-replies/${r.id}/use`)
+    // "Mensagem sai direto": igual ao Hotzapp, clicar na resposta já envia
+    if (prefs.sendDirect) {
+      await new Promise((res) => setTimeout(res, 150))
+      await clickSend(1500)
+    }
     return
   }
   if (["IMAGE", "VIDEO", "DOCUMENT", "AUDIO"].includes(r.type)) return attachFile(r)
@@ -656,6 +660,14 @@ async function attachFile(r) {
   api("POST", `/api/crm/quick-replies/${r.id}/use`)
   // legenda: o WhatsApp abre a pré-visualização com o foco na legenda
   const caption = r.type === "AUDIO" || !r.text ? "" : renderVariables(r.text)
+  if (prefs.sendDirect) {
+    // espera a pré-visualização abrir, escreve a legenda e envia (igual ao Hotzapp)
+    await new Promise((res) => setTimeout(res, 1200))
+    if (caption) { try { document.execCommand("insertText", false, caption) } catch {} await new Promise((res) => setTimeout(res, 300)) }
+    const sent = await clickSend(5000)
+    toast(sent ? "Enviado." : "Coloquei o arquivo. Confira e envie.")
+    return
+  }
   if (caption) setTimeout(() => { try { document.execCommand("insertText", false, caption) } catch {} }, 1200)
   toast(r.type === "AUDIO" ? "Áudio colocado. Confira e envie." : "Arquivo colocado. Confira a legenda e envie.")
 }
@@ -1026,29 +1038,129 @@ function endConversation() {
 
 const BAR_ICON = { TEXT: "text", CONTACT: "user", AUDIO: "mic", IMAGE: "image", VIDEO: "film", DOCUMENT: "file" }
 
+// ── Preferências da barra (como a engrenagem do Hotzapp) ──
+const prefs = { sendDirect: true, chipStyle: "icon", barMin: false, barCat: null }
+
+function savePrefs() {
+  try { chrome.storage.local.set({ vcrmPrefs: prefs }).catch(() => {}) } catch {}
+}
+
+/** Cor estável por categoria (a categoria é só um texto; a cor sai do nome). */
+function catHue(name) {
+  let h = 0
+  for (const ch of String(name || "")) h = (h * 31 + ch.charCodeAt(0)) % 360
+  return h
+}
+
+/** Botão de enviar do WhatsApp (no campo ou na pré-visualização de arquivo). */
+function findSendButton() {
+  const el = document.querySelector('button[aria-label="Enviar"], [role="button"][aria-label="Enviar"], span[data-icon="send"], span[data-icon="wds-ic-send-filled"], [data-icon="send"]')
+  return el ? el.closest('button, [role="button"]') || el : null
+}
+
+/** Clica em enviar assim que o botão existir (espera até `timeoutMs`). Sem botão, tenta o Enter no campo. */
+async function clickSend(timeoutMs = 1500) {
+  const until = Date.now() + timeoutMs
+  while (Date.now() < until) {
+    const b = findSendButton()
+    if (b) { b.click(); return true }
+    await new Promise((r) => setTimeout(r, 120))
+  }
+  const box = getComposer()
+  if (!box) return false
+  box.focus()
+  for (const type of ["keydown", "keypress", "keyup"]) {
+    box.dispatchEvent(new KeyboardEvent(type, { key: "Enter", code: "Enter", keyCode: 13, which: 13, bubbles: true, cancelable: true }))
+  }
+  return false
+}
+
+function barReplies() {
+  let list = matchReplies("").filter((r) => r.type !== "SEQUENCE")
+  if (prefs.barCat) list = list.filter((r) => (r.category || "Sem categoria") === prefs.barCat)
+  return list.slice(0, 80)
+}
+
 function ensureBar() {
   const footer = document.querySelector("#main footer")
   let bar = document.getElementById(BAR_ID)
-  if (!footer || state.status === "no_config" || state.status === "bad_token") {
-    if (bar) bar.remove()
+  if (!footer || state.status === "no_config" || state.status === "bad_token" || modalOpen()) {
+    if (bar) bar.style.display = "none"
     return
   }
-  const top = matchReplies("").filter((r) => r.type !== "SEQUENCE").slice(0, 12)
-  if (!top.length) { if (bar) bar.remove(); return }
+  if (!state.replies.length) { if (bar) bar.remove(); return }
   if (!bar) {
     bar = document.createElement("div")
     bar.id = BAR_ID
     bar.addEventListener("mousedown", (e) => e.preventDefault()) // não tira o foco do campo
-    bar.addEventListener("click", (e) => {
-      const b = e.target.closest("[data-bar-reply]")
-      if (!b) return
-      const r = state.replies.find((x) => x.id === b.getAttribute("data-bar-reply"))
-      if (r) useReply(r)
-    })
+    bar.addEventListener("click", onBarClick)
   }
-  const html = top.map((r) => `<button data-bar-reply="${esc(r.id)}" title="${esc(replyPreview(r))}">${r.favorite ? icon("star", 11) : icon(BAR_ICON[r.type] || "text", 11)}${esc(r.name)}</button>`).join("")
-  if (bar.dataset.sig !== html) { bar.innerHTML = html; bar.dataset.sig = html }
-  if (bar.parentNode !== footer.parentNode || bar.nextSibling !== footer) footer.parentNode.insertBefore(bar, footer)
+  bar.style.display = ""
+  const list = barReplies()
+  const chips = list.map((r) => {
+    const hue = catHue(r.category || "Sem categoria")
+    const tint = prefs.chipStyle === "color" ? ` style="--h:${hue}"` : ""
+    return `<button class="vb-chip t-${r.type}${prefs.chipStyle === "color" ? " tinted" : ""}" data-bar-reply="${esc(r.id)}" title="${esc(replyPreview(r))}"${tint}><i class="vb-ic">${icon(r.favorite ? "star" : BAR_ICON[r.type] || "text", 13)}</i><span>${esc(r.name)}</span></button>`
+  }).join("")
+  const html =
+    `<button class="vb-filter${prefs.barCat ? " on" : ""}" data-bar="filter" title="Filtrar por categoria">${icon("filter", 15)}</button>` +
+    `<button class="vb-min" data-bar="min" title="${prefs.barMin ? "Mostrar respostas" : "Recolher"}">${prefs.barMin ? icon("plus", 13) : "−"}</button>` +
+    (prefs.barMin ? "" : `<div class="vb-chips">${chips || '<span class="vb-none">Nenhuma resposta nesta categoria.</span>'}</div><button class="vb-next" data-bar="next" title="Mais">${icon("chevronright", 14)}</button>`)
+  if (bar.dataset.sig !== html) {
+    const scroll = bar.querySelector(".vb-chips") ? bar.querySelector(".vb-chips").scrollLeft : 0
+    bar.innerHTML = html
+    bar.dataset.sig = html
+    const c = bar.querySelector(".vb-chips")
+    if (c) c.scrollLeft = scroll
+  }
+  // O Hotzapp põe a barra EMBAIXO do campo de mensagem
+  if (bar.parentNode !== footer.parentNode || bar.previousSibling !== footer) footer.parentNode.insertBefore(bar, footer.nextSibling)
+}
+
+function closeBarMenu() { const m = document.getElementById("vcrm-barmenu"); if (m) m.remove() }
+
+function openBarMenu(anchor) {
+  closeBarMenu()
+  const cats = [...new Set(state.replies.map((r) => r.category || "Sem categoria"))].sort((a, b) => a.localeCompare(b, "pt-BR"))
+  const m = document.createElement("div")
+  m.id = "vcrm-barmenu"
+  m.innerHTML = `<b>Mostrar na barra</b>
+    <button data-cat="" class="${!prefs.barCat ? "on" : ""}">Todas</button>
+    ${cats.map((c) => `<button data-cat="${esc(c)}" class="${prefs.barCat === c ? "on" : ""}"><i style="background:hsl(${catHue(c)} 60% 55%)"></i>${esc(c)}</button>`).join("")}
+    <div class="vm-sep"></div>
+    <label class="vm-toggle"><input type="checkbox" data-pref="sendDirect" ${prefs.sendDirect ? "checked" : ""}/> <span>Mensagem sai direto</span></label>
+    <div class="vm-seg"><button data-style="icon" class="${prefs.chipStyle === "icon" ? "on" : ""}">Ícone</button><button data-style="color" class="${prefs.chipStyle === "color" ? "on" : ""}">Colorido</button></div>`
+  m.addEventListener("mousedown", (e) => { if (e.target.tagName !== "INPUT") e.preventDefault() })
+  m.addEventListener("click", (e) => {
+    const b = e.target.closest("button")
+    if (b && b.dataset.cat !== undefined) { prefs.barCat = b.dataset.cat || null; savePrefs(); closeBarMenu(); ensureBar(); return }
+    if (b && b.dataset.style) { prefs.chipStyle = b.dataset.style; savePrefs(); openBarMenu(anchor); ensureBar(); return }
+  })
+  m.addEventListener("change", (e) => {
+    if (e.target.matches("[data-pref='sendDirect']")) { prefs.sendDirect = e.target.checked; savePrefs() }
+  })
+  document.body.appendChild(m)
+  const r = anchor.getBoundingClientRect()
+  m.style.left = Math.round(r.left) + "px"
+  m.style.bottom = Math.round(window.innerHeight - r.top + 8) + "px"
+  setTimeout(() => document.addEventListener("click", function off(ev) {
+    if (!ev.target.closest("#vcrm-barmenu, #vcrm-bar [data-bar='filter']")) { closeBarMenu(); document.removeEventListener("click", off, true) }
+  }, true), 0)
+}
+
+function onBarClick(e) {
+  const reply = e.target.closest("[data-bar-reply]")
+  if (reply) {
+    const r = state.replies.find((x) => x.id === reply.getAttribute("data-bar-reply"))
+    if (r) useReply(r)
+    return
+  }
+  const b = e.target.closest("[data-bar]")
+  if (!b) return
+  const k = b.dataset.bar
+  if (k === "min") { prefs.barMin = !prefs.barMin; savePrefs(); return ensureBar() }
+  if (k === "next") { const c = document.querySelector("#vcrm-bar .vb-chips"); if (c) c.scrollBy({ left: 320, behavior: "smooth" }); return }
+  if (k === "filter") { return document.getElementById("vcrm-barmenu") ? closeBarMenu() : openBarMenu(b) }
 }
 
 function closePop() { const p = document.getElementById(POP_ID); if (p) p.remove() }
@@ -1349,7 +1461,12 @@ function init() {
   startObserver()
   refresh(true)
   // aviso de quem espera resposta: confere ao abrir (depois que o WhatsApp carregou) e a cada minuto
-  chrome.storage.local.get(["vcrmHandled", "vcrmHdrHidden"]).then((c) => { waitHandled = c.vcrmHandled || {}; hdrHidden = !!c.vcrmHdrHidden; ensureHeaderBar(); ensureSide() }).catch(() => {})
+  chrome.storage.local.get(["vcrmHandled", "vcrmHdrHidden", "vcrmPrefs"]).then((c) => {
+    waitHandled = c.vcrmHandled || {}
+    hdrHidden = !!c.vcrmHdrHidden
+    if (c.vcrmPrefs) Object.assign(prefs, c.vcrmPrefs)
+    ensureHeaderBar(); ensureSide(); ensureBar()
+  }).catch(() => {})
   setTimeout(checkWaiting, 4000)
   setInterval(checkWaiting, 5000) // lê só a memória do WhatsApp: é leve, e mantém a lista em tempo real
 }
