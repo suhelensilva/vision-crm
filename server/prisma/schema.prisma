@@ -27,6 +27,7 @@ model User {
   lists     CrmList[]
   charges   Charge[]
   notes     Note[]
+  reminders Reminder[]
   quickReplies QuickReply[]
 
   @@map("users")
@@ -56,6 +57,7 @@ model Contact {
   purchases   Purchase[]
   charges     Charge[]
   notes       Note[]
+  reminders   Reminder[]
   memberships CrmListMember[]
 
   @@index([userId])
@@ -164,6 +166,25 @@ model Note {
 
   @@index([contactId, createdAt])
   @@map("notes")
+}
+
+/// Lembrete de voltar a falar com uma cliente (com data e hora). Adiar muda o horário e soma 1 em snoozeCount.
+model Reminder {
+  id          String    @id @default(cuid())
+  userId      String
+  contactId   String
+  text        String
+  dueAt       DateTime
+  doneAt      DateTime?
+  snoozeCount Int       @default(0)
+  createdAt   DateTime  @default(now())
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  contact Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  @@index([userId, doneAt, dueAt])
+  @@index([contactId])
+  @@map("reminders")
 }
 
 enum ChargeStatus {

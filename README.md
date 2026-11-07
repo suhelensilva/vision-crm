@@ -163,6 +163,10 @@ Página **Respostas rápidas** (`/dashboard/respostas`): mensagens prontas.
 - Regra única de nomes em `lib/names.ts` (tira a palavra "cliente" e ignora
   "Cliente WhatsApp"), usada por mensagens, cobranças e Meta.
 
+## Pendências (lembretes e adiadas)
+
+Página `/dashboard/pendencias`: lembretes com data e hora por cliente, agrupados em Atrasadas / Hoje / Próximas, com abas Adiadas (quantas vezes foi empurrado) e Feitas. Ações: Feito, Adiar (1 hora, hoje 18h, amanhã 9h, 3 dias, semana que vem), Conversa (wa.me) e apagar. API: `/api/crm/reminders` (GET com `contactId` e `status=feitos`, POST) e `/api/crm/reminders/[id]` (PATCH done/reopen/snooze, DELETE). Na extensão: aba Lembretes dentro da conversa. Ainda não há aviso/notificação no horário.
+
 ## Tema Vision (visual)
 
 Todas as cores ficam em variáveis no topo de `server/src/app/globals.css` (fundo azul-marinho, vinho fluorescente `--accent`, vermelho do Visão `--vred`, dourado `--gold`). Estilos compartilhados de botões, cartões e selos ficam em `server/src/lib/ui.ts`. Pra criar o tema claro, basta trocar os valores dessas variáveis. Menu lateral em `components/dash-nav.tsx`, ícones Lucide.

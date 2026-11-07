@@ -14,7 +14,7 @@ const GROUPS: { title: string; items: Item[] }[] = [
   {
     title: "SEU DIA",
     items: [
-      { label: "Pendências", icon: Bell },
+      { label: "Pendências", icon: Bell, href: "/dashboard/pendencias" },
       { label: "Agenda", icon: Calendar },
       { label: "Painel do dia", icon: ChartColumn },
     ],

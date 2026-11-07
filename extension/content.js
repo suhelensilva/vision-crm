@@ -24,6 +24,7 @@ const state = {
   contact: null, // resposta de /api/crm/contact
   detail: null, // resposta de /api/crm/contacts/:id (dados, notas)
   charges: [],
+  reminders: [],
   lists: [],
   replies: [],
   repliesQuery: "",
@@ -59,6 +60,7 @@ const ICONS = {
   user: '<path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
   note: '<path d="M16 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h8l8-8V5a2 2 0 0 0-2-2h-3"/><path d="M15 21v-6h6"/>',
   wallet: '<path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2"/><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"/>',
+  bell: '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>',
   zap: '<path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"/>',
   ext: '<path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>',
   x: '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
@@ -174,6 +176,7 @@ function insertIntoComposer(text) {
 const TABS = [
   { id: "conversa", label: "Esta conversa", icon: "user" },
   { id: "notas", label: "Notas", icon: "note" },
+  { id: "lembretes", label: "Lembretes", icon: "bell" },
   { id: "cobrancas", label: "Cobranças", icon: "wallet" },
   { id: "respostas", label: "Respostas rápidas", icon: "zap" },
 ]
@@ -237,6 +240,7 @@ function renderBody() {
   if (!state.phone) return empty("Abra uma conversa", "Escolha uma conversa individual, com mensagens, pra ver os dados da cliente.")
   if (state.status === "loading" && !state.contact) return `<div class="vc-muted">Carregando…</div>`
   if (state.tab === "notas") return renderNotes()
+  if (state.tab === "lembretes") return renderReminders()
   if (state.tab === "cobrancas") return renderCharges()
   return renderConversa()
 }
@@ -325,6 +329,39 @@ function renderNotes() {
     </form>
     ${notes.length ? notes.map((n) => `
       <div class="vc-card note"><div class="vc-sub">${esc(new Date(n.createdAt).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short", timeZone: "America/Sao_Paulo" }))}</div><p>${esc(n.text)}</p></div>`).join("") : `<p class="vc-muted">Nenhuma nota ainda.</p>`}
+  `
+}
+
+// ── Aba: Lembretes ────────────────────────────────────────────────────────────
+
+const whenFmt = (iso) => new Date(iso).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit", timeZone: "America/Sao_Paulo" })
+
+function tomorrow9() {
+  const d = new Date(Date.now() + 864e5)
+  d.setHours(9, 0, 0, 0)
+  const p = (n) => String(n).padStart(2, "0")
+  return d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate()) + "T" + p(d.getHours()) + ":" + p(d.getMinutes())
+}
+
+function renderReminders() {
+  const mine = state.reminders
+  return `
+    <form class="vc-card" data-form="reminder">
+      <div class="vc-sec first">Novo lembrete</div>
+      <input name="text" maxlength="300" placeholder="O que lembrar? Ex.: cobrar o pacote" required />
+      <input name="at" type="datetime-local" value="${tomorrow9()}" required />
+      <button class="vc-btn">${icon("plus", 15)} Criar lembrete</button>
+      <div class="vc-note" data-msg="reminder"></div>
+    </form>
+    ${mine.length ? mine.map((r) => `
+      <div class="vc-card charge ${r.state === "atrasado" ? "vencida" : ""}">
+        <div class="vc-row flat"><div><b>${esc(r.text)}</b><span>${whenFmt(r.dueAt)}${r.snoozeCount ? " · adiado " + r.snoozeCount + "×" : ""}</span></div><span class="vc-badge ${r.state === "atrasado" ? "vencida" : r.state === "hoje" ? "pendente" : "cancelada"}">${r.state === "atrasado" ? "Atrasado" : r.state === "hoje" ? "Hoje" : "Próximo"}</span></div>
+        <div class="vc-actions">
+          <button class="vc-btn sm" data-rem-done="${esc(r.id)}">Feito</button>
+          <button class="vc-ghost" data-rem-snooze="${esc(r.id)}:1h">+1 hora</button>
+          <button class="vc-ghost" data-rem-snooze="${esc(r.id)}:amanha">Amanhã</button>
+        </div>
+      </div>`).join("") : `<p class="vc-muted">Nenhum lembrete aberto para esta cliente.</p>`}
   `
 }
 
@@ -476,6 +513,18 @@ async function onClick(e) {
   if (t.dataset.removeList) return changeList(t.dataset.removeList, "remove")
   if (t.dataset.reply) { const r = state.replies.find((x) => x.id === t.dataset.reply); if (r) useReply(r); return }
 
+  if (t.dataset.remDone) {
+    await api("PATCH", `/api/crm/reminders/${t.dataset.remDone}`, { action: "done" })
+    return refresh(true)
+  }
+  if (t.dataset.remSnooze) {
+    const [id, kind] = t.dataset.remSnooze.split(":")
+    const d = kind === "1h" ? new Date(Date.now() + 3600e3) : new Date(tomorrow9())
+    const res = await api("PATCH", `/api/crm/reminders/${id}`, { action: "snooze", until: d.toISOString() })
+    if (!res.ok) toast((res.data && res.data.error) || "Não consegui adiar.")
+    return refresh(true)
+  }
+
   if (t.dataset.chargeSend) {
     const c = state.charges.find((x) => x.id === t.dataset.chargeSend)
     if (c && insertIntoComposer(chargeMessage(c))) toast("Mensagem de cobrança escrita no campo. Revise e envie.")
@@ -532,6 +581,16 @@ async function onSubmit(e) {
     const res = await api("POST", `/api/crm/contacts/${id}/notes`, { text })
     if (res.ok) return refresh(true)
     return msg((res.data && res.data.error) || "Erro ao salvar a nota.")
+  }
+
+  if (kind === "reminder") {
+    const text = String(f.get("text") || "").trim()
+    const at = new Date(String(f.get("at")))
+    if (!text) return msg("Escreva o lembrete.")
+    if (Number.isNaN(at.getTime())) return msg("Informe data e hora.")
+    const res = await api("POST", "/api/crm/reminders", { contactId: id, text, dueAt: at.toISOString() })
+    if (res.ok) return refresh(true)
+    return msg((res.data && res.data.error) || "Erro ao criar o lembrete.")
   }
 
   if (kind === "charge") {
@@ -600,7 +659,7 @@ async function refresh(force) {
   state.apiUrl = (cfg.apiUrl || "").replace(/\/+$/, "")
   if (!cfg.apiUrl || !cfg.token) { state.status = "no_config"; return render() }
 
-  if (changed) { state.contact = null; state.detail = null; state.charges = [] }
+  if (changed) { state.contact = null; state.detail = null; state.charges = []; state.reminders = [] }
   state.status = "loading"
   if (state.open) render()
 
@@ -615,11 +674,13 @@ async function refresh(force) {
   state.contact = res.data
   state.detail = null
   state.charges = []
+  state.reminders = []
   if (res.data.contactId) {
-    const [d, ch] = await Promise.all([api("GET", `/api/crm/contacts/${res.data.contactId}`), api("GET", "/api/crm/charges?status=todas")])
+    const [d, ch, rem] = await Promise.all([api("GET", `/api/crm/contacts/${res.data.contactId}`), api("GET", "/api/crm/charges?status=todas"), api("GET", `/api/crm/reminders?contactId=${res.data.contactId}`)])
     if (mine !== seq) return
     if (d.ok) state.detail = d.data
     if (ch.ok && ch.data) state.charges = ch.data.charges || []
+    if (rem.ok && rem.data) state.reminders = rem.data.reminders || []
   }
   state.status = "ok"
   ensureBar()
