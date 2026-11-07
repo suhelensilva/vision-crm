@@ -1,9 +1,11 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
+import { MessageSquare, X } from "lucide-react"
 import type { getContactDetail } from "@/lib/contact-detail"
 import { SOURCES, SOURCE_LABEL } from "@/lib/sources"
 import { withCountryCode } from "@/lib/phone"
+import { btn, chip, errorText, field, iconBtn, inner, label } from "@/lib/ui"
 
 type Detail = NonNullable<Awaited<ReturnType<typeof getContactDetail>>>
 type Tab = "dados" | "notas" | "historico"
@@ -128,70 +130,73 @@ export function ContactDrawer({
       <aside style={panel} onClick={(e) => e.stopPropagation()}>
         <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 18, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            <div style={{ fontSize: 18, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: "var(--strong)" }}>
               {detail?.contact.name ?? "Carregando..."}
             </div>
             {detail && (
-              <div style={{ fontSize: 13, color: "#6b7280" }}>
-                {detail.contact.phone} ·{" "}
-                <a href={`https://wa.me/${withCountryCode(detail.contact.phone)}`} target="_blank" rel="noreferrer">
-                  Abrir conversa
+              <div style={{ fontSize: 13, color: "var(--muted)", display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                {detail.contact.phone}
+                <a href={`https://wa.me/${withCountryCode(detail.contact.phone)}`} target="_blank" rel="noreferrer"
+                  style={{ display: "inline-flex", alignItems: "center", gap: 4, fontWeight: 600, textDecoration: "none" }}>
+                  <MessageSquare size={13} />Abrir conversa
                 </a>
               </div>
             )}
           </div>
-          <button onClick={onClose} aria-label="Fechar" style={closeBtn}>×</button>
+          <button onClick={onClose} aria-label="Fechar" style={{ ...iconBtn, color: "var(--muted)" }}><X size={20} /></button>
         </div>
 
         {detail && s && (
           <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 10 }}>
-            <span style={chip("#6d28d9", "#f3e8ff")}>{s.tierLabel}</span>
-            {s.cadenceLabel && <span style={chip("#92400e", "#fef3c7")}>{s.cadenceLabel}</span>}
+            <span style={chip("wine")}>{s.tierLabel}</span>
+            {s.cadenceLabel && <span style={chip("wait")}>{s.cadenceLabel}</span>}
             {detail.crm.lists.map((l) => (
-              <span key={l.id} style={{ ...chip("#fff", l.color) }}>{l.name}</span>
+              <span key={l.id} style={{ ...chip("mute"), borderColor: l.color, color: "var(--text)" }}>
+                <span style={{ width: 7, height: 7, borderRadius: "50%", background: l.color }} />{l.name}
+              </span>
             ))}
           </div>
         )}
 
-        <div style={{ display: "flex", gap: 4, margin: "14px 0 12px", borderBottom: "1px solid #ede9fe" }}>
+        <div style={{ display: "flex", gap: 4, margin: "14px 0 12px", borderBottom: "1px solid var(--soft)" }}>
           {([
             ["dados", "Dados"],
             ["notas", `Notas${detail ? ` (${detail.notes.length})` : ""}`],
             ["historico", "Histórico"],
-          ] as [Tab, string][]).map(([id, label]) => (
+          ] as [Tab, string][]).map(([id, text]) => (
             <button
               key={id}
               onClick={() => setTab(id)}
               style={{
                 background: "none", border: "none", cursor: "pointer", padding: "8px 12px",
-                fontSize: 13, fontWeight: 600,
-                color: tab === id ? "#6d28d9" : "#6b7280",
-                borderBottom: `2px solid ${tab === id ? "#7c3aed" : "transparent"}`,
+                fontSize: 13, fontWeight: 700,
+                color: tab === id ? "var(--strong)" : "var(--muted)",
+                borderBottom: `2px solid ${tab === id ? "var(--accent)" : "transparent"}`,
               }}
             >
-              {label}
+              {text}
             </button>
           ))}
         </div>
 
-        {error && <p style={{ color: "#dc2626", fontSize: 13, margin: "0 0 10px" }}>{error}</p>}
+        {error && <p style={{ ...errorText, margin: "0 0 10px" }}>{error}</p>}
 
         {!detail ? (
-          !error && <p style={{ color: "#6b7280", fontSize: 13 }}>Carregando...</p>
+          !error && <p style={{ color: "var(--muted)", fontSize: 13 }}>Carregando...</p>
         ) : tab === "dados" ? (
           <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
             <label style={label}>Nome</label>
-            <input value={name} onChange={(e) => setName(e.target.value)} style={input} />
+            <input value={name} onChange={(e) => setName(e.target.value)} style={field} />
 
             <label style={label}>Telefone</label>
-            <input value={detail.contact.phone} readOnly style={{ ...input, background: "#f9fafb", color: "#6b7280" }} />
-            <span style={{ fontSize: 11, color: "#9ca3af" }}>O número identifica a cliente. Pra trocar, crie outro contato.</span>
+            <input value={detail.contact.phone} readOnly style={{ ...field, opacity: 0.6 }} />
+            <span style={{ fontSize: 11, color: "var(--faint)" }}>O número identifica a cliente. Pra trocar, crie outro contato.</span>
 
             <label style={label}>E-mail</label>
-            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="opcional" style={input} />
+            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="opcional" style={field} />
 
             <label style={label}>Origem</label>
-            <select value={source} onChange={(e) => setSource(e.target.value)} style={input}>
+            <select value={source} onChange={(e) => setSource(e.target.value)} style={field}>
               <option value="">Não informada</option>
               {SOURCES.map((o) => (
                 <option key={o} value={o}>{SOURCE_LABEL[o]}</option>
@@ -199,13 +204,13 @@ export function ContactDrawer({
             </select>
 
             <label style={label}>Nascimento</label>
-            <input type="date" value={birth} onChange={(e) => setBirth(e.target.value)} style={input} />
+            <input type="date" value={birth} onChange={(e) => setBirth(e.target.value)} style={field} />
 
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 14 }}>
-              <button onClick={saveData} disabled={saving || !name.trim()} style={btn}>
+              <button onClick={saveData} disabled={saving || !name.trim()} style={{ ...btn, opacity: saving || !name.trim() ? 0.6 : 1 }}>
                 {saving ? "Salvando..." : "Salvar"}
               </button>
-              {saved && <span style={{ color: "#16a34a", fontSize: 13 }}>Salvo.</span>}
+              {saved && <span style={{ color: "var(--ok)", fontSize: 13 }}>Salvo.</span>}
             </div>
           </div>
         ) : tab === "notas" ? (
@@ -217,25 +222,27 @@ export function ContactDrawer({
               placeholder="Escreva uma anotação sobre esta cliente..."
               rows={3}
               maxLength={2000}
-              style={{ ...input, width: "100%", resize: "vertical", fontFamily: "inherit" }}
+              style={{ ...field, resize: "vertical", fontFamily: "inherit" }}
             />
             <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "8px 0 16px" }}>
-              <button onClick={addNote} disabled={addingNote || !noteText.trim()} style={btn}>
+              <button onClick={addNote} disabled={addingNote || !noteText.trim()} style={{ ...btn, opacity: addingNote || !noteText.trim() ? 0.6 : 1 }}>
                 {addingNote ? "Salvando..." : "Adicionar nota"}
               </button>
-              <span style={{ fontSize: 11, color: "#9ca3af" }}>Ctrl+Enter também salva</span>
+              <span style={{ fontSize: 11, color: "var(--faint)" }}>Ctrl+Enter também salva</span>
             </div>
 
             {detail.notes.length === 0 ? (
-              <p style={{ fontSize: 13, color: "#9ca3af", fontStyle: "italic" }}>Nenhuma nota ainda.</p>
+              <p style={{ fontSize: 13, color: "var(--faint)", fontStyle: "italic" }}>Nenhuma nota ainda.</p>
             ) : (
               detail.notes.map((n) => (
-                <div key={n.id} style={noteBox}>
+                <div key={n.id} style={{ ...inner, padding: "10px 12px", marginBottom: 8 }}>
                   <div style={{ display: "flex", alignItems: "center", marginBottom: 4 }}>
-                    <span style={{ fontSize: 11, color: "#9ca3af", flex: 1 }}>{dayTime(n.createdAt)}</span>
-                    <button onClick={() => removeNote(n.id)} title="Apagar nota" style={{ ...closeBtn, fontSize: 16 }}>×</button>
+                    <span style={{ fontSize: 11, color: "var(--muted)", flex: 1 }}>{dayTime(n.createdAt)}</span>
+                    <button onClick={() => removeNote(n.id)} title="Apagar nota" aria-label="Apagar nota" style={{ ...iconBtn, color: "var(--faint)" }}>
+                      <X size={15} />
+                    </button>
                   </div>
-                  <div style={{ fontSize: 14, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>{n.text}</div>
+                  <div style={{ fontSize: 14, whiteSpace: "pre-wrap", wordBreak: "break-word", color: "var(--text)" }}>{n.text}</div>
                 </div>
               ))
             )}
@@ -244,21 +251,21 @@ export function ContactDrawer({
           <div>
             {s && (
               <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8, marginBottom: 14 }}>
-                <Stat value={String(s.count)} label="compras" />
-                <Stat value={brl(s.totalSpent)} label="total gasto" />
-                <Stat value={s.daysSinceLast == null ? "—" : `${s.daysSinceLast}d`} label="última compra" />
+                <Stat value={String(s.count)} text="compras" />
+                <Stat value={brl(s.totalSpent)} text="total gasto" />
+                <Stat value={s.daysSinceLast == null ? "—" : `${s.daysSinceLast}d`} text="última compra" />
               </div>
             )}
             {detail.crm.purchases.length === 0 ? (
-              <p style={{ fontSize: 13, color: "#9ca3af", fontStyle: "italic" }}>Nenhuma compra registrada.</p>
+              <p style={{ fontSize: 13, color: "var(--faint)", fontStyle: "italic" }}>Nenhuma compra registrada.</p>
             ) : (
               detail.crm.purchases.map((p) => (
-                <div key={p.id} style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid #f3f4f6" }}>
+                <div key={p.id} style={{ display: "flex", justifyContent: "space-between", padding: "9px 0", borderBottom: "1px solid var(--soft)" }}>
                   <div>
-                    <div style={{ fontSize: 14 }}>{p.productName || "Compra"}</div>
-                    <div style={{ fontSize: 11, color: "#9ca3af" }}>{day(p.purchasedAt)}</div>
+                    <div style={{ fontSize: 14, color: "var(--text)" }}>{p.productName || "Compra"}</div>
+                    <div style={{ fontSize: 11, color: "var(--muted)" }}>{day(p.purchasedAt)}</div>
                   </div>
-                  <div style={{ fontSize: 14, fontWeight: 700, color: "#059669" }}>{brl(p.amount)}</div>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: "var(--ok)" }}>{brl(p.amount)}</div>
                 </div>
               ))
             )}
@@ -269,23 +276,19 @@ export function ContactDrawer({
   )
 }
 
-function Stat({ value, label }: { value: string; label: string }) {
+function Stat({ value, text }: { value: string; text: string }) {
   return (
-    <div style={{ background: "#faf5ff", border: "1px solid #f0e6ff", borderRadius: 10, padding: "10px 6px", textAlign: "center" }}>
-      <div style={{ fontSize: 15, fontWeight: 700, color: "#6d28d9" }}>{value}</div>
-      <div style={{ fontSize: 10, color: "#8b7a9e", marginTop: 2 }}>{label}</div>
+    <div style={{ ...inner, padding: "10px 6px", textAlign: "center" }}>
+      <div style={{ fontSize: 15, fontWeight: 700, color: "var(--strong)" }}>{value}</div>
+      <div style={{ fontSize: 10, color: "var(--muted)", marginTop: 2 }}>{text}</div>
     </div>
   )
 }
 
-const chip = (fg: string, bg: string): React.CSSProperties => ({
-  color: fg, background: bg, fontSize: 11, fontWeight: 700, padding: "2px 9px", borderRadius: 999,
-})
-
-const overlay: React.CSSProperties = { position: "fixed", inset: 0, background: "rgba(31,41,55,0.35)", zIndex: 50, display: "flex", justifyContent: "flex-end" }
-const panel: React.CSSProperties = { width: 400, maxWidth: "100vw", height: "100%", overflowY: "auto", background: "#fff", padding: 20, boxShadow: "-8px 0 30px rgba(0,0,0,0.15)" }
-const closeBtn: React.CSSProperties = { background: "none", border: "none", color: "#9ca3af", fontSize: 24, cursor: "pointer", lineHeight: 1 }
-const label: React.CSSProperties = { fontSize: 12, fontWeight: 600, marginTop: 8 }
-const input: React.CSSProperties = { border: "1px solid #d1d5db", borderRadius: 8, padding: "8px 10px", fontSize: 13, background: "#fff" }
-const btn: React.CSSProperties = { background: "#7c3aed", color: "#fff", border: "none", borderRadius: 8, padding: "9px 16px", fontSize: 13, fontWeight: 600, cursor: "pointer" }
-const noteBox: React.CSSProperties = { background: "#faf5ff", border: "1px solid #f0e6ff", borderRadius: 10, padding: "10px 12px", marginBottom: 8 }
+const overlay: React.CSSProperties = { position: "fixed", inset: 0, background: "var(--overlay)", zIndex: 50, display: "flex", justifyContent: "flex-end" }
+const panel: React.CSSProperties = {
+  width: 410, maxWidth: "100vw", height: "100%", overflowY: "auto", padding: 20,
+  background: "linear-gradient(180deg, var(--panel-1), var(--panel-2))",
+  borderLeft: "1px solid var(--line)",
+  boxShadow: "-12px 0 40px rgba(224, 36, 94, 0.14)",
+}

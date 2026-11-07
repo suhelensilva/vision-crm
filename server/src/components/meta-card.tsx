@@ -1,7 +1,9 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
+import { Send } from "lucide-react"
 import { PasswordInput } from "@/components/password-input"
+import { btn, card, chip, chipTone, field, ghost, inner, label } from "@/lib/ui"
 
 type MetaConfig = {
   datasetId: string
@@ -21,11 +23,11 @@ type MetaEvent = {
   error: string | null
 }
 
-const STATUS_STYLE: Record<MetaEvent["status"], { bg: string; fg: string; label: string }> = {
-  enviado: { bg: "#dcfce7", fg: "#166534", label: "Enviado" },
-  pendente: { bg: "#fef9c3", fg: "#854d0e", label: "Pendente" },
-  falhou: { bg: "#fee2e2", fg: "#991b1b", label: "Falhou" },
-  expirado: { bg: "#e5e7eb", fg: "#374151", label: "Expirado" },
+const STATUS: Record<MetaEvent["status"], { tone: keyof typeof chipTone; label: string }> = {
+  enviado: { tone: "ok", label: "Enviado" },
+  pendente: { tone: "wait", label: "Pendente" },
+  falhou: { tone: "late", label: "Falhou" },
+  expirado: { tone: "mute", label: "Expirado" },
 }
 
 const brl = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
@@ -111,8 +113,8 @@ export function MetaCard() {
   }
 
   return (
-    <div style={card}>
-      <h2 style={{ fontSize: 16, marginTop: 0 }}>Conversões pro Meta</h2>
+    <div style={{ ...card, padding: 24 }}>
+      <h2 style={{ fontSize: 17, margin: "0 0 4px", color: "var(--strong)" }}>Conversões pro Meta</h2>
       <p style={hint}>
         Cada compra registrada vira um evento <b>Purchase</b> no seu Pixel, com valor, data e o telefone da
         cliente criptografado. Se for a 2ª compra em diante, o evento leva a contagem (<code>purchase_number</code>).
@@ -124,10 +126,12 @@ export function MetaCard() {
         value={datasetId}
         onChange={(e) => setDatasetId(e.target.value)}
         placeholder="só números, ex: 1234567890123456"
-        style={input}
+        style={{ ...field, padding: "9px 12px" }}
       />
 
-      <label style={label}>Token de acesso {cfg?.hasToken && <span style={{ color: "#16a34a" }}>(salvo: {cfg.tokenHint})</span>}</label>
+      <label style={label}>
+        Token de acesso {cfg?.hasToken && <span style={{ color: "var(--ok)" }}>(salvo: {cfg.tokenHint})</span>}
+      </label>
       <PasswordInput
         value={accessToken}
         onChange={setAccessToken}
@@ -139,50 +143,46 @@ export function MetaCard() {
         value={testCode}
         onChange={(e) => setTestCode(e.target.value)}
         placeholder="ex: TEST12345"
-        style={input}
+        style={{ ...field, padding: "9px 12px" }}
       />
-      <p style={{ ...hint, fontSize: 12, marginTop: 4 }}>
+      <p style={{ ...hint, fontSize: 12, marginTop: 6 }}>
         Atenção: eventos com código de teste aparecem em &quot;Testar eventos&quot;, mas o Meta ainda os usa na
         medição. Deixe vazio no dia a dia.
       </p>
 
       <div style={{ display: "flex", gap: 8, marginTop: 14, flexWrap: "wrap" }}>
-        <button onClick={save} disabled={saving} style={btn}>{saving ? "Salvando..." : "Salvar"}</button>
+        <button onClick={save} disabled={saving} style={{ ...btn, opacity: saving ? 0.6 : 1 }}>{saving ? "Salvando..." : "Salvar"}</button>
         {cfg?.hasToken && <button onClick={clearToken} style={ghost}>Remover token</button>}
         <button onClick={sendPending} disabled={sending} style={ghost}>
-          {sending ? "Enviando..." : "Reenviar pendentes"}
+          <Send size={14} style={{ verticalAlign: -2, marginRight: 5 }} />{sending ? "Enviando..." : "Reenviar pendentes"}
         </button>
         <button onClick={showPreview} style={ghost}>Ver o que seria enviado</button>
       </div>
 
-      {msg && <p style={{ fontSize: 13, color: msg.ok ? "#16a34a" : "#dc2626" }}>{msg.text}</p>}
+      {msg && <p style={{ fontSize: 13, color: msg.ok ? "var(--ok)" : "var(--danger)" }}>{msg.text}</p>}
 
-      {preview && (
-        <pre style={pre}>{preview}</pre>
-      )}
+      {preview && <pre style={pre}>{preview}</pre>}
 
-      <h3 style={{ fontSize: 14, marginTop: 20, marginBottom: 8 }}>Últimas compras</h3>
+      <h3 style={{ fontSize: 14, margin: "22px 0 8px", color: "var(--vred)", letterSpacing: 1 }}>ÚLTIMAS COMPRAS</h3>
       {events.length === 0 ? (
         <p style={{ ...hint, fontStyle: "italic" }}>Nenhuma compra registrada ainda.</p>
       ) : (
         <div>
-          {events.map((e) => {
-            const s = STATUS_STYLE[e.status]
+          {events.map((e, i) => {
+            const s = STATUS[e.status]
             return (
-              <div key={e.id} style={row} title={e.error ?? ""}>
-                <span style={{ width: 44, color: "#6b7280", fontSize: 12 }}>{fmt(e.purchasedAt)}</span>
-                <span style={{ flex: 1, fontSize: 13, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              <div key={e.id} style={{ ...row, borderTop: i === 0 ? "none" : "1px solid var(--soft)" }} title={e.error ?? ""}>
+                <span style={{ width: 44, color: "var(--muted)", fontSize: 12 }}>{fmt(e.purchasedAt)}</span>
+                <span style={{ flex: 1, fontSize: 13, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: "var(--text)" }}>
                   {e.contactName}{e.productName ? ` · ${e.productName}` : ""}
                 </span>
-                <span style={{ fontSize: 13, fontWeight: 600, marginRight: 10 }}>{brl(e.amount)}</span>
-                <span style={{ background: s.bg, color: s.fg, fontSize: 11, fontWeight: 700, padding: "2px 8px", borderRadius: 999 }}>
-                  {s.label}
-                </span>
+                <span style={{ fontSize: 13, fontWeight: 700, marginRight: 10, color: "var(--strong)" }}>{brl(e.amount)}</span>
+                <span style={chip(s.tone)}>{s.label}</span>
               </div>
             )
           })}
           {events.some((e) => e.error && e.status === "falhou") && (
-            <p style={{ ...hint, fontSize: 12, color: "#dc2626" }}>
+            <p style={{ ...hint, fontSize: 12, color: "var(--danger)" }}>
               Último erro: {events.find((e) => e.status === "falhou")?.error}
             </p>
           )}
@@ -192,11 +192,6 @@ export function MetaCard() {
   )
 }
 
-const card: React.CSSProperties = { background: "#fff", borderRadius: 14, padding: 24, boxShadow: "0 6px 20px rgba(124,58,237,0.08)", marginTop: 20 }
-const hint: React.CSSProperties = { fontSize: 13, color: "#6b7280", lineHeight: 1.5 }
-const label: React.CSSProperties = { display: "block", fontSize: 13, fontWeight: 600, marginTop: 14, marginBottom: 4 }
-const input: React.CSSProperties = { width: "100%", border: "1px solid #d1d5db", borderRadius: 8, padding: "9px 12px", fontSize: 13 }
-const btn: React.CSSProperties = { background: "#7c3aed", color: "#fff", border: "none", borderRadius: 8, padding: "9px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer" }
-const ghost: React.CSSProperties = { background: "transparent", color: "#6d28d9", border: "1px solid #c4b5fd", borderRadius: 8, padding: "9px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer" }
-const row: React.CSSProperties = { display: "flex", alignItems: "center", gap: 8, padding: "8px 0", borderBottom: "1px solid #f3f4f6" }
-const pre: React.CSSProperties = { background: "#f9fafb", border: "1px solid #e5e7eb", borderRadius: 8, padding: 12, fontSize: 11, overflow: "auto", maxHeight: 260 }
+const hint: React.CSSProperties = { fontSize: 13, color: "var(--muted)", lineHeight: 1.55, margin: "0 0 4px" }
+const row: React.CSSProperties = { display: "flex", alignItems: "center", gap: 8, padding: "9px 0" }
+const pre: React.CSSProperties = { ...inner, padding: 12, fontSize: 11, overflow: "auto", maxHeight: 260, color: "var(--text-2)" }

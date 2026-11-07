@@ -88,14 +88,15 @@ export async function pendingByContact(userId: string, now = new Date()) {
     where: { userId, status: "PENDING" },
     select: { contactId: true, amount: true, dueDate: true },
   })
-  const map = new Map<string, { count: number; total: number; overdue: boolean; overdueTotal: number }>()
+  const map = new Map<string, { count: number; total: number; overdue: boolean; overdueTotal: number; overdueCount: number }>()
   for (const r of rows) {
-    const cur = map.get(r.contactId) ?? { count: 0, total: 0, overdue: false, overdueTotal: 0 }
+    const cur = map.get(r.contactId) ?? { count: 0, total: 0, overdue: false, overdueTotal: 0, overdueCount: 0 }
     cur.count += 1
     cur.total += r.amount
     if (dayKey(r.dueDate) < dayKey(now)) {
       cur.overdue = true
       cur.overdueTotal += r.amount
+      cur.overdueCount += 1
     }
     map.set(r.contactId, cur)
   }

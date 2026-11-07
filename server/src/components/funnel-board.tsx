@@ -1,13 +1,16 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useState } from "react"
+import { Ellipsis, Flame, HandCoins, MessageSquare, Plus, Search, TrendingUp } from "lucide-react"
 import type { Funnel, FunnelCard, FunnelColumn } from "@/lib/funnel"
 import { withCountryCode } from "@/lib/phone"
 import { SOURCES, SOURCE_LABEL, sourceLabel } from "@/lib/sources"
 import { ContactDrawer } from "@/components/contact-drawer"
+import { PageHeader } from "@/components/page-header"
+import { btn, btnSm, card, chip, errorText, field, ghost, ghostSm, iconBtn, inner, link } from "@/lib/ui"
 
 const TZ = "America/Sao_Paulo"
-const COLORS = ["#8b5cf6", "#ec4899", "#f59e0b", "#10b981", "#3b82f6", "#ef4444", "#14b8a6", "#a855f7"]
+const COLORS = ["#3b82f6", "#f5b84a", "#34d399", "#e0245e", "#a78bfa", "#22d3ee", "#fb923c", "#f472b6"]
 const IDLE_DAYS = 3
 
 const brl = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
@@ -114,52 +117,81 @@ export function FunnelBoard() {
   }, [funnel, matches])
 
   if (!funnel) {
-    return <p style={{ padding: 24, color: error ? "#dc2626" : "#6b7280" }}>{error ?? "Carregando o funil..."}</p>
+    return <p style={{ padding: 24, color: error ? "var(--danger)" : "var(--muted)" }}>{error ?? "Carregando o funil..."}</p>
   }
 
   const filtering = search.trim() !== "" || stepFilter !== "todos" || onlyIdle || sourceFilter !== "todas"
 
   return (
-    <div style={{ padding: "16px 20px" }}>
+    <>
+      <PageHeader
+        title="Funil"
+        subtitle="Arraste as clientes entre as etapas. O vinho mostra o que precisa de você."
+        actions={
+          <>
+            <button onClick={() => setShowNewList((v) => !v)} style={ghost}>+ Lista</button>
+            <button onClick={() => setAddContactFor("none")} style={btn}>+ Contato</button>
+          </>
+        }
+      />
+
+      {/* Números do topo */}
+      <div className="v-card v-kpis">
+        <div className="v-kpi">
+          <div className="l">Contatos</div>
+          <div className="n">{funnel.totals.contacts}</div>
+          <span className="v-pill mute">{filtering ? `${visibleCount} neste filtro` : "no funil"}</span>
+        </div>
+        <div className="v-kpi">
+          <div className="l">Em compras</div>
+          <div className="n">{brl(funnel.totals.totalSpent)}</div>
+          <span className="v-pill ok"><TrendingUp size={13} />recebido</span>
+        </div>
+        <div className="v-kpi">
+          <div className="l">A receber</div>
+          <div className="n">{brl(funnel.charges.aReceber.total)}</div>
+          <span className="v-pill wait">{funnel.charges.aReceber.count} {funnel.charges.aReceber.count === 1 ? "cobrança" : "cobranças"}</span>
+        </div>
+        <div className="v-kpi">
+          <div className="l">Vencidas</div>
+          <div className="n">{brl(funnel.charges.vencidas.total)}</div>
+          <span className="v-pill late">{funnel.charges.vencidas.count} {funnel.charges.vencidas.count === 1 ? "cobrança" : "cobranças"}</span>
+        </div>
+      </div>
+
       {/* Barra de ferramentas */}
       <div style={toolbar}>
-        <input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Buscar por nome ou número"
-          style={{ ...field, width: 240 }}
-        />
-        <select value={stepFilter} onChange={(e) => setStepFilter(e.target.value as StepFilter)} style={field}>
+        <div style={searchBox}>
+          <Search size={16} style={{ color: "var(--muted)", flex: "none" }} />
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Buscar por nome ou número"
+            style={{ ...bare, flex: 1 }}
+          />
+        </div>
+        <select value={stepFilter} onChange={(e) => setStepFilter(e.target.value as StepFilter)} style={{ ...field, width: "auto" }}>
           <option value="todos">Próximo passo: todos</option>
           <option value="atrasado">Atrasado</option>
           <option value="hoje">Para hoje</option>
           <option value="nenhum">Nenhum</option>
         </select>
-        <select value={sourceFilter} onChange={(e) => setSourceFilter(e.target.value as SourceFilter)} style={field}>
+        <select value={sourceFilter} onChange={(e) => setSourceFilter(e.target.value as SourceFilter)} style={{ ...field, width: "auto" }}>
           <option value="todas">Origem: todas</option>
           {SOURCES.map((s) => (
             <option key={s} value={s}>{SOURCE_LABEL[s]}</option>
           ))}
           <option value="sem">Sem origem</option>
         </select>
-        <label style={{ fontSize: 13, display: "flex", alignItems: "center", gap: 6 }}>
+        <label style={{ fontSize: 13, display: "flex", alignItems: "center", gap: 6, color: "var(--text-2)" }}>
           <input type="checkbox" checked={onlyIdle} onChange={(e) => setOnlyIdle(e.target.checked)} />
           Paradas ({IDLE_DAYS}+ dias)
         </label>
-        <span style={{ flex: 1 }} />
-        <span style={{ fontSize: 13, color: "#6b7280" }}>
-          {filtering ? `${visibleCount} de ` : ""}
-          {funnel.totals.contacts} contatos · {brl(funnel.totals.totalSpent)} em compras
-        </span>
-        <button onClick={() => setAddContactFor("none")} style={btn}>+ Contato</button>
-        <button onClick={() => setShowNewList((v) => !v)} style={ghost}>+ Lista</button>
       </div>
 
-      {error && <p style={{ color: "#dc2626", fontSize: 13, margin: "8px 0" }}>{error}</p>}
+      {error && <p style={errorText}>{error}</p>}
       {funnel.truncated && (
-        <p style={{ color: "#b45309", fontSize: 12, margin: "8px 0" }}>
-          Mostrando só os 2000 contatos mais recentes.
-        </p>
+        <p style={{ color: "var(--wait)", fontSize: 12, margin: 0 }}>Mostrando só os 2000 contatos mais recentes.</p>
       )}
 
       {showNewList && (
@@ -192,7 +224,7 @@ export function FunnelBoard() {
         <Column
           id={null}
           name="Sem lista"
-          color="#9ca3af"
+          color="var(--muted)"
           total={funnel.unassigned.total}
           cards={funnel.unassigned.cards.filter(matches)}
           over={overCol === "__none"}
@@ -226,7 +258,7 @@ export function FunnelBoard() {
       </div>
 
       {funnel.lists.length === 0 && (
-        <p style={{ fontSize: 13, color: "#6b7280" }}>
+        <p style={{ fontSize: 13, color: "var(--muted)", margin: 0 }}>
           Crie sua primeira lista em <b>+ Lista</b> (ex.: Novos, Em conversa, Compradoras) e arraste os contatos entre elas.
         </p>
       )}
@@ -234,7 +266,7 @@ export function FunnelBoard() {
       {openContactId && (
         <ContactDrawer contactId={openContactId} onClose={() => setOpenContactId(null)} onChanged={load} />
       )}
-    </div>
+    </>
   )
 }
 
@@ -289,12 +321,16 @@ function Column(p: ColumnProps) {
       onDragOver={(e) => { e.preventDefault(); p.onOver() }}
       onDrop={(e) => { e.preventDefault(); p.onDrop() }}
       style={{
-        width: 290, flexShrink: 0, background: p.over ? "#ede9fe" : "#f5f3ff",
-        border: `1px solid ${p.over ? "#a78bfa" : "#e9e3ff"}`, borderRadius: 14, padding: 10,
+        ...card,
+        width: 300,
+        flexShrink: 0,
+        padding: 12,
+        borderColor: p.over ? "var(--accent)" : "var(--line)",
+        boxShadow: p.over ? "0 0 0 1px var(--accent), 0 0 30px var(--glow)" : "var(--card-shadow)",
       }}
     >
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10, position: "relative" }}>
-        <span style={{ width: 10, height: 10, borderRadius: "50%", background: p.color }} />
+        <span style={{ width: 9, height: 9, borderRadius: "50%", background: p.color, boxShadow: `0 0 8px ${p.color}`, flex: "none" }} />
         {renaming ? (
           <input
             autoFocus
@@ -305,28 +341,32 @@ function Column(p: ColumnProps) {
             style={{ ...field, flex: 1, padding: "3px 6px" }}
           />
         ) : (
-          <strong style={{ fontSize: 14, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          <strong style={{ fontSize: 14, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: "var(--strong)" }}>
             {p.name}
           </strong>
         )}
-        <span style={{ fontSize: 12, color: "#6b7280" }}>{p.total}</span>
+        <span style={{ fontSize: 12, color: "var(--muted)" }}>{p.total}</span>
         {p.onAddContact && (
-          <button onClick={p.onAddContact} title="Adicionar contato nesta lista" style={iconBtn}>+</button>
+          <button onClick={p.onAddContact} title="Adicionar contato nesta lista" aria-label="Adicionar contato nesta lista" style={{ ...iconBtn, color: "var(--vred)" }}>
+            <Plus size={17} />
+          </button>
         )}
         {p.id && (
-          <button onClick={() => setMenu((v) => !v)} style={iconBtn} title="Opções da lista">⋯</button>
+          <button onClick={() => setMenu((v) => !v)} style={iconBtn} title="Opções da lista" aria-label="Opções da lista">
+            <Ellipsis size={17} />
+          </button>
         )}
         {menu && (
           <div style={popup}>
             <button style={popupItem} onClick={() => { setMenu(false); setRenaming(true) }}>Renomear</button>
-            <button style={{ ...popupItem, color: "#dc2626" }} onClick={() => { setMenu(false); remove() }}>
+            <button style={{ ...popupItem, color: "var(--danger)" }} onClick={() => { setMenu(false); remove() }}>
               Excluir lista
             </button>
           </div>
         )}
       </div>
 
-      <div style={{ display: "flex", flexDirection: "column", gap: 8, minHeight: 40 }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 9, minHeight: 40 }}>
         {p.cards.map((c) => (
           <CardView
             key={c.id}
@@ -339,12 +379,12 @@ function Column(p: ColumnProps) {
           />
         ))}
         {p.cards.length === 0 && (
-          <p style={{ fontSize: 12, color: "#9ca3af", textAlign: "center", margin: "10px 0" }}>
+          <p style={{ fontSize: 12, color: "var(--faint)", textAlign: "center", margin: "10px 0" }}>
             {p.total > 0 ? "Nenhum card neste filtro" : "Arraste contatos pra cá"}
           </p>
         )}
         {p.total > p.cards.length && p.cards.length > 0 && (
-          <p style={{ fontSize: 11, color: "#9ca3af", textAlign: "center", margin: 0 }}>
+          <p style={{ fontSize: 11, color: "var(--faint)", textAlign: "center", margin: 0 }}>
             +{p.total - p.cards.length} não exibidos
           </p>
         )}
@@ -355,15 +395,8 @@ function Column(p: ColumnProps) {
 
 /* ───────────── Card ───────────── */
 
-const STEP_STYLE = {
-  atrasado: { bg: "#fee2e2", fg: "#b91c1c" },
-  hoje: { bg: "#fef3c7", fg: "#92400e" },
-  futuro: { bg: "#e5e7eb", fg: "#374151" },
-  nenhum: { bg: "#e5e7eb", fg: "#374151" },
-} as const
-
 function CardView({
-  card, onDragStart, onDragEnd, onChanged, onError, onOpen,
+  card: c, onDragStart, onDragEnd, onChanged, onError, onOpen,
 }: {
   card: FunnelCard
   onDragStart: () => void
@@ -379,12 +412,11 @@ function CardView({
   const [chDue, setChDue] = useState(() => dateInput(new Date().toISOString()))
   const [chDesc, setChDesc] = useState("")
   const [chLink, setChLink] = useState("")
-  const [step, setStep] = useState(card.nextStep ?? "")
-  const [due, setDue] = useState(card.nextStepAt ? dateInput(card.nextStepAt) : "")
+  const [step, setStep] = useState(c.nextStep ?? "")
+  const [due, setDue] = useState(c.nextStepAt ? dateInput(c.nextStepAt) : "")
   const [busy, setBusy] = useState(false)
 
-  const idle = card.daysIdle >= IDLE_DAYS
-  const ss = STEP_STYLE[card.nextStepState]
+  const idle = c.daysIdle >= IDLE_DAYS
 
   async function run(fn: () => Promise<unknown>) {
     setBusy(true)
@@ -403,14 +435,14 @@ function CardView({
     const value = parseFloat(amount.replace(",", "."))
     if (!value || value <= 0) return onError("Informe um valor maior que zero.")
     run(async () => {
-      await call("POST", `/api/crm/contacts/${card.id}/purchase`, { amount: value, productName: product || undefined })
+      await call("POST", `/api/crm/contacts/${c.id}/purchase`, { amount: value, productName: product || undefined })
       setAmount("")
       setProduct("")
     })
   }
 
   function saveStep() {
-    run(() => call("PATCH", `/api/crm/contacts/${card.id}`, { nextStep: step, nextStepAt: due || null }))
+    run(() => call("PATCH", `/api/crm/contacts/${c.id}`, { nextStep: step, nextStepAt: due || null }))
   }
 
   function saveCharge() {
@@ -419,7 +451,7 @@ function CardView({
     if (!chDue) return onError("Informe o vencimento.")
     run(async () => {
       await call("POST", "/api/crm/charges", {
-        contactId: card.id,
+        contactId: c.id,
         amount: value,
         dueDate: chDue,
         description: chDesc || undefined,
@@ -431,90 +463,87 @@ function CardView({
     })
   }
 
+  const stepTone = c.nextStepState === "atrasado" ? "late" : c.nextStepState === "hoje" ? "wine" : "mute"
+  const due1 = c.chargesDue
+
   return (
     <div
       draggable
-      onDragStart={(e) => { e.dataTransfer.setData("text/plain", card.id); e.dataTransfer.effectAllowed = "move"; onDragStart() }}
+      onDragStart={(e) => { e.dataTransfer.setData("text/plain", c.id); e.dataTransfer.effectAllowed = "move"; onDragStart() }}
       onDragEnd={onDragEnd}
       style={{
-        background: "#fff", borderRadius: 10, padding: "10px 12px", cursor: "grab",
-        boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
-        borderLeft: `4px solid ${idle ? "#f59e0b" : "#ddd6fe"}`,
+        ...inner,
+        padding: "11px 12px",
+        cursor: "grab",
+        borderLeft: `4px solid ${idle ? "var(--late)" : "rgba(143, 163, 214, 0.35)"}`,
       }}
     >
-      <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
         <strong
           onClick={onOpen}
           title="Abrir dados, notas e histórico"
-          style={{ fontSize: 14, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", cursor: "pointer" }}
+          style={{ fontSize: 14, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", cursor: "pointer", color: "var(--strong)" }}
         >
-          {card.name}
+          {c.name}
         </strong>
         <a
-          href={`https://wa.me/${withCountryCode(card.phone)}`}
+          href={`https://wa.me/${withCountryCode(c.phone)}`}
           target="_blank"
           rel="noreferrer"
           draggable={false}
-          style={{ fontSize: 12, whiteSpace: "nowrap", textDecoration: "none" }}
+          style={{ ...link, whiteSpace: "nowrap", textDecoration: "none", flex: "none" }}
+          title="Abrir a conversa no WhatsApp"
         >
-          Abrir conversa ›
+          <MessageSquare size={13} />Abrir conversa
         </a>
       </div>
-      <div style={{ fontSize: 12, color: "#6b7280", marginTop: 2 }}>
-        {card.phone}
-        {sourceLabel(card.source) && (
-          <span style={{ marginLeft: 6, background: "#ede9fe", color: "#6d28d9", fontSize: 10, fontWeight: 700, padding: "1px 6px", borderRadius: 999 }}>
-            {sourceLabel(card.source)}
-          </span>
-        )}
-        {card.notesCount > 0 && (
-          <span title="Notas" style={{ marginLeft: 6, color: "#6b7280", fontSize: 11 }}>
-            · {card.notesCount} {card.notesCount === 1 ? "nota" : "notas"}
+      <div style={{ fontSize: 12, color: "var(--muted)", margin: "2px 0 6px" }}>
+        {c.phone}
+        {c.notesCount > 0 && (
+          <span title="Notas" style={{ marginLeft: 6, fontSize: 11 }}>
+            · {c.notesCount} {c.notesCount === 1 ? "nota" : "notas"}
           </span>
         )}
       </div>
 
-      <div style={{ fontSize: 12, marginTop: 6, color: card.purchases ? "#166534" : "#9ca3af" }}>
-        {card.purchases
-          ? `${brl(card.totalSpent)} · ${card.purchases} ${card.purchases === 1 ? "compra" : "compras"}`
+      <div style={{ fontSize: 12, fontWeight: 600, color: c.purchases ? "var(--ok)" : "var(--faint)" }}>
+        {c.purchases
+          ? `${brl(c.totalSpent)} · ${c.purchases} ${c.purchases === 1 ? "compra" : "compras"}`
           : "Sem compras ainda"}
       </div>
 
-      {card.chargesDue && (
-        <div
-          title="Abra a página Cobranças pra ver os detalhes"
-          style={{ fontSize: 12, fontWeight: 600, marginTop: 4, color: card.chargesDue.overdue ? "#b91c1c" : "#92400e" }}
-        >
-          {card.chargesDue.overdue
-            ? `Vencida: ${brl(card.chargesDue.overdueTotal)}` +
-              (card.chargesDue.total > card.chargesDue.overdueTotal
-                ? ` · a receber: ${brl(card.chargesDue.total - card.chargesDue.overdueTotal)}`
-                : "")
-            : `A receber: ${brl(card.chargesDue.total)}`}
+      {(sourceLabel(c.source) || due1 || c.nextStepState !== "nenhum") && (
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
+          {sourceLabel(c.source) && <span style={chip("vio")}>{sourceLabel(c.source)}</span>}
+          {due1 && due1.overdue && <span style={chip("late")} title="Veja a página Cobranças">Vencida {brl(due1.overdueTotal)}</span>}
+          {due1 && due1.total > due1.overdueTotal && (
+            <span style={chip("wait")} title="Veja a página Cobranças">A receber {brl(due1.total - due1.overdueTotal)}</span>
+          )}
+          {c.nextStepState !== "nenhum" && (
+            <button
+              onClick={() => setMode(mode === "step" ? null : "step")}
+              title="Editar próximo passo"
+              style={{ ...chip(stepTone), cursor: "pointer", maxWidth: 220, overflow: "hidden", textOverflow: "ellipsis" }}
+            >
+              {c.nextStepState === "atrasado" ? "Atrasado · " : c.nextStepState === "hoje" ? "Hoje · " : ""}
+              {c.nextStep || "Passo"}
+              {c.nextStepAt ? ` (${shortDate(c.nextStepAt)})` : ""}
+            </button>
+          )}
         </div>
       )}
 
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8, alignItems: "center" }}>
-        <button style={link} onClick={() => setMode(mode === "buy" ? null : "buy")}>+ compra</button>
-        <button style={link} onClick={() => setMode(mode === "charge" ? null : "charge")}>Cobrar</button>
-        {card.nextStepState === "nenhum" ? (
-          <button style={link} onClick={() => setMode(mode === "step" ? null : "step")}>+ próximo passo</button>
-        ) : (
-          <button
-            onClick={() => setMode(mode === "step" ? null : "step")}
-            title="Editar próximo passo"
-            style={{
-              background: ss.bg, color: ss.fg, border: "none", borderRadius: 999,
-              fontSize: 11, fontWeight: 700, padding: "2px 8px", cursor: "pointer", maxWidth: 200,
-              overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-            }}
-          >
-            {card.nextStepState === "atrasado" ? "Atrasado · " : card.nextStepState === "hoje" ? "Hoje · " : ""}
-            {card.nextStep || "Passo"}
-            {card.nextStepAt ? ` (${shortDate(card.nextStepAt)})` : ""}
-          </button>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 12, marginTop: 9, alignItems: "center" }}>
+        <button style={link} onClick={() => setMode(mode === "buy" ? null : "buy")}><Plus size={13} />compra</button>
+        <button style={link} onClick={() => setMode(mode === "charge" ? null : "charge")}><HandCoins size={13} />Cobrar</button>
+        {c.nextStepState === "nenhum" && (
+          <button style={link} onClick={() => setMode(mode === "step" ? null : "step")}><Plus size={13} />próximo passo</button>
         )}
-        {idle && <span style={{ fontSize: 11, color: "#b45309", fontWeight: 600 }}>Parada há {card.daysIdle} dias</span>}
+        {idle && (
+          <span style={{ fontSize: 11, color: "var(--late-text)", fontWeight: 700, display: "inline-flex", alignItems: "center", gap: 4 }}>
+            <Flame size={13} />Parada há {c.daysIdle} dias
+          </span>
+        )}
       </div>
 
       {mode === "buy" && (
@@ -538,7 +567,7 @@ function CardView({
             autoFocus type="text" inputMode="decimal" placeholder="Valor a cobrar (R$)" value={chAmount}
             onChange={(e) => setChAmount(e.target.value)} style={field}
           />
-          <label style={{ fontSize: 11, color: "#6b7280" }}>Vencimento</label>
+          <label style={{ fontSize: 11, color: "var(--muted)" }}>Vencimento</label>
           <input type="date" value={chDue} onChange={(e) => setChDue(e.target.value)} style={field} />
           <input type="text" placeholder="Descrição (opcional)" value={chDesc} onChange={(e) => setChDesc(e.target.value)} style={field} />
           <input type="text" placeholder="Link de pagamento ou Pix (opcional)" value={chLink} onChange={(e) => setChLink(e.target.value)} style={field} />
@@ -558,10 +587,10 @@ function CardView({
           <input type="date" value={due} onChange={(e) => setDue(e.target.value)} style={field} />
           <div style={{ display: "flex", gap: 6 }}>
             <button disabled={busy} onClick={saveStep} style={btnSm}>{busy ? "..." : "Salvar"}</button>
-            {card.nextStepState !== "nenhum" && (
+            {c.nextStepState !== "nenhum" && (
               <button
                 disabled={busy}
-                onClick={() => run(() => call("PATCH", `/api/crm/contacts/${card.id}`, { nextStep: null }))}
+                onClick={() => run(() => call("PATCH", `/api/crm/contacts/${c.id}`, { nextStep: null }))}
                 style={ghostSm}
               >
                 Concluir
@@ -599,11 +628,12 @@ function NewListForm({ nextColor, onDone }: { nextColor: string; onDone: (error?
     <div style={panel}>
       <input autoFocus placeholder="Nome da lista (ex: Compradoras)" value={name} onChange={(e) => setName(e.target.value)}
         onKeyDown={(e) => e.key === "Enter" && create()} style={{ ...field, width: 240 }} />
-      <div style={{ display: "flex", gap: 6 }}>
+      <div style={{ display: "flex", gap: 7 }}>
         {COLORS.map((c) => (
           <button key={c} onClick={() => setColor(c)} aria-label={`Cor ${c}`}
-            style={{ width: 22, height: 22, borderRadius: "50%", background: c, cursor: "pointer",
-              border: color === c ? "3px solid #1f2937" : "2px solid #fff", boxShadow: "0 0 0 1px #d1d5db" }} />
+            style={{ width: 22, height: 22, borderRadius: "50%", background: c, cursor: "pointer", padding: 0,
+              border: color === c ? "2px solid var(--strong)" : "2px solid transparent",
+              boxShadow: color === c ? `0 0 10px ${c}` : "none" }} />
         ))}
       </div>
       <button onClick={create} disabled={busy || !name.trim()} style={btn}>{busy ? "Criando..." : "Criar lista"}</button>
@@ -643,28 +673,30 @@ function AddContactForm({
       <input autoFocus placeholder="Nome" value={name} onChange={(e) => setName(e.target.value)} style={{ ...field, width: 180 }} />
       <input placeholder="Telefone com DDD (ex: 11999998888)" value={phone} onChange={(e) => setPhone(e.target.value)}
         onKeyDown={(e) => e.key === "Enter" && create()} style={{ ...field, width: 250 }} />
-      <select value={listId} onChange={(e) => setListId(e.target.value)} style={field}>
+      <select value={listId} onChange={(e) => setListId(e.target.value)} style={{ ...field, width: "auto" }}>
         <option value="">Sem lista</option>
         {lists.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
       </select>
       <button onClick={create} disabled={busy || !name.trim() || !phone.trim()} style={btn}>{busy ? "Criando..." : "Adicionar"}</button>
       <button onClick={onClose} style={ghost}>Cancelar</button>
-      {err && <span style={{ color: "#dc2626", fontSize: 12 }}>{err}</span>}
+      {err && <span style={{ color: "var(--danger)", fontSize: 12 }}>{err}</span>}
     </div>
   )
 }
 
-/* ───────────── Estilos ───────────── */
+/* ───────────── Estilos próprios do funil ───────────── */
 
-const toolbar: React.CSSProperties = { display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 14 }
-const panel: React.CSSProperties = { display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", background: "#fff", border: "1px solid #ede9fe", borderRadius: 12, padding: 12, marginBottom: 14 }
-const field: React.CSSProperties = { border: "1px solid #d1d5db", borderRadius: 8, padding: "7px 10px", fontSize: 13, background: "#fff" }
-const btn: React.CSSProperties = { background: "#7c3aed", color: "#fff", border: "none", borderRadius: 8, padding: "8px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer" }
-const ghost: React.CSSProperties = { background: "transparent", color: "#6d28d9", border: "1px solid #c4b5fd", borderRadius: 8, padding: "8px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer" }
-const btnSm: React.CSSProperties = { ...btn, padding: "5px 10px", fontSize: 12 }
-const ghostSm: React.CSSProperties = { ...ghost, padding: "5px 10px", fontSize: 12 }
-const link: React.CSSProperties = { background: "none", border: "none", color: "#6d28d9", fontSize: 12, fontWeight: 600, cursor: "pointer", padding: 0 }
-const form: React.CSSProperties = { display: "flex", flexDirection: "column", gap: 6, marginTop: 10, paddingTop: 10, borderTop: "1px solid #f3f4f6" }
-const iconBtn: React.CSSProperties = { background: "transparent", border: "none", color: "#6b7280", fontSize: 16, cursor: "pointer", lineHeight: 1, padding: "0 4px" }
-const popup: React.CSSProperties = { position: "absolute", top: 26, right: 0, background: "#fff", border: "1px solid #e5e7eb", borderRadius: 8, boxShadow: "0 6px 16px rgba(0,0,0,0.12)", zIndex: 10, display: "flex", flexDirection: "column", minWidth: 130 }
-const popupItem: React.CSSProperties = { background: "none", border: "none", textAlign: "left", padding: "8px 12px", fontSize: 13, cursor: "pointer" }
+const toolbar: React.CSSProperties = { display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }
+const searchBox: React.CSSProperties = {
+  display: "flex", alignItems: "center", gap: 8, minWidth: 250, flex: "0 1 320px",
+  background: "var(--field)", border: "1px solid var(--soft)", borderRadius: 12, padding: "8px 12px",
+}
+/** Campo sem moldura própria (a moldura é do contêiner). */
+const bare: React.CSSProperties = { background: "transparent", border: "none", boxShadow: "none", padding: 0, fontSize: 13, outline: "none", color: "var(--text)" }
+const panel: React.CSSProperties = { ...card, display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", padding: 14 }
+const form: React.CSSProperties = { display: "flex", flexDirection: "column", gap: 7, marginTop: 11, paddingTop: 11, borderTop: "1px solid var(--soft)" }
+const popup: React.CSSProperties = {
+  position: "absolute", top: 28, right: 0, zIndex: 10, display: "flex", flexDirection: "column", minWidth: 140,
+  background: "var(--popup)", border: "1px solid var(--line)", borderRadius: 10, boxShadow: "0 10px 28px rgba(0,0,0,0.5)", overflow: "hidden",
+}
+const popupItem: React.CSSProperties = { background: "none", border: "none", textAlign: "left", padding: "9px 12px", fontSize: 13, cursor: "pointer", color: "var(--text)" }

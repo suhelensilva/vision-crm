@@ -8,12 +8,12 @@ type Props = {
   placeholder?: string
   minLength?: number
   autoComplete?: string
-  /** "dark" é o campo das telas de entrar e cadastrar (usa a classe .auth-input). */
-  variant?: "light" | "dark"
+  /** "dark" é o campo das telas de entrar e cadastrar (classe .auth-input). Sem isso, é o campo do painel. */
+  variant?: "app" | "dark"
 }
 
 /** Campo de senha com botão "mostrar / ocultar" pra ver o que está digitando. */
-export function PasswordInput({ value, onChange, placeholder, minLength, autoComplete, variant = "light" }: Props) {
+export function PasswordInput({ value, onChange, placeholder, minLength, autoComplete, variant = "app" }: Props) {
   const [visible, setVisible] = useState(false)
   const dark = variant === "dark"
 
@@ -28,17 +28,8 @@ export function PasswordInput({ value, onChange, placeholder, minLength, autoCom
         autoComplete={autoComplete}
         required
         className={dark ? "auth-input" : undefined}
-        style={
-          dark
-            ? { paddingRight: 70 }
-            : {
-                width: "100%",
-                border: "1px solid #d1d5db",
-                borderRadius: 8,
-                padding: "10px 64px 10px 12px",
-                fontSize: 14,
-              }
-        }
+        // cores e moldura vêm do CSS global; aqui só o tamanho e o espaço do botão
+        style={dark ? { paddingRight: 70 } : { width: "100%", padding: "9px 72px 9px 12px", fontSize: 13 }}
       />
       <button
         type="button"
@@ -51,7 +42,7 @@ export function PasswordInput({ value, onChange, placeholder, minLength, autoCom
           transform: "translateY(-50%)",
           background: "transparent",
           border: "none",
-          color: dark ? "#ff5c8a" : "#7c3aed",
+          color: dark ? "#ff5c8a" : "var(--accent-text)",
           fontSize: 12,
           fontWeight: 600,
           cursor: "pointer",

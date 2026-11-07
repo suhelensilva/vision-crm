@@ -1,8 +1,11 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
+import { HandCoins, MessageSquare, Plus } from "lucide-react"
 import type { ChargeFilter, ChargeState, ChargeSummary, ChargeView } from "@/lib/charges"
 import { buildChargeMessage, whatsappLink } from "@/lib/charge-message"
+import { PageHeader } from "@/components/page-header"
+import { btn, btnSm, card, chip, chipTone, errorText, field, ghost, ghostSm, inner } from "@/lib/ui"
 
 const TZ = "America/Sao_Paulo"
 const brl = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
@@ -17,11 +20,11 @@ const TABS: { id: ChargeFilter; label: string }[] = [
   { id: "pagas", label: "Pagas" },
 ]
 
-const STATE_STYLE: Record<ChargeState, { bg: string; fg: string; label: string }> = {
-  pendente: { bg: "#fef3c7", fg: "#92400e", label: "A receber" },
-  vencida: { bg: "#fee2e2", fg: "#b91c1c", label: "Vencida" },
-  paga: { bg: "#dcfce7", fg: "#166534", label: "Paga" },
-  cancelada: { bg: "#e5e7eb", fg: "#374151", label: "Cancelada" },
+const STATE: Record<ChargeState, { tone: keyof typeof chipTone; label: string }> = {
+  pendente: { tone: "wait", label: "A receber" },
+  vencida: { tone: "late", label: "Vencida" },
+  paga: { tone: "ok", label: "Paga" },
+  cancelada: { tone: "mute", label: "Cancelada" },
 }
 
 type ContactHit = { id: string; name: string; phone: string }
@@ -79,16 +82,17 @@ export function ChargesBoard() {
   }
 
   return (
-    <div style={{ maxWidth: 900, margin: "0 auto", padding: "24px 20px" }}>
-      <div style={{ display: "flex", alignItems: "center", marginBottom: 16 }}>
-        <h1 style={{ color: "#6d28d9", margin: 0, fontSize: 22, flex: 1 }}>Cobranças</h1>
-        <button onClick={() => setShowForm((v) => !v)} style={btn}>+ Cobrança</button>
-      </div>
+    <>
+      <PageHeader
+        title="Cobranças"
+        subtitle="Dinheiro a receber das clientes. Ao marcar como paga, vira uma compra e vai pro Meta."
+        actions={<button onClick={() => setShowForm((v) => !v)} style={btn}><Plus size={15} style={{ verticalAlign: -2, marginRight: 4 }} />Cobrança</button>}
+      />
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12, marginBottom: 16 }}>
-        <SummaryCard label="A receber" color="#92400e" bg="#fffbeb" value={summary?.aReceber} />
-        <SummaryCard label="Vencidas" color="#b91c1c" bg="#fef2f2" value={summary?.vencidas} />
-        <SummaryCard label="Recebidas" color="#166534" bg="#f0fdf4" value={summary?.pagas} />
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))", gap: 14 }}>
+        <SummaryCard label="A receber" tone="wait" value={summary?.aReceber} />
+        <SummaryCard label="Vencidas" tone="late" value={summary?.vencidas} />
+        <SummaryCard label="Recebidas" tone="ok" value={summary?.pagas} />
       </div>
 
       {showForm && (
@@ -101,15 +105,17 @@ export function ChargesBoard() {
         />
       )}
 
-      <div style={{ display: "flex", gap: 6, marginBottom: 12, flexWrap: "wrap" }}>
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
         {TABS.map((t) => (
           <button
             key={t.id}
             onClick={() => setTab(t.id)}
             style={{
-              padding: "6px 14px", borderRadius: 999, fontSize: 13, fontWeight: 600, cursor: "pointer",
-              border: "1px solid " + (tab === t.id ? "#7c3aed" : "#e5e7eb"),
-              background: tab === t.id ? "#f3e8ff" : "#fff", color: tab === t.id ? "#6d28d9" : "#6b7280",
+              padding: "7px 16px", borderRadius: 999, fontSize: 13, fontWeight: 700, cursor: "pointer",
+              border: `1px solid ${tab === t.id ? "transparent" : "var(--soft)"}`,
+              background: tab === t.id ? "var(--accent)" : "var(--field)",
+              color: tab === t.id ? "var(--on-accent)" : "var(--muted)",
+              boxShadow: tab === t.id ? "0 0 16px var(--glow)" : "none",
             }}
           >
             {t.label}
@@ -117,9 +123,9 @@ export function ChargesBoard() {
         ))}
       </div>
 
-      {error && <p style={{ color: "#dc2626", fontSize: 13 }}>{error}</p>}
+      {error && <p style={{ ...errorText, margin: 0 }}>{error}</p>}
 
-      <div style={{ background: "#fff", borderRadius: 14, boxShadow: "0 6px 20px rgba(124,58,237,0.08)" }}>
+      <div style={{ ...card, padding: 6 }}>
         {charges === null ? (
           <p style={empty}>Carregando...</p>
         ) : charges.length === 0 ? (
@@ -127,34 +133,32 @@ export function ChargesBoard() {
             Nenhuma cobrança aqui. Crie a primeira em <b>+ Cobrança</b> ou pelo botão <b>Cobrar</b> de um card do funil.
           </p>
         ) : (
-          charges.map((c) => {
-            const s = STATE_STYLE[c.state]
+          charges.map((c, i) => {
+            const s = STATE[c.state]
             const open = c.state === "pendente" || c.state === "vencida"
             const text = buildChargeMessage({
               name: c.contactName, amount: c.amount, dueDate: c.dueDate,
               description: c.description, paymentLink: c.paymentLink,
             })
             return (
-              <div key={c.id} style={row}>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontWeight: 600, fontSize: 14 }}>{c.contactName}</div>
-                  <div style={{ fontSize: 12, color: "#6b7280", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              <div key={c.id} style={{ ...row, borderTop: i === 0 ? "none" : "1px solid var(--soft)" }}>
+                <div style={{ flex: 1, minWidth: 180 }}>
+                  <div style={{ fontWeight: 600, fontSize: 14, color: "var(--strong)" }}>{c.contactName}</div>
+                  <div style={{ fontSize: 12, color: "var(--muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                     {c.description || "Sem descrição"} · {c.contactPhone}
                   </div>
                 </div>
-                <div style={{ textAlign: "right", minWidth: 96 }}>
-                  <div style={{ fontWeight: 700, fontSize: 14 }}>{brl(c.amount)}</div>
-                  <div style={{ fontSize: 12, color: "#6b7280" }}>
+                <div style={{ textAlign: "right", minWidth: 100 }}>
+                  <div style={{ fontWeight: 700, fontSize: 15, color: "var(--strong)" }}>{brl(c.amount)}</div>
+                  <div style={{ fontSize: 12, color: "var(--muted)" }}>
                     {c.state === "paga" && c.paidAt ? `paga em ${shortDate(c.paidAt)}` : `vence ${shortDate(c.dueDate)}`}
                   </div>
                 </div>
-                <span style={{ background: s.bg, color: s.fg, fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 999, minWidth: 74, textAlign: "center" }}>
-                  {s.label}
-                </span>
+                <span style={{ ...chip(s.tone), minWidth: 82, justifyContent: "center" }}>{s.label}</span>
                 {open ? (
-                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "flex-end", minWidth: 250 }}>
-                    <a href={whatsappLink(c.contactPhone, text)} target="_blank" rel="noreferrer" style={{ ...ghostSm, textDecoration: "none" }}>
-                      Cobrar no WhatsApp
+                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "flex-end", minWidth: 270 }}>
+                    <a href={whatsappLink(c.contactPhone, text)} target="_blank" rel="noreferrer" style={{ ...ghostSm, textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 5 }}>
+                      <MessageSquare size={13} />Cobrar no WhatsApp
                     </a>
                     <button disabled={busyId === c.id} onClick={() => act(c, "pay")} style={btnSm}>
                       {busyId === c.id ? "..." : "Marcar paga"}
@@ -162,32 +166,32 @@ export function ChargesBoard() {
                     <button disabled={busyId === c.id} onClick={() => act(c, "cancel")} style={ghostSm}>Cancelar</button>
                   </div>
                 ) : (
-                  <div style={{ minWidth: 250 }} />
+                  <div style={{ minWidth: 270 }} />
                 )}
               </div>
             )
           })
         )}
       </div>
-    </div>
+    </>
   )
 }
 
 function SummaryCard({
-  label, color, bg, value,
+  label, tone, value,
 }: {
   label: string
-  color: string
-  bg: string
+  tone: "wait" | "late" | "ok"
   value?: { count: number; total: number }
 }) {
+  const color = tone === "wait" ? "var(--wait-text)" : tone === "late" ? "var(--late-text)" : "var(--ok-text)"
   return (
-    <div style={{ background: bg, borderRadius: 12, padding: "14px 16px" }}>
-      <div style={{ fontSize: 12, color, fontWeight: 600 }}>{label}</div>
-      <div style={{ fontSize: 22, fontWeight: 800, color }}>{value ? brl(value.total) : "..."}</div>
-      <div style={{ fontSize: 12, color: "#6b7280" }}>
+    <div className="v-card" style={{ padding: "16px 18px" }}>
+      <div style={{ fontSize: 13, color: "var(--muted)" }}>{label}</div>
+      <div style={{ fontSize: 28, fontWeight: 700, color: "var(--strong)", margin: "4px 0" }}>{value ? brl(value.total) : "..."}</div>
+      <span style={{ ...chip(tone), color }}>
         {value ? `${value.count} ${value.count === 1 ? "cobrança" : "cobranças"}` : ""}
-      </div>
+      </span>
     </div>
   )
 }
@@ -236,45 +240,44 @@ function NewChargeForm({ onClose, onDone }: { onClose: () => void; onDone: () =>
   }
 
   return (
-    <div style={{ background: "#fff", border: "1px solid #ede9fe", borderRadius: 12, padding: 14, marginBottom: 16, display: "flex", flexDirection: "column", gap: 8 }}>
+    <div style={{ ...card, padding: 16, display: "flex", flexDirection: "column", gap: 10 }}>
       {contact ? (
         <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14 }}>
-          <b>{contact.name}</b> <span style={{ color: "#6b7280" }}>{contact.phone}</span>
+          <HandCoins size={17} style={{ color: "var(--vred)" }} />
+          <b style={{ color: "var(--strong)" }}>{contact.name}</b> <span style={{ color: "var(--muted)" }}>{contact.phone}</span>
           <button onClick={() => { setContact(null); setQ("") }} style={{ ...ghostSm, marginLeft: "auto" }}>Trocar</button>
         </div>
       ) : (
         <div>
-          <input autoFocus placeholder="Buscar cliente por nome ou telefone" value={q} onChange={(e) => setQ(e.target.value)} style={{ ...field, width: "100%" }} />
-          <div style={{ maxHeight: 160, overflowY: "auto", marginTop: 4 }}>
+          <input autoFocus placeholder="Buscar cliente por nome ou telefone" value={q} onChange={(e) => setQ(e.target.value)} style={field} />
+          <div style={{ maxHeight: 170, overflowY: "auto", marginTop: 6 }}>
             {hits.map((h) => (
               <button key={h.id} onClick={() => setContact(h)} style={hit}>
-                {h.name} <span style={{ color: "#9ca3af" }}>{h.phone}</span>
+                {h.name} <span style={{ color: "var(--faint)" }}>{h.phone}</span>
               </button>
             ))}
-            {hits.length === 0 && <p style={{ fontSize: 12, color: "#9ca3af", margin: "6px 2px" }}>Nenhuma cliente encontrada. Crie o contato no Funil primeiro.</p>}
+            {hits.length === 0 && <p style={{ fontSize: 12, color: "var(--faint)", margin: "6px 2px" }}>Nenhuma cliente encontrada. Crie o contato no Funil primeiro.</p>}
           </div>
         </div>
       )}
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-        <input placeholder="Valor (R$)" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} style={{ ...field, width: 130 }} />
-        <input type="date" value={due} onChange={(e) => setDue(e.target.value)} style={field} />
-        <input placeholder="Descrição (opcional)" value={desc} onChange={(e) => setDesc(e.target.value)} style={{ ...field, flex: 1, minWidth: 180 }} />
+        <input placeholder="Valor (R$)" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} style={{ ...field, width: 140 }} />
+        <input type="date" value={due} onChange={(e) => setDue(e.target.value)} style={{ ...field, width: "auto" }} />
+        <input placeholder="Descrição (opcional)" value={desc} onChange={(e) => setDesc(e.target.value)} style={{ ...field, flex: 1, minWidth: 180, width: "auto" }} />
       </div>
       <input placeholder="Link de pagamento ou Pix copia-e-cola (opcional, vai na mensagem)" value={link} onChange={(e) => setLink(e.target.value)} style={field} />
       <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-        <button onClick={create} disabled={busy} style={btn}>{busy ? "Criando..." : "Criar cobrança"}</button>
+        <button onClick={create} disabled={busy} style={{ ...btn, opacity: busy ? 0.6 : 1 }}>{busy ? "Criando..." : "Criar cobrança"}</button>
         <button onClick={onClose} style={ghost}>Cancelar</button>
-        {err && <span style={{ color: "#dc2626", fontSize: 12 }}>{err}</span>}
+        {err && <span style={{ color: "var(--danger)", fontSize: 12 }}>{err}</span>}
       </div>
     </div>
   )
 }
 
-const empty: React.CSSProperties = { padding: 24, textAlign: "center", color: "#6b7280", fontSize: 14, margin: 0 }
-const row: React.CSSProperties = { display: "flex", alignItems: "center", gap: 14, padding: "12px 16px", borderBottom: "1px solid #f3f4f6", flexWrap: "wrap" }
-const field: React.CSSProperties = { border: "1px solid #d1d5db", borderRadius: 8, padding: "8px 10px", fontSize: 13, background: "#fff" }
-const btn: React.CSSProperties = { background: "#7c3aed", color: "#fff", border: "none", borderRadius: 8, padding: "9px 16px", fontSize: 13, fontWeight: 600, cursor: "pointer" }
-const ghost: React.CSSProperties = { background: "transparent", color: "#6d28d9", border: "1px solid #c4b5fd", borderRadius: 8, padding: "9px 16px", fontSize: 13, fontWeight: 600, cursor: "pointer" }
-const btnSm: React.CSSProperties = { ...btn, padding: "5px 10px", fontSize: 12 }
-const ghostSm: React.CSSProperties = { ...ghost, padding: "5px 10px", fontSize: 12 }
-const hit: React.CSSProperties = { display: "block", width: "100%", textAlign: "left", background: "none", border: "none", padding: "7px 8px", fontSize: 13, cursor: "pointer", borderRadius: 6 }
+const empty: React.CSSProperties = { padding: 28, textAlign: "center", color: "var(--muted)", fontSize: 14, margin: 0 }
+const row: React.CSSProperties = { display: "flex", alignItems: "center", gap: 14, padding: "14px 16px", flexWrap: "wrap" }
+const hit: React.CSSProperties = {
+  ...inner, display: "block", width: "100%", textAlign: "left", cursor: "pointer", color: "var(--text)",
+  padding: "8px 10px", fontSize: 13, marginBottom: 5,
+}

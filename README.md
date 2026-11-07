@@ -163,6 +163,10 @@ Página **Respostas rápidas** (`/dashboard/respostas`): mensagens prontas.
 - Regra única de nomes em `lib/names.ts` (tira a palavra "cliente" e ignora
   "Cliente WhatsApp"), usada por mensagens, cobranças e Meta.
 
+## Tema Vision (visual)
+
+Todas as cores ficam em variáveis no topo de `server/src/app/globals.css` (fundo azul-marinho, vinho fluorescente `--accent`, vermelho do Visão `--vred`, dourado `--gold`). Estilos compartilhados de botões, cartões e selos ficam em `server/src/lib/ui.ts`. Pra criar o tema claro, basta trocar os valores dessas variáveis. Menu lateral em `components/dash-nav.tsx`, ícones Lucide.
+
 ## Fila de entregas
 
 1. Etiquetas/Listas (feito)

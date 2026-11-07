@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { ChevronDown, ChevronRight, Copy, Paperclip, Pencil, Plus, Search, Star, Trash2 } from "lucide-react"
 import type { QuickReplyView } from "@/lib/quick-replies"
 import {
   MAX_ACCOUNT_BYTES, MAX_CAPTION, MEDIA_RULES, QUICK_REPLY_TYPES, TYPE_INFO, formatBytes, isMediaKind,
@@ -8,6 +9,9 @@ import {
 } from "@/lib/quick-reply-types"
 import { VARIABLES, renderVariables } from "@/lib/quick-reply-vars"
 import { FileDrop, MediaLine, SavedPreview, Toggle } from "@/components/quick-reply-media"
+import { PageHeader } from "@/components/page-header"
+import { TypeIcon } from "@/components/type-icon"
+import { btn, card, empty, errorText, field, ghost, helper, iconBtn, inner, label, modal, modalTitle, opt, overlay, req } from "@/lib/ui"
 
 const NO_CATEGORY = "SEM CATEGORIA"
 const SAMPLE = { contactName: "Maria da Silva", contactPhone: "5511999998888", myName: "Seu nome" }
@@ -135,23 +139,32 @@ export function QuickRepliesBoard() {
     })
 
   return (
-    <div style={{ maxWidth: 760, margin: "0 auto", padding: "24px 20px" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 6 }}>
-        <h1 style={{ color: "#6d28d9", margin: 0, fontSize: 22, flex: 1 }}>Respostas rápidas</h1>
-        <button onClick={() => setEditor({ mode: "new", kind: null })} style={btn}>+ Nova</button>
-      </div>
-      <p style={{ fontSize: 13, color: "#6b7280", margin: "0 0 14px" }}>
-        Mensagens prontas. Usar dentro da conversa (digitando <code>;</code> + atalho) vem com a extensão, em breve.
-        {usedBytes > 0 && (
-          <span style={{ marginLeft: 8, color: usedBytes > MAX_ACCOUNT_BYTES * 0.8 ? "#b45309" : "#9ca3af" }}>
-            Arquivos: {formatBytes(usedBytes)} de {formatBytes(MAX_ACCOUNT_BYTES)}
-          </span>
-        )}
-      </p>
+    <>
+      <PageHeader
+        title="Respostas rápidas"
+        subtitle={
+          <>
+            Mensagens prontas. Usar dentro da conversa (digitando <code>;</code> + atalho) vem com a extensão, em breve.
+            {usedBytes > 0 && (
+              <span style={{ marginLeft: 8, color: usedBytes > MAX_ACCOUNT_BYTES * 0.8 ? "var(--wait)" : "var(--faint)" }}>
+                Arquivos: {formatBytes(usedBytes)} de {formatBytes(MAX_ACCOUNT_BYTES)}
+              </span>
+            )}
+          </>
+        }
+        actions={
+          <button onClick={() => setEditor({ mode: "new", kind: null })} style={btn}>
+            <Plus size={15} style={{ verticalAlign: -2, marginRight: 4 }} />Nova
+          </button>
+        }
+      />
 
-      <div style={{ display: "flex", gap: 8, marginBottom: 14, flexWrap: "wrap" }}>
-        <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar mensagem" style={{ ...field, flex: 1, minWidth: 200 }} />
-        <select value={filter} onChange={(e) => setFilter(e.target.value as Filter)} style={field}>
+      <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+        <div style={searchBox}>
+          <Search size={16} style={{ color: "var(--muted)", flex: "none" }} />
+          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar mensagem" style={bare} />
+        </div>
+        <select value={filter} onChange={(e) => setFilter(e.target.value as Filter)} style={{ ...field, width: "auto" }}>
           <option value="todas">Todas</option>
           <option value="favoritas">Favoritas</option>
           {QUICK_REPLY_TYPES.filter((t) => TYPE_INFO[t].available).map((t) => (
@@ -160,7 +173,7 @@ export function QuickRepliesBoard() {
         </select>
       </div>
 
-      {error && <p style={{ color: "#dc2626", fontSize: 13 }}>{error}</p>}
+      {error && <p style={{ ...errorText, margin: 0 }}>{error}</p>}
 
       {items === null ? (
         <p style={empty}>Carregando...</p>
@@ -172,33 +185,36 @@ export function QuickRepliesBoard() {
         groups.map(([key, list]) => {
           const closed = collapsed.has(key)
           return (
-            <div key={key} style={{ marginBottom: 14 }}>
+            <div key={key}>
               <button onClick={() => toggleGroup(key)} style={groupHeader}>
-                <span style={{ width: 8, height: 8, borderRadius: "50%", background: key === NO_CATEGORY ? "#9ca3af" : "#10b981" }} />
-                <span style={{ fontWeight: 700, fontSize: 12, letterSpacing: 0.4 }}>{key}</span>
-                <span style={{ fontSize: 12, color: "#9ca3af" }}>({list.length})</span>
-                <span style={{ marginLeft: "auto", color: "#9ca3af" }}>{closed ? "▸" : "▾"}</span>
+                <span style={{ width: 8, height: 8, borderRadius: "50%", background: key === NO_CATEGORY ? "var(--faint)" : "var(--accent)", boxShadow: key === NO_CATEGORY ? "none" : "0 0 8px var(--glow)" }} />
+                <span style={{ fontWeight: 700, fontSize: 12, letterSpacing: 1, color: "var(--vred)" }}>{key}</span>
+                <span style={{ fontSize: 12, color: "var(--faint)" }}>({list.length})</span>
+                <span style={{ marginLeft: "auto", color: "var(--faint)", display: "grid" }}>
+                  {closed ? <ChevronRight size={16} /> : <ChevronDown size={16} />}
+                </span>
               </button>
               {!closed && (
-                <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 8 }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: 9, marginTop: 8 }}>
                   {list.map((i) => (
-                    <div key={i.id} onMouseEnter={() => setHover(i.id)} onMouseLeave={() => setHover(null)} style={card}>
+                    <div key={i.id} onMouseEnter={() => setHover(i.id)} onMouseLeave={() => setHover(null)} style={{ ...card, padding: "12px 14px" }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                        <span title={TYPE_INFO[i.type].label} style={typeIcon}>{TYPE_INFO[i.type].icon}</span>
-                        <strong style={{ flex: 1, fontSize: 14, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{i.name}</strong>
+                        <span title={TYPE_INFO[i.type].label} style={typeIcon}><TypeIcon kind={i.type} size={16} /></span>
+                        <strong style={{ flex: 1, fontSize: 14, color: "var(--strong)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{i.name}</strong>
                         {hover === i.id && (
                           <span style={{ display: "flex", gap: 2 }}>
-                            <button title="Duplicar" onClick={() => duplicate(i)} style={iconBtn}>⧉</button>
-                            <button title="Editar" onClick={() => setEditor({ mode: "edit", item: i })} style={iconBtn}>✎</button>
-                            <button title="Excluir" onClick={() => remove(i)} style={{ ...iconBtn, color: "#dc2626" }}>🗑</button>
+                            <button title="Duplicar" aria-label="Duplicar" onClick={() => duplicate(i)} style={iconBtn}><Copy size={16} /></button>
+                            <button title="Editar" aria-label="Editar" onClick={() => setEditor({ mode: "edit", item: i })} style={iconBtn}><Pencil size={16} /></button>
+                            <button title="Excluir" aria-label="Excluir" onClick={() => remove(i)} style={{ ...iconBtn, color: "var(--danger)" }}><Trash2 size={16} /></button>
                           </span>
                         )}
                         <button
                           title={i.favorite ? "Tirar dos favoritos" : "Favoritar"}
+                          aria-label={i.favorite ? "Tirar dos favoritos" : "Favoritar"}
                           onClick={() => toggleFavorite(i)}
-                          style={{ ...iconBtn, color: i.favorite ? "#f59e0b" : "#d1d5db", fontSize: 18 }}
+                          style={{ ...iconBtn, color: i.favorite ? "var(--gold)" : "var(--faint)" }}
                         >
-                          {i.favorite ? "★" : "☆"}
+                          <Star size={18} fill={i.favorite ? "currentColor" : "none"} />
                         </button>
                       </div>
                       {i.type === "TEXT" && i.text && <p style={preview}>{i.text}</p>}
@@ -207,8 +223,8 @@ export function QuickRepliesBoard() {
                       {i.type === "CONTACT" && (
                         <p style={preview}>Cartão de contato: {i.contactName} · {i.contactPhone}</p>
                       )}
-                      <div style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 6, fontSize: 11, color: "#9ca3af" }}>
-                        {i.shortcut && <span style={chip}>;{i.shortcut}</span>}
+                      <div style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 8, fontSize: 11, color: "var(--faint)" }}>
+                        {i.shortcut && <span style={shortcutChip}>;{i.shortcut}</span>}
                         <span style={{ marginLeft: "auto" }}>usada {i.usageCount}×</span>
                       </div>
                     </div>
@@ -231,7 +247,7 @@ export function QuickRepliesBoard() {
           }}
         />
       )}
-    </div>
+    </>
   )
 }
 
@@ -359,18 +375,18 @@ function EditorModal({
                 const info = TYPE_INFO[t]
                 return (
                   <button key={t} disabled={!info.available} onClick={() => setKind(t)} title={info.available ? info.hint : "Em breve: " + info.hint} style={{ ...tile, opacity: info.available ? 1 : 0.45, cursor: info.available ? "pointer" : "not-allowed" }}>
-                    <span style={{ fontSize: 20 }}>{info.icon}</span>
-                    <span style={{ fontWeight: 600, fontSize: 13 }}>{info.label}</span>
-                    {!info.available && <span style={{ fontSize: 10, color: "#9ca3af" }}>em breve</span>}
+                    <span style={{ color: "var(--vred)", display: "grid" }}><TypeIcon kind={t} size={22} /></span>
+                    <span style={{ fontWeight: 600, fontSize: 13, color: "var(--text)" }}>{info.label}</span>
+                    {!info.available && <span style={{ fontSize: 10, color: "var(--faint)" }}>em breve</span>}
                   </button>
                 )
               })}
             </div>
             <button disabled style={{ ...tile, width: "100%", marginTop: 10, flexDirection: "row", justifyContent: "flex-start", gap: 10, opacity: 0.45, cursor: "not-allowed" }}>
-              <span style={{ fontSize: 18 }}>{TYPE_INFO.SEQUENCE.icon}</span>
-              <span style={{ textAlign: "left" }}>
+              <span style={{ color: "var(--vred)", display: "grid" }}><TypeIcon kind="SEQUENCE" size={20} /></span>
+              <span style={{ textAlign: "left", color: "var(--text)" }}>
                 <b style={{ fontSize: 13 }}>Sequência de mensagens</b>
-                <br /><span style={{ fontSize: 11, color: "#6b7280" }}>Várias respostas rápidas, uma depois da outra. Em breve.</span>
+                <br /><span style={{ fontSize: 11, color: "var(--muted)" }}>Várias respostas rápidas, uma depois da outra. Em breve.</span>
               </span>
             </button>
             <div style={{ textAlign: "center", marginTop: 16 }}>
@@ -396,8 +412,8 @@ function EditorModal({
                   {media === "AUDIO" ? "Áudio" : "Arquivo"} {!editing && <span style={req}>*</span>}
                 </label>
                 {editing && !file && editing.mediaName && (
-                  <div style={{ fontSize: 13, marginBottom: 8 }}>
-                    📎 {editing.mediaName} {editing.mediaSize != null && <span style={opt}>· {formatBytes(editing.mediaSize)}</span>}
+                  <div style={{ fontSize: 13, marginBottom: 8, color: "var(--text)" }}>
+                    <Paperclip size={14} style={{ verticalAlign: -2, marginRight: 5, color: "var(--vred)" }} />{editing.mediaName} {editing.mediaSize != null && <span style={opt}>· {formatBytes(editing.mediaSize)}</span>}
                     {media !== "DOCUMENT" && <SavedPreview id={editing.id} kind={media} name={editing.mediaName} />}
                   </div>
                 )}
@@ -428,8 +444,8 @@ function EditorModal({
                 <p style={helper}>Clique pra inserir. O cliente recebe tudo preenchido.</p>
                 {text.trim() && (
                   <div style={previewBox}>
-                    <div style={{ fontSize: 11, color: "#9ca3af", marginBottom: 2 }}>Como a cliente recebe (exemplo com Maria da Silva):</div>
-                    <div style={{ whiteSpace: "pre-wrap", fontSize: 13 }}>{renderVariables(text, SAMPLE)}</div>
+                    <div style={{ fontSize: 11, color: "var(--muted)", marginBottom: 2 }}>Como a cliente recebe (exemplo com Maria da Silva):</div>
+                    <div style={{ whiteSpace: "pre-wrap", fontSize: 13, color: "var(--text)" }}>{renderVariables(text, SAMPLE)}</div>
                   </div>
                 )}
               </>
@@ -446,21 +462,21 @@ function EditorModal({
             )}
 
             <button type="button" onClick={() => setMoreOpen((v) => !v)} style={moreBtn}>
-              {moreOpen ? "▾" : "▸"} Mais opções <span style={opt}>(atalho)</span>
+              {moreOpen ? <ChevronDown size={15} /> : <ChevronRight size={15} />} Mais opções <span style={opt}>(atalho)</span>
             </button>
             {moreOpen && (
               <>
                 <label style={label}>Atalho</label>
                 <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  <span style={{ fontWeight: 700, color: "#6b7280" }}>;</span>
+                  <span style={{ fontWeight: 700, color: "var(--muted)" }}>;</span>
                   <input value={shortcut} onChange={(e) => setShortcut(e.target.value)} maxLength={31} placeholder="atalho" style={{ ...field, flex: 1 }} />
                 </div>
                 <p style={helper}>Na conversa, digite ; e o atalho pra achar esta mensagem rápido.</p>
               </>
             )}
 
-            {missing > 0 && <p style={{ color: "#d97706", fontSize: 13, margin: "12px 0 0" }}>Faltam {missing} {missing === 1 ? "campo" : "campos"}.</p>}
-            {err && <p style={{ color: "#dc2626", fontSize: 13, margin: "8px 0 0" }}>{err}</p>}
+            {missing > 0 && <p style={{ color: "var(--wait)", fontSize: 13, margin: "12px 0 0" }}>Faltam {missing} {missing === 1 ? "campo" : "campos"}.</p>}
+            {err && <p style={errorText}>{err}</p>}
 
             <div style={{ display: "flex", justifyContent: "center", gap: 10, marginTop: 16 }}>
               <button onClick={onClose} style={ghost}>Cancelar</button>
@@ -476,24 +492,17 @@ function EditorModal({
   )
 }
 
-const empty: React.CSSProperties = { padding: 24, textAlign: "center", color: "#6b7280", fontSize: 14, background: "#fff", borderRadius: 14 }
-const field: React.CSSProperties = { border: "1px solid #d1d5db", borderRadius: 8, padding: "8px 10px", fontSize: 13, background: "#fff", width: "100%" }
-const btn: React.CSSProperties = { background: "#7c3aed", color: "#fff", border: "none", borderRadius: 8, padding: "9px 16px", fontSize: 13, fontWeight: 600, cursor: "pointer" }
-const ghost: React.CSSProperties = { background: "transparent", color: "#6d28d9", border: "1px solid #c4b5fd", borderRadius: 8, padding: "9px 16px", fontSize: 13, fontWeight: 600, cursor: "pointer" }
-const groupHeader: React.CSSProperties = { display: "flex", alignItems: "center", gap: 8, width: "100%", background: "none", border: "none", cursor: "pointer", padding: "4px 2px", color: "#374151" }
-const card: React.CSSProperties = { background: "#fff", borderRadius: 12, padding: "10px 14px", boxShadow: "0 2px 8px rgba(124,58,237,0.07)" }
-const typeIcon: React.CSSProperties = { width: 28, height: 28, borderRadius: 8, background: "#f3e8ff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, flexShrink: 0 }
-const iconBtn: React.CSSProperties = { background: "none", border: "none", cursor: "pointer", fontSize: 15, padding: "2px 5px", color: "#6b7280" }
-const preview: React.CSSProperties = { fontSize: 13, color: "#4b5563", margin: "6px 0 0", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", whiteSpace: "pre-wrap" }
-const chip: React.CSSProperties = { background: "#ede9fe", color: "#6d28d9", fontWeight: 700, padding: "1px 7px", borderRadius: 999 }
-const overlay: React.CSSProperties = { position: "fixed", inset: 0, background: "rgba(31,41,55,0.4)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }
-const modal: React.CSSProperties = { background: "#fff", borderRadius: 16, padding: 24, width: 520, maxWidth: "100%", maxHeight: "92vh", overflowY: "auto" }
-const modalTitle: React.CSSProperties = { margin: "0 0 14px", textAlign: "center", fontSize: 18, color: "#1f2937" }
-const label: React.CSSProperties = { display: "block", fontSize: 12, fontWeight: 600, margin: "12px 0 4px" }
-const req: React.CSSProperties = { color: "#dc2626" }
-const opt: React.CSSProperties = { color: "#9ca3af", fontWeight: 400 }
-const helper: React.CSSProperties = { fontSize: 12, color: "#6b7280", margin: "6px 0 0" }
-const tile: React.CSSProperties = { display: "flex", flexDirection: "column", alignItems: "center", gap: 4, padding: "14px 8px", background: "#faf5ff", border: "1px solid #ede9fe", borderRadius: 12 }
-const varChip: React.CSSProperties = { background: "#f3f4f6", border: "1px solid #e5e7eb", borderRadius: 999, padding: "3px 10px", fontSize: 12, cursor: "pointer", color: "#374151" }
-const moreBtn: React.CSSProperties = { background: "none", border: "none", cursor: "pointer", fontSize: 13, fontWeight: 600, color: "#4b5563", padding: "14px 0 0" }
-const previewBox: React.CSSProperties = { background: "#f0fdf4", border: "1px solid #dcfce7", borderRadius: 10, padding: "8px 10px", marginTop: 10 }
+const searchBox: React.CSSProperties = {
+  display: "flex", alignItems: "center", gap: 8, flex: "1 1 260px", maxWidth: 420,
+  background: "var(--field)", border: "1px solid var(--soft)", borderRadius: 12, padding: "8px 12px",
+}
+/** Campo sem moldura própria (a moldura é do contêiner). */
+const bare: React.CSSProperties = { flex: 1, background: "transparent", border: "none", boxShadow: "none", padding: 0, fontSize: 13, outline: "none", color: "var(--text)", width: "100%" }
+const groupHeader: React.CSSProperties = { display: "flex", alignItems: "center", gap: 8, width: "100%", background: "none", border: "none", cursor: "pointer", padding: "4px 2px" }
+const typeIcon: React.CSSProperties = { width: 30, height: 30, borderRadius: 9, background: "var(--accent-soft)", border: "1px solid var(--accent-line)", color: "var(--accent-text)", display: "grid", placeItems: "center", flexShrink: 0 }
+const preview: React.CSSProperties = { fontSize: 13, color: "var(--text-2)", margin: "8px 0 0", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", whiteSpace: "pre-wrap" }
+const shortcutChip: React.CSSProperties = { background: "var(--accent-soft)", color: "var(--accent-text)", border: "1px solid var(--accent-line)", fontWeight: 700, padding: "1px 8px", borderRadius: 999 }
+const tile: React.CSSProperties = { ...inner, display: "flex", flexDirection: "column", alignItems: "center", gap: 6, padding: "16px 8px" }
+const varChip: React.CSSProperties = { background: "var(--field)", border: "1px solid var(--soft)", borderRadius: 999, padding: "3px 11px", fontSize: 12, cursor: "pointer", color: "var(--text-2)" }
+const moreBtn: React.CSSProperties = { background: "none", border: "none", cursor: "pointer", fontSize: 13, fontWeight: 600, color: "var(--text-2)", padding: "14px 0 0", display: "inline-flex", alignItems: "center", gap: 4 }
+const previewBox: React.CSSProperties = { background: "var(--ok-bg)", border: "1px solid var(--ok-line)", borderRadius: 10, padding: "8px 10px", marginTop: 10 }

@@ -44,7 +44,7 @@ export async function POST(req: NextRequest) {
     data: {
       userId: user.id,
       name: data.name.trim(),
-      color: data.color ?? "#8b5cf6",
+      color: data.color ?? "#3b82f6",
       order: (last?.order ?? -1) + 1,
     },
   })

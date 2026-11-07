@@ -34,6 +34,8 @@ export type Funnel = {
   lists: FunnelColumn[]
   unassigned: { total: number; cards: FunnelCard[] }
   totals: { contacts: number; totalSpent: number }
+  /** Cobranças em aberto da conta toda: a receber (ainda no prazo) e vencidas. */
+  charges: { aReceber: { count: number; total: number }; vencidas: { count: number; total: number } }
   truncated: boolean // true se há mais contatos do que o limite de leitura
 }
 
@@ -131,10 +133,20 @@ export async function buildFunnel(userId: string): Promise<Funnel> {
 
   const totalSpent = [...cards.values()].reduce((sum, c) => sum + c.totalSpent, 0)
 
+  // Cobranças em aberto (de todos os contatos, não só dos 2000 lidos)
+  const charges = { aReceber: { count: 0, total: 0 }, vencidas: { count: 0, total: 0 } }
+  for (const d of due.values()) {
+    charges.vencidas.count += d.overdueCount
+    charges.vencidas.total += d.overdueTotal
+    charges.aReceber.count += d.count - d.overdueCount
+    charges.aReceber.total += d.total - d.overdueTotal
+  }
+
   return {
     lists: columns,
     unassigned: pick(null),
     totals: { contacts: visible.length, totalSpent },
+    charges,
     truncated,
   }
 }
