@@ -157,6 +157,10 @@ Página **Respostas rápidas** (`/dashboard/respostas`): mensagens prontas.
 
 Aba **Importar** da extensão: lê, pelos dados internos do WhatsApp Web (`page-bridge.js`), as **etiquetas** (viram listas, com a cor), os **contatos** e o **estado da conversa** (última mensagem foi sua ou da cliente, não lidas, arquivada). Manda pro CRM em lotes de 250 (`POST /api/crm/import`). Nunca apaga nada, não sobrescreve nome já cadastrado e não duplica (compara pelos 8 últimos dígitos do telefone). Grupos, canais e conversas sem telefone descoberto ficam de fora. Testado só num WhatsApp simulado; no real pode precisar de ajuste (botão **Copiar diagnóstico da leitura**).
 
+## Ferramentas
+
+Página `/dashboard/ferramentas`: **abrir conversa sem salvar o contato** (número + mensagem opcional, abre o wa.me) e **exportar contatos** em CSV (`GET /api/crm/export`: nome, telefone, listas, origem, compras, total, última compra, aguardando resposta; UTF-8 com BOM e separador `;` pra abrir no Excel; texto que começa com = + - @ ganha apóstrofo pra não virar fórmula).
+
 ## Painel do dia
 
 Página `/dashboard/painel` (API `GET /api/crm/day`): vendas de hoje e dos últimos 7 dias, clientes novos, bloco **Atenção** (falhas e compras sem pixel no envio ao Meta, cobranças vencidas, lembretes atrasados), lembretes de hoje, cobranças e quem espera resposta. "Esperam resposta" vem do estado guardado na última importação; o aviso ao vivo fica na extensão. O botão "Abrir o Painel do Dia" do aviso da extensão abre esta página.

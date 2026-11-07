@@ -37,7 +37,7 @@ const GROUPS: { title: string; items: Item[] }[] = [
   {
     title: "FERRAMENTAS",
     items: [
-      { label: "Ferramentas", icon: Wrench },
+      { label: "Ferramentas", icon: Wrench, href: "/dashboard/ferramentas" },
       { label: "Configurações", icon: Settings, href: "/dashboard/configuracoes" },
     ],
   },
