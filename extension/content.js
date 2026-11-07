@@ -625,10 +625,22 @@ function ensureSide() {
 // ── Aviso: "N clientes esperam sua resposta" ─────────────────────────────────
 
 const WAIT_ID = "vcrm-wait"
-const WAIT_MIN_MINUTES = 60 // só avisa de quem espera há pelo menos 1 hora
+const WAIT_MIN_MINUTES = 1 // avisa assim que a cliente espera há 1 minuto
 const WAIT_MAX_HOURS = 72 // e ignora o que é mais velho que 3 dias
 let waitSnoozeUntil = 0
 let waitList = []
+let waitHandled = {} // conversa -> hora da última mensagem que você marcou como "já resolvi"
+
+// A foto da cliente: se a imagem falhar em carregar, volta pra inicial do nome
+document.addEventListener("error", (e) => {
+  const img = e.target
+  if (img && img.tagName === "IMG" && img.dataset && img.dataset.ini !== undefined) {
+    const s = document.createElement("span")
+    s.className = "vw-av"
+    s.textContent = img.dataset.ini
+    img.replaceWith(s)
+  }
+}, true)
 
 const waitFmt = (mins) => (mins >= 1440 ? Math.floor(mins / 1440) + " d" : mins >= 60 ? Math.floor(mins / 60) + " h" : mins + " min")
 
@@ -646,6 +658,17 @@ function renderWaiting() {
         if (!r || !r.opened) toast("Não consegui abrir sozinho. Procure o nome na lista de conversas.")
         return
       }
+      const done = e.target.closest("[data-wait-done]")
+      if (done) {
+        const w = waitList.find((x) => x.key === done.getAttribute("data-wait-done"))
+        if (w) {
+          waitHandled[w.key] = w.lastT
+          chrome.storage.local.set({ vcrmHandled: waitHandled }).catch(() => {})
+          waitList = waitList.filter((x) => x.key !== w.key)
+          renderWaiting()
+        }
+        return
+      }
       const act = e.target.closest("[data-wait-act]")
       if (!act) return
       if (act.getAttribute("data-wait-act") === "later") { waitSnoozeUntil = Date.now() + 30 * 60000; renderWaiting() }
@@ -659,11 +682,14 @@ function renderWaiting() {
     <b>${waitList.length} ${waitList.length === 1 ? "cliente espera" : "clientes esperam"} sua resposta</b>
     <p>Clique no nome para abrir a conversa.</p>
     ${shown.map((w) => `
-      <button class="vw-row" data-wait-open="${esc(w.key)}">
-        <span class="vw-av">${esc((w.name || "?").trim().slice(0, 1).toUpperCase())}</span>
-        <span class="vw-tx"><b>${esc(w.name)}</b><small>${esc(w.preview)}</small></span>
-        <span class="vw-time ${w.mins >= 180 ? "late" : ""}">${waitFmt(w.mins)}</span>
-      </button>`).join("")}
+      <div class="vw-line">
+        <button class="vw-row" data-wait-open="${esc(w.key)}">
+          ${w.pic ? `<img class="vw-av" src="${esc(w.pic)}" data-ini="${esc((w.name || "?").trim().slice(0, 1).toUpperCase())}" alt="" />` : `<span class="vw-av">${esc((w.name || "?").trim().slice(0, 1).toUpperCase())}</span>`}
+          <span class="vw-tx"><b>${esc(w.name)}</b><small>${esc(w.preview)}</small></span>
+          <span class="vw-time ${w.mins >= 180 ? "late" : w.mins < 60 ? "ok" : ""}">${waitFmt(w.mins)}</span>
+        </button>
+        <button class="vw-done" data-wait-done="${esc(w.key)}" title="Já resolvi (volta a avisar se ela mandar outra mensagem)">${icon("check", 14)}</button>
+      </div>`).join("")}
     ${more > 0 ? `<p class="vw-more">e mais ${more}</p>` : ""}
     <div class="vw-foot"><button data-wait-act="panel">Abrir pendências</button><button data-wait-act="later">Agora não</button></div>`
   if (el.dataset.sig !== html) { el.innerHTML = html; el.dataset.sig = html }
@@ -672,7 +698,7 @@ function renderWaiting() {
 async function checkWaiting() {
   if (!document.querySelector("#app")) return
   const r = await askBridge("waiting", 5000, { minMinutes: WAIT_MIN_MINUTES, maxHours: WAIT_MAX_HOURS })
-  if (r && Array.isArray(r.waiting)) waitList = r.waiting
+  if (r && Array.isArray(r.waiting)) waitList = r.waiting.filter((w) => !(waitHandled[w.key] >= w.lastT))
   renderWaiting()
 }
 
@@ -979,8 +1005,9 @@ function init() {
   startObserver()
   refresh(true)
   // aviso de quem espera resposta: confere ao abrir (depois que o WhatsApp carregou) e a cada minuto
-  setTimeout(checkWaiting, 6000)
-  setInterval(checkWaiting, 60000)
+  chrome.storage.local.get(["vcrmHandled"]).then((c) => { waitHandled = c.vcrmHandled || {} }).catch(() => {})
+  setTimeout(checkWaiting, 4000)
+  setInterval(checkWaiting, 5000) // lê só a memória do WhatsApp: é leve, e mantém a lista em tempo real
 }
 
 const boot = setInterval(() => {

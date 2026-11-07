@@ -200,8 +200,16 @@
         const type = String(last.type || "chat")
         let preview = TYPE_LABEL[type] || ""
         if (!preview) preview = String(last.body || last.caption || "Mensagem").replace(/\s+/g, " ").slice(0, 50)
+        let pic = ""
+        try {
+          const pp = (chat.contact && chat.contact.profilePicThumb) || chat.profilePicThumb
+          pic = (pp && (pp.eurl || pp.img || pp.imgFull)) || ""
+          if (typeof pic !== "string" || !/^(https:|blob:|data:image)/.test(pic)) pic = ""
+        } catch { pic = "" }
         out.push({
           key: serial(id),
+          lastT: t,
+          pic,
           name: String(chat.formattedTitle || chat.name || (chat.contact && (chat.contact.name || chat.contact.pushname)) || "").trim() || "Contato",
           preview,
           mins,

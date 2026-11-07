@@ -221,3 +221,11 @@ html.vcrm-on body { padding-right: var(--vcrm-pad, 56px) !important; background:
 #vcrm-side.vs-min .vs-top { height: 14px; padding: 0; }
 #vcrm-side.vs-min .vs-top svg { width: 10px; height: 10px; }
 #vcrm-side.vs-min button b { min-width: 12px; height: 12px; line-height: 12px; font-size: 8px; padding: 0 3px; right: -3px; top: 0; }
+
+/* Foto, "já resolvi" e tempo curto no aviso */
+#vcrm-wait .vw-line { display: flex; align-items: center; gap: 2px; }
+#vcrm-wait .vw-line .vw-row { flex: 1; min-width: 0; }
+#vcrm-wait img.vw-av { object-fit: cover; background: #2a3942; }
+#vcrm-wait .vw-time.ok { color: #7ef0c0; background: rgba(52, 211, 153, 0.15); }
+#vcrm-wait .vw-done { flex: none; width: 28px; height: 28px; border: 0; border-radius: 8px; background: transparent; color: #aebac1; cursor: pointer; display: grid; place-items: center; }
+#vcrm-wait .vw-done:hover { background: rgba(52, 211, 153, 0.18); color: #7ef0c0; }
