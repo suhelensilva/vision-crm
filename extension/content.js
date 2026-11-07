@@ -138,6 +138,39 @@ function getActivePhone() {
   return null
 }
 
+// Pede à página (page-bridge.js) a conversa aberta. Devolve {phone, name, dbg} ou null.
+let bridgeSeq = 0
+function askBridge() {
+  return new Promise((resolve) => {
+    const id = ++bridgeSeq
+    const done = (ev) => {
+      let d = null
+      try { d = JSON.parse(ev.detail) } catch {}
+      if (!d || d.id !== id) return
+      document.removeEventListener("vcrm-res", done)
+      clearTimeout(t)
+      resolve(d)
+    }
+    const t = setTimeout(() => { document.removeEventListener("vcrm-res", done); resolve(null) }, 1200)
+    document.addEventListener("vcrm-res", done)
+    document.dispatchEvent(new CustomEvent("vcrm-req", { detail: id }))
+  })
+}
+
+/** Telefone da conversa: dados internos (ponte) primeiro; senão o que a página mostra. */
+async function resolveChat() {
+  const b = await askBridge()
+  state.bridgeDbg = b ? b.dbg : { semResposta: true }
+  if (b && b.phone === "GROUP") return { phone: null, name: null }
+  if (b && b.phone) return { phone: b.phone, name: (b.name || getActiveName() || "").trim() || null }
+  // plano B: título do cabeçalho é um número (contato sem nome salvo)
+  const nm = getActiveName()
+  const only = nm ? nm.replace(/[s()+-]/g, "") : ""
+  if (/^[0-9]{10,15}$/.test(only)) return { phone: only, name: nm }
+  const legacy = getActivePhone()
+  return { phone: legacy, name: nm }
+}
+
 function getActiveName() {
   const header = document.querySelector("#main header")
   if (!header) return null
@@ -165,7 +198,7 @@ function collectDiagnostic() {
   const attrs = new Set()
   if (main) main.querySelectorAll("*").forEach((e) => { for (const a of e.attributes) if (/^data-/.test(a.name)) attrs.add(a.name) })
   return JSON.stringify({
-    versao: "diag1",
+    versao: "diag2",
     temMain: !!main,
     temHeader: !!header,
     totalDataId: main ? main.querySelectorAll("[data-id]").length : 0,
@@ -174,7 +207,8 @@ function collectDiagnostic() {
     titulosHeader: titles,
     atributosData: [...attrs].slice(0, 25),
     temCampo: !!getComposer(),
-    telefoneLido: getActivePhone() ? "sim" : "nao",
+    telefoneLido: state.phone ? "sim" : "nao",
+    ponte: state.bridgeDbg || null,
   }, null, 1)
 }
 
@@ -718,8 +752,10 @@ async function loadShared() {
 
 let seq = 0
 async function refresh(force) {
-  const phone = getActivePhone()
-  const name = getActiveName()
+  const hasChat = !!document.querySelector("#main")
+  const found = hasChat ? await resolveChat() : { phone: null, name: null }
+  const phone = found.phone
+  const name = found.name
   const changed = phone !== state.phone
   state.phone = phone
   state.name = name

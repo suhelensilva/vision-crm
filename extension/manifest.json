@@ -1,9 +1,11 @@
 {
   "manifest_version": 3,
   "name": "Vision CRM — WhatsApp",
-  "version": "0.2.2",
+  "version": "0.3.0",
   "description": "CRM sobre o WhatsApp Web: dados da cliente, notas, cobranças, listas e respostas rápidas.",
-  "permissions": ["storage"],
+  "permissions": [
+    "storage"
+  ],
   "host_permissions": [
     "https://web.whatsapp.com/*",
     "http://localhost:3001/*",
@@ -18,9 +20,25 @@
   },
   "content_scripts": [
     {
-      "matches": ["https://web.whatsapp.com/*"],
-      "js": ["content.js"],
-      "css": ["panel.css"],
+      "matches": [
+        "https://web.whatsapp.com/*"
+      ],
+      "js": [
+        "page-bridge.js"
+      ],
+      "run_at": "document_start",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://web.whatsapp.com/*"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "css": [
+        "panel.css"
+      ],
       "run_at": "document_idle"
     }
   ]
