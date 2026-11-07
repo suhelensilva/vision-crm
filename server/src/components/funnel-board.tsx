@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import type { Funnel, FunnelCard, FunnelColumn } from "@/lib/funnel"
+import { withCountryCode } from "@/lib/phone"
 
 const TZ = "America/Sao_Paulo"
 const COLORS = ["#8b5cf6", "#ec4899", "#f59e0b", "#10b981", "#3b82f6", "#ef4444", "#14b8a6", "#a855f7"]
@@ -348,9 +349,13 @@ function CardView({
   onChanged: () => Promise<void>
   onError: (m: string) => void
 }) {
-  const [mode, setMode] = useState<null | "buy" | "step">(null)
+  const [mode, setMode] = useState<null | "buy" | "step" | "charge">(null)
   const [amount, setAmount] = useState("")
   const [product, setProduct] = useState("")
+  const [chAmount, setChAmount] = useState("")
+  const [chDue, setChDue] = useState(() => dateInput(new Date().toISOString()))
+  const [chDesc, setChDesc] = useState("")
+  const [chLink, setChLink] = useState("")
   const [step, setStep] = useState(card.nextStep ?? "")
   const [due, setDue] = useState(card.nextStepAt ? dateInput(card.nextStepAt) : "")
   const [busy, setBusy] = useState(false)
@@ -385,6 +390,24 @@ function CardView({
     run(() => call("PATCH", `/api/crm/contacts/${card.id}`, { nextStep: step, nextStepAt: due || null }))
   }
 
+  function saveCharge() {
+    const value = parseFloat(chAmount.replace(",", "."))
+    if (!value || value <= 0) return onError("Informe um valor maior que zero.")
+    if (!chDue) return onError("Informe o vencimento.")
+    run(async () => {
+      await call("POST", "/api/crm/charges", {
+        contactId: card.id,
+        amount: value,
+        dueDate: chDue,
+        description: chDesc || undefined,
+        paymentLink: chLink || undefined,
+      })
+      setChAmount("")
+      setChDesc("")
+      setChLink("")
+    })
+  }
+
   return (
     <div
       draggable
@@ -399,7 +422,7 @@ function CardView({
       <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
         <strong style={{ fontSize: 14, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{card.name}</strong>
         <a
-          href={`https://wa.me/${card.phone}`}
+          href={`https://wa.me/${withCountryCode(card.phone)}`}
           target="_blank"
           rel="noreferrer"
           draggable={false}
@@ -416,8 +439,23 @@ function CardView({
           : "Sem compras ainda"}
       </div>
 
+      {card.chargesDue && (
+        <div
+          title="Abra a página Cobranças pra ver os detalhes"
+          style={{ fontSize: 12, fontWeight: 600, marginTop: 4, color: card.chargesDue.overdue ? "#b91c1c" : "#92400e" }}
+        >
+          {card.chargesDue.overdue
+            ? `Vencida: ${brl(card.chargesDue.overdueTotal)}` +
+              (card.chargesDue.total > card.chargesDue.overdueTotal
+                ? ` · a receber: ${brl(card.chargesDue.total - card.chargesDue.overdueTotal)}`
+                : "")
+            : `A receber: ${brl(card.chargesDue.total)}`}
+        </div>
+      )}
+
       <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8, alignItems: "center" }}>
         <button style={link} onClick={() => setMode(mode === "buy" ? null : "buy")}>+ compra</button>
+        <button style={link} onClick={() => setMode(mode === "charge" ? null : "charge")}>Cobrar</button>
         {card.nextStepState === "nenhum" ? (
           <button style={link} onClick={() => setMode(mode === "step" ? null : "step")}>+ próximo passo</button>
         ) : (
@@ -448,6 +486,23 @@ function CardView({
           <input type="text" placeholder="Produto (opcional)" value={product} onChange={(e) => setProduct(e.target.value)} style={field} />
           <div style={{ display: "flex", gap: 6 }}>
             <button disabled={busy} onClick={saveBuy} style={btnSm}>{busy ? "..." : "Registrar"}</button>
+            <button onClick={() => setMode(null)} style={ghostSm}>Cancelar</button>
+          </div>
+        </div>
+      )}
+
+      {mode === "charge" && (
+        <div style={form}>
+          <input
+            autoFocus type="text" inputMode="decimal" placeholder="Valor a cobrar (R$)" value={chAmount}
+            onChange={(e) => setChAmount(e.target.value)} style={field}
+          />
+          <label style={{ fontSize: 11, color: "#6b7280" }}>Vencimento</label>
+          <input type="date" value={chDue} onChange={(e) => setChDue(e.target.value)} style={field} />
+          <input type="text" placeholder="Descrição (opcional)" value={chDesc} onChange={(e) => setChDesc(e.target.value)} style={field} />
+          <input type="text" placeholder="Link de pagamento ou Pix (opcional)" value={chLink} onChange={(e) => setChLink(e.target.value)} style={field} />
+          <div style={{ display: "flex", gap: 6 }}>
+            <button disabled={busy} onClick={saveCharge} style={btnSm}>{busy ? "..." : "Criar cobrança"}</button>
             <button onClick={() => setMode(null)} style={ghostSm}>Cancelar</button>
           </div>
         </div>

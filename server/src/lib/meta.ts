@@ -1,7 +1,7 @@
 import { createHash } from "crypto"
 import { prisma } from "@/lib/prisma"
 import { decryptSecret } from "@/lib/crypto"
-import { normalizePhone } from "@/lib/crm-auth"
+import { withCountryCode } from "@/lib/phone"
 
 /**
  * Envio de conversões para o Meta (Conversions API).
@@ -26,12 +26,9 @@ export const META_GRAPH_VERSION = GRAPH_VERSION
 
 const sha256 = (v: string) => createHash("sha256").update(v).digest("hex")
 
-/** Telefone no formato do Meta: só dígitos, com DDI. Sem DDI (10 ou 11 dígitos), assume Brasil (55). */
+/** Telefone no formato do Meta: só dígitos, com DDI (assume Brasil se vier sem). */
 export function phoneForMeta(raw: string): string | null {
-  let d = normalizePhone(raw).replace(/^0+/, "")
-  if (!d) return null
-  if (d.length === 10 || d.length === 11) d = "55" + d
-  return d
+  return withCountryCode(raw) || null
 }
 
 /** Nome e sobrenome em minúsculas, sem pontuação. Ignora nome genérico e a palavra "cliente". */

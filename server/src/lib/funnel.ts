@@ -1,4 +1,6 @@
 import { prisma } from "@/lib/prisma"
+import { dayKey } from "@/lib/dates"
+import { pendingByContact } from "@/lib/charges"
 
 export type NextStepState = "atrasado" | "hoje" | "futuro" | "nenhum"
 
@@ -14,6 +16,8 @@ export type FunnelCard = {
   nextStepState: NextStepState
   lastActivityAt: string
   daysIdle: number
+  /** Cobranças em aberto desta cliente (a receber ou vencidas). */
+  chargesDue: { count: number; total: number; overdue: boolean; overdueTotal: number } | null
 }
 
 export type FunnelColumn = {
@@ -33,11 +37,7 @@ export type Funnel = {
 
 const CARDS_PER_COLUMN = 100
 const MAX_CONTACTS = 2000
-const TZ = "America/Sao_Paulo"
 const DAY_MS = 86_400_000
-
-/** "2026-11-07" no fuso de Brasília, pra comparar dias sem erro de horário. */
-const dayKey = (d: Date) => d.toLocaleDateString("en-CA", { timeZone: TZ })
 
 export function nextStepState(nextStep: string | null, nextStepAt: Date | null, now = new Date()): NextStepState {
   if (!nextStep && !nextStepAt) return "nenhum"
@@ -52,7 +52,7 @@ export function nextStepState(nextStep: string | null, nextStepAt: Date | null, 
 export async function buildFunnel(userId: string): Promise<Funnel> {
   const now = new Date()
 
-  const [lists, contacts, memberships, agg] = await Promise.all([
+  const [lists, contacts, memberships, agg, due] = await Promise.all([
     prisma.crmList.findMany({
       where: { userId },
       orderBy: [{ order: "asc" }, { createdAt: "asc" }],
@@ -73,6 +73,7 @@ export async function buildFunnel(userId: string): Promise<Funnel> {
       _sum: { amount: true },
       _max: { purchasedAt: true },
     }),
+    pendingByContact(userId, now),
   ])
 
   const truncated = contacts.length > MAX_CONTACTS
@@ -95,6 +96,7 @@ export async function buildFunnel(userId: string): Promise<Funnel> {
       nextStepState: nextStepState(c.nextStep, c.nextStepAt, now),
       lastActivityAt: c.lastActivityAt.toISOString(),
       daysIdle: Math.max(0, Math.floor((now.getTime() - c.lastActivityAt.getTime()) / DAY_MS)),
+      chargesDue: due.get(c.id) ?? null,
     })
   }
 

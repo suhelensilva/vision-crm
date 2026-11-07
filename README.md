@@ -76,13 +76,34 @@ taróloga, mais "Sem lista". Arrastar um card troca de coluna.
   pra o dia não voltar por causa do fuso.
 - Limite: lê até 2000 contatos e mostra até 100 cards por coluna.
 
+## Cobranças
+
+Página **Cobranças** (`/dashboard/cobrancas`): dinheiro a receber de uma cliente.
+
+- Cria pelo botão **Cobrar** do card do funil ou por **+ Cobrança** na página:
+  valor, vencimento, descrição e link de pagamento/Pix (opcionais).
+- Abas Todas, A receber, Vencidas e Pagas, com o resumo no topo.
+- **"Vencida" não é status do banco**: é cobrança pendente com vencimento antes
+  de hoje (fuso de Brasília), calculada na leitura. Vence hoje = ainda a receber.
+- **Cobrar no WhatsApp** abre a conversa com a mensagem pronta (`lib/charge-message.ts`).
+  O sistema não envia nada sozinho.
+- **Marcar paga** cria uma compra (`source: "cobranca"`) e dispara o evento
+  Purchase pro Meta. Roda numa transação que "reserva" a cobrança
+  (PENDING → PAID), então dois cliques ao mesmo tempo geram 1 compra e 1 evento.
+- Só cobrança pendente muda: pagar ou cancelar de novo devolve 409.
+- Não há integração de pagamento (Pix automático, Mercado Pago). Marcar como
+  paga é manual.
+- Telefones guardados com código do país (55) quando faltar: `lib/phone.ts`.
+  O `wa.me` e o Meta exigem isso.
+
 ## Fila de entregas
 
 1. Etiquetas/Listas (feito)
 2. Disparo pro Meta (feito e testado com um Meta simulado; falta testar com
    o Pixel real)
 3. Funil kanban (feito; falta o "Origem" e a aba "Resultados")
-4. Cobranças
+4. Cobranças (feito; falta o botão "Cobrar" no painel da extensão e a regra
+   "quando pagar, mover de lista")
 5. Dados do lead e Notas
 6. Respostas rápidas
 7. Lembretes e Adiadas

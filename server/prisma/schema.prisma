@@ -25,6 +25,7 @@ model User {
   contacts  Contact[]
   purchases Purchase[]
   lists     CrmList[]
+  charges   Charge[]
 
   @@map("users")
 }
@@ -48,6 +49,7 @@ model Contact {
 
   user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
   purchases   Purchase[]
+  charges     Charge[]
   memberships CrmListMember[]
 
   @@index([userId])
@@ -77,11 +79,44 @@ model Purchase {
 
   user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   contact Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  charge  Charge? // cobrança que originou esta compra (se veio de "marcar como paga")
 
   @@index([userId, contactId])
   @@index([contactId, purchasedAt])
   @@index([userId, metaEventSent])
   @@map("purchases")
+}
+
+enum ChargeStatus {
+  PENDING
+  PAID
+  CANCELED
+}
+
+/// Cobrança: dinheiro a receber de uma cliente. Ao ser paga, vira uma Purchase
+/// (e dispara o evento de conversão pro Meta). "Vencida" não é status: é
+/// PENDING com vencimento antes de hoje (calculado na leitura).
+model Charge {
+  id          String       @id @default(cuid())
+  userId      String
+  contactId   String
+  amount      Float
+  description String?
+  dueDate     DateTime // dia do vencimento (guardado ao meio-dia de Brasília)
+  status      ChargeStatus @default(PENDING)
+  paidAt      DateTime?
+  purchaseId  String?      @unique // compra criada quando foi paga
+  paymentLink String? // link de pagamento ou Pix copia-e-cola, vai na mensagem
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  contact  Contact   @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  purchase Purchase? @relation(fields: [purchaseId], references: [id], onDelete: SetNull)
+
+  @@index([userId, status])
+  @@index([contactId])
+  @@map("charges")
 }
 
 /// Etiqueta/Lista colorida (também vira coluna do funil kanban).
