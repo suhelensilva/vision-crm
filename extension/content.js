@@ -61,6 +61,8 @@ const ICONS = {
   note: '<path d="M16 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h8l8-8V5a2 2 0 0 0-2-2h-3"/><path d="M15 21v-6h6"/>',
   wallet: '<path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2"/><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"/>',
   bell: '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>',
+  checklist: '<path d="m3 17 2 2 4-4"/><path d="m3 7 2 2 4-4"/><path d="M13 6h8"/><path d="M13 12h8"/><path d="M13 18h8"/>',
+  chevron: '<path d="m15 18-6-6 6-6"/>',
   zap: '<path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"/>',
   ext: '<path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>',
   x: '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
@@ -152,6 +154,30 @@ function getComposer() {
   )
 }
 
+/** Diagnóstico: só a ESTRUTURA da página (números viram 9), nada de texto de conversa. */
+function collectDiagnostic() {
+  const mask = (t) => String(t || "").replace(/[0-9]/g, "9").slice(0, 120)
+  const main = document.querySelector("#main")
+  const header = document.querySelector("#main header") || document.querySelector("header")
+  const ids = main ? [...main.querySelectorAll("[data-id]")].slice(0, 6).map((e) => mask(e.getAttribute("data-id"))) : []
+  const pre = main ? [...main.querySelectorAll("[data-pre-plain-text]")].slice(0, 2).map((e) => mask(e.getAttribute("data-pre-plain-text"))) : []
+  const titles = header ? [...header.querySelectorAll("[title]")].slice(0, 4).map((e) => mask(e.getAttribute("title"))) : []
+  const attrs = new Set()
+  if (main) main.querySelectorAll("*").forEach((e) => { for (const a of e.attributes) if (/^data-/.test(a.name)) attrs.add(a.name) })
+  return JSON.stringify({
+    versao: "diag1",
+    temMain: !!main,
+    temHeader: !!header,
+    totalDataId: main ? main.querySelectorAll("[data-id]").length : 0,
+    exemplosDataId: ids,
+    exemplosPrePlain: pre,
+    titulosHeader: titles,
+    atributosData: [...attrs].slice(0, 25),
+    temCampo: !!getComposer(),
+    telefoneLido: getActivePhone() ? "sim" : "nao",
+  }, null, 1)
+}
+
 /** Escreve no campo de mensagem (não envia: quem aperta Enter é ela). */
 function insertIntoComposer(text) {
   const box = getComposer()
@@ -208,6 +234,7 @@ function toast(msg) {
 function render() {
   const root = ensureRoot()
   applyLayout()
+  ensureSide()
   const rail = TABS.map(
     (t) => `<button class="vc-ico ${state.open && state.tab === t.id ? "on" : ""}" data-tab="${t.id}" title="${t.label}">${icon(t.icon, 20)}<span>${t.label.split(" ")[0]}</span></button>`
   ).join("")
@@ -245,7 +272,7 @@ function renderBody() {
   return renderConversa()
 }
 
-const empty = (t, s) => `<div class="vc-empty"><b>${esc(t)}</b><p>${esc(s)}</p></div>`
+const empty = (t, s) => `<div class="vc-empty"><b>${esc(t)}</b><p>${esc(s)}</p><button class="vc-ghost" data-act="diag" style="margin-top:12px">Copiar diagnóstico</button></div>`
 
 // ── Aba: Esta conversa ────────────────────────────────────────────────────────
 
@@ -437,6 +464,45 @@ async function useReply(r) {
   toast("Anexos (áudio, imagem, vídeo, documento) ainda não são enviados pela extensão.")
 }
 
+// ── Barrinha lateral ao lado da conversa (atalhos pras abas) ──────────────────
+
+const SIDE_ID = "vcrm-side"
+let sideCollapsed = false
+
+function ensureSide() {
+  const main = document.querySelector("#main")
+  let el = document.getElementById(SIDE_ID)
+  if (!main || state.status === "no_config" || state.status === "bad_token") { if (el) el.remove(); return }
+  if (!el) {
+    el = document.createElement("div")
+    el.id = SIDE_ID
+    el.addEventListener("click", (e) => {
+      const b = e.target.closest("button")
+      if (!b) return
+      if (b.dataset.collapse) { sideCollapsed = !sideCollapsed; return ensureSide() }
+      state.open = true
+      state.tab = b.dataset.go
+      refresh(true)
+      render()
+    })
+    document.body.appendChild(el)
+  }
+  const n = state.reminders.filter((r) => r.state !== "feito").length
+  const items = [
+    { go: "lembretes", icon: "checklist", label: "Lembretes", badge: n },
+    { go: "notas", icon: "note", label: "Notas" },
+    { go: "conversa", icon: "user", label: "Dados" },
+    { go: "cobrancas", icon: "wallet", label: "Cobrar" },
+  ]
+  const html = `<button class="vs-top" data-collapse="1" title="Recolher">${icon("chevron", 12)}</button>` +
+    (sideCollapsed ? "" : items.map((i) => `<button data-go="${i.go}" title="${i.label}">${icon(i.icon, 18)}${i.badge ? `<b>${i.badge}</b>` : ""}<span>${i.label}</span></button>`).join(""))
+  if (el.dataset.sig !== html) { el.innerHTML = html; el.dataset.sig = html }
+  el.classList.toggle("vs-min", sideCollapsed)
+  const r = main.getBoundingClientRect()
+  el.style.left = Math.round(r.left + 6) + "px"
+  el.style.top = Math.round(r.top + r.height * 0.42) + "px"
+}
+
 // ── Barra de respostas acima do campo + atalho ";" ───────────────────────────
 
 function ensureBar() {
@@ -505,6 +571,11 @@ async function onClick(e) {
   }
   const act = t.dataset.act
   if (act === "close") { state.open = false; return render() }
+  if (act === "diag") {
+    const text = collectDiagnostic()
+    try { await navigator.clipboard.writeText(text); toast("Diagnóstico copiado. Cole aqui no chat.") } catch { window.prompt("Copie este texto e cole no chat:", text) }
+    return
+  }
   if (act === "web") { if (state.apiUrl) window.open(state.apiUrl + "/dashboard/funil", "_blank"); return }
   if (act === "toggle-lists") { const m = document.getElementById("vc-listmenu"); if (m) m.hidden = !m.hidden; return }
   if (act === "add-contact") { await ensureContact(); return refresh(true) }
@@ -695,7 +766,7 @@ function startObserver() {
   const obs = new MutationObserver((muts) => {
     if (muts.every((m) => m.target.closest && m.target.closest(`#${ROOT_ID}, #${BAR_ID}, #${POP_ID}`))) return
     clearTimeout(timer)
-    timer = setTimeout(() => { refresh(false); ensureBar() }, 400)
+    timer = setTimeout(() => { refresh(false); ensureBar(); ensureSide() }, 400)
   })
   obs.observe(root, { childList: true, subtree: true })
   document.addEventListener("input", onComposerInput, true)
