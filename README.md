@@ -153,6 +153,10 @@ Página **Respostas rápidas** (`/dashboard/respostas`): mensagens prontas.
 - Regra única de nomes em `lib/names.ts` (tira a palavra "cliente" e ignora
   "Cliente WhatsApp"), usada por mensagens, cobranças e Meta.
 
+## Importar do WhatsApp (extensão v0.4)
+
+Aba **Importar** da extensão: lê, pelos dados internos do WhatsApp Web (`page-bridge.js`), as **etiquetas** (viram listas, com a cor), os **contatos** e o **estado da conversa** (última mensagem foi sua ou da cliente, não lidas, arquivada). Manda pro CRM em lotes de 250 (`POST /api/crm/import`). Nunca apaga nada, não sobrescreve nome já cadastrado e não duplica (compara pelos 8 últimos dígitos do telefone). Grupos, canais e conversas sem telefone descoberto ficam de fora. Testado só num WhatsApp simulado; no real pode precisar de ajuste (botão **Copiar diagnóstico da leitura**).
+
 ## Pendências (lembretes e adiadas)
 
 Página `/dashboard/pendencias`: lembretes com data e hora por cliente, agrupados em Atrasadas / Hoje / Próximas, com abas Adiadas (quantas vezes foi empurrado) e Feitas. Ações: Feito, Adiar (1 hora, hoje 18h, amanhã 9h, 3 dias, semana que vem), Conversa (wa.me) e apagar. API: `/api/crm/reminders` (GET com `contactId` e `status=feitos`, POST) e `/api/crm/reminders/[id]` (PATCH done/reopen/snooze, DELETE). Na extensão: aba Lembretes dentro da conversa. Ainda não há aviso/notificação no horário.

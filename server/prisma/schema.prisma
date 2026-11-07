@@ -47,6 +47,13 @@ model Contact {
   nextStepAt     DateTime? // prazo do próximo passo
   lastActivityAt DateTime  @default(now()) // última movimentação (compra, etiqueta, próximo passo)
 
+  // Estado da conversa no WhatsApp (vem da importação pela extensão)
+  waLastAt     DateTime? // data da última mensagem
+  waLastFromMe Boolean? // true = a última mensagem foi sua; false = da cliente (aguardando você)
+  waUnread     Int      @default(0) // mensagens não lidas
+  waArchived   Boolean  @default(false)
+  waSyncedAt   DateTime? // última vez que a extensão atualizou isto
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

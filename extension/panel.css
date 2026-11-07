@@ -178,3 +178,10 @@ html.vcrm-on body { padding-right: var(--vcrm-pad, 56px) !important; background:
 #vcrm-side .vs-top { padding: 2px 0; height: 16px; }
 #vcrm-side .vs-top svg { color: #8ea0c8; }
 #vcrm-side.vs-min .vs-top svg { transform: rotate(180deg); }
+
+/* ── Importar ── */
+.vc-bar { height: 8px; border-radius: 999px; background: rgba(255, 255, 255, 0.1); overflow: hidden; }
+.vc-bar i { display: block; height: 100%; background: #e0245e; box-shadow: 0 0 12px rgba(224, 36, 94, 0.6); transition: width 0.3s; }
+.vc-check { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #e8eefc; }
+#vcrm-root input[type="checkbox"] { width: auto; accent-color: #e0245e; }
+.vc-btn:disabled { opacity: 0.5; cursor: not-allowed; }

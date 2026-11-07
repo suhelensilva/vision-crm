@@ -63,6 +63,7 @@ const ICONS = {
   bell: '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>',
   checklist: '<path d="m3 17 2 2 4-4"/><path d="m3 7 2 2 4-4"/><path d="M13 6h8"/><path d="M13 12h8"/><path d="M13 18h8"/>',
   chevron: '<path d="m15 18-6-6 6-6"/>',
+  download: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/>',
   zap: '<path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"/>',
   ext: '<path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>',
   x: '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
@@ -140,7 +141,7 @@ function getActivePhone() {
 
 // Pede à página (page-bridge.js) a conversa aberta. Devolve {phone, name, dbg} ou null.
 let bridgeSeq = 0
-function askBridge() {
+function askBridge(kind = "chat", timeoutMs = 1200) {
   return new Promise((resolve) => {
     const id = ++bridgeSeq
     const done = (ev) => {
@@ -151,9 +152,9 @@ function askBridge() {
       clearTimeout(t)
       resolve(d)
     }
-    const t = setTimeout(() => { document.removeEventListener("vcrm-res", done); resolve(null) }, 1200)
+    const t = setTimeout(() => { document.removeEventListener("vcrm-res", done); resolve(null) }, timeoutMs)
     document.addEventListener("vcrm-res", done)
-    document.dispatchEvent(new CustomEvent("vcrm-req", { detail: id }))
+    document.dispatchEvent(new CustomEvent("vcrm-req", { detail: JSON.stringify({ id, kind }) }))
   })
 }
 
@@ -239,6 +240,7 @@ const TABS = [
   { id: "lembretes", label: "Lembretes", icon: "bell" },
   { id: "cobrancas", label: "Cobranças", icon: "wallet" },
   { id: "respostas", label: "Respostas rápidas", icon: "zap" },
+  { id: "importar", label: "Importar do WhatsApp", icon: "download" },
 ]
 
 function ensureRoot() {
@@ -298,6 +300,7 @@ function renderBody() {
   if (state.status === "bad_token") return empty("Token inválido", "Gere um token novo em Configurações no painel web e atualize na extensão.")
   if (state.status === "offline") return empty("Sem conexão", "Confira a URL do sistema no ícone da extensão. O sistema precisa estar no ar.")
   if (state.tab === "respostas") return renderReplies()
+  if (state.tab === "importar") return renderImport()
   if (!state.phone) return empty("Abra uma conversa", "Escolha uma conversa individual, com mensagens, pra ver os dados da cliente.")
   if (state.status === "loading" && !state.contact) return `<div class="vc-muted">Carregando…</div>`
   if (state.tab === "notas") return renderNotes()
@@ -391,6 +394,88 @@ function renderNotes() {
     ${notes.length ? notes.map((n) => `
       <div class="vc-card note"><div class="vc-sub">${esc(new Date(n.createdAt).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short", timeZone: "America/Sao_Paulo" }))}</div><p>${esc(n.text)}</p></div>`).join("") : `<p class="vc-muted">Nenhuma nota ainda.</p>`}
   `
+}
+
+// ── Aba: Importar do WhatsApp ─────────────────────────────────────────────────
+
+const imp = { phase: "idle", scan: null, result: null, msg: "", done: 0, total: 0, withoutLabel: true, archived: true }
+
+function importable() {
+  const s = imp.scan
+  if (!s) return []
+  return s.chats.filter((c) => (imp.withoutLabel || c.labels.length) && (imp.archived || !c.archived))
+}
+
+function renderImport() {
+  const s = imp.scan
+  const box = (inner) => `<div class="vc-card">${inner}</div>`
+  if (imp.phase === "scanning") return box(`<p class="vc-muted">Lendo o seu WhatsApp… pode levar alguns segundos.</p>`)
+  if (imp.phase === "importing") {
+    const pct = imp.total ? Math.round((imp.done / imp.total) * 100) : 0
+    return box(`<b style="color:#fff">Importando… ${imp.done} de ${imp.total}</b><div class="vc-bar"><i style="width:${pct}%"></i></div><p class="vc-muted">Não feche esta aba do WhatsApp.</p>`)
+  }
+  if (imp.phase === "done" && imp.result) {
+    const r = imp.result
+    return box(`<b style="color:#fff">Pronto!</b>
+      <p class="vc-muted">${r.created} contatos novos, ${r.updated} atualizados, ${r.listsCreated} listas criadas, ${r.memberships} ligações às listas.${r.skipped ? ` ${r.skipped} sem telefone válido foram pulados.` : ""}</p>
+      <p class="vc-muted">Agora abra o painel web, em <b>Configurações</b>, e ligue cada lista ao pixel dela.</p>
+      <button class="vc-ghost" data-act="imp-reset">Ler de novo</button>`)
+  }
+  if (imp.phase === "ready" && s) {
+    const list = importable()
+    const withLabel = s.chats.filter((c) => c.labels.length).length
+    const waiting = s.chats.filter((c) => c.lastFromMe === false).length
+    return box(`<b style="color:#fff">Encontrei no seu WhatsApp</b>
+      <p class="vc-muted">${s.labels.length} etiquetas · ${s.chats.length} conversas com telefone (${withLabel} com etiqueta, ${waiting} aguardando sua resposta)${s.semTelefone ? ` · ${s.semTelefone} sem telefone descoberto (não entram)` : ""}${s.grupos ? ` · ${s.grupos} grupos ignorados` : ""}.</p>
+      <label class="vc-check"><input type="checkbox" data-imp-opt="withoutLabel" ${imp.withoutLabel ? "checked" : ""}/> Incluir conversas sem etiqueta</label>
+      <label class="vc-check"><input type="checkbox" data-imp-opt="archived" ${imp.archived ? "checked" : ""}/> Incluir conversas arquivadas</label>
+      <button class="vc-btn" data-act="imp-go" ${list.length ? "" : "disabled"}>${icon("download", 15)} Importar ${list.length} contatos</button>
+      <button class="vc-ghost" data-act="imp-diag">Copiar diagnóstico da leitura</button>`)
+  }
+  return box(`<b style="color:#fff">Trazer seus contatos pro CRM</b>
+    <p class="vc-muted">Lê as suas etiquetas (viram listas), os contatos e o estado das conversas (respondida, não lida, arquivada). Só copia pro SEU CRM. Nada é enviado nem alterado no WhatsApp.</p>
+    ${imp.msg ? `<div class="vc-note">${esc(imp.msg)}</div>` : ""}
+    <button class="vc-btn" data-act="imp-scan">${icon("download", 15)} Ler meu WhatsApp</button>
+    ${imp.scan ? `<button class="vc-ghost" data-act="imp-diag">Copiar diagnóstico da leitura</button>` : ""}`)
+}
+
+async function importScan() {
+  imp.phase = "scanning"; imp.msg = ""; render()
+  const r = await askBridge("scan", 20000)
+  if (!r || !r.chats) {
+    imp.phase = "idle"
+    imp.msg = "Não consegui ler o WhatsApp. Aperte F5 e tente de novo."
+    imp.scan = r || { dbg: { semResposta: true }, labels: [], chats: [] }
+    return render()
+  }
+  imp.scan = r
+  imp.phase = r.chats.length ? "ready" : "idle"
+  if (!r.chats.length) imp.msg = "Não achei conversas pra importar. Clique em \"Copiar diagnóstico da leitura\" e me mande."
+  render()
+}
+
+async function importGo() {
+  const list = importable()
+  const used = new Set(list.flatMap((c) => c.labels))
+  const labels = imp.scan.labels.filter((l) => used.has(l.name))
+  imp.phase = "importing"; imp.done = 0; imp.total = list.length
+  imp.result = { created: 0, updated: 0, skipped: 0, listsCreated: 0, memberships: 0 }
+  render()
+  const BATCH = 250
+  for (let i = 0; i < list.length; i += BATCH) {
+    const res = await api("POST", "/api/crm/import", { labels: i === 0 ? labels : [], contacts: list.slice(i, i + BATCH) })
+    if (!res.ok || !res.data) {
+      imp.phase = "idle"
+      imp.msg = `Parou em ${imp.done} de ${imp.total}: ${(res.data && res.data.error) || "erro de conexão"}. Pode clicar de novo, o que já entrou não duplica.`
+      return render()
+    }
+    for (const k of Object.keys(imp.result)) imp.result[k] += res.data[k] || 0
+    imp.done = Math.min(list.length, i + BATCH)
+    render()
+  }
+  imp.phase = "done"
+  state.replies = []; state.lists = []
+  render()
 }
 
 // ── Aba: Lembretes ────────────────────────────────────────────────────────────
@@ -610,6 +695,25 @@ async function onClick(e) {
     try { await navigator.clipboard.writeText(text); toast("Diagnóstico copiado. Cole aqui no chat.") } catch { window.prompt("Copie este texto e cole no chat:", text) }
     return
   }
+  if (act === "imp-scan") return importScan()
+  if (act === "imp-go") return importGo()
+  if (act === "imp-reset") { imp.phase = "idle"; imp.result = null; return render() }
+  if (act === "imp-diag") {
+    const s = imp.scan || {}
+    const text = JSON.stringify({
+      versao: "imp-diag1",
+      etiquetas: (s.labels || []).length,
+      conversas: (s.chats || []).length,
+      semTelefone: s.semTelefone,
+      grupos: s.grupos,
+      comEtiqueta: (s.chats || []).filter((c) => c.labels.length).length,
+      aguardando: (s.chats || []).filter((c) => c.lastFromMe === false).length,
+      arquivadas: (s.chats || []).filter((c) => c.archived).length,
+      ponte: s.dbg || null,
+    }, null, 1)
+    try { await navigator.clipboard.writeText(text); toast("Diagnóstico copiado. Cole aqui no chat.") } catch { window.prompt("Copie este texto e cole no chat:", text) }
+    return
+  }
   if (act === "web") { if (state.apiUrl) window.open(state.apiUrl + "/dashboard/funil", "_blank"); return }
   if (act === "toggle-lists") { const m = document.getElementById("vc-listmenu"); if (m) m.hidden = !m.hidden; return }
   if (act === "add-contact") { await ensureContact(); return refresh(true) }
@@ -714,6 +818,10 @@ async function onSubmit(e) {
 }
 
 function onInput(e) {
+  if (e.target.matches("[data-imp-opt]")) {
+    imp[e.target.getAttribute("data-imp-opt")] = e.target.checked
+    return render()
+  }
   if (e.target.matches("[data-search]")) {
     state.repliesQuery = e.target.value
     const pos = e.target.selectionStart

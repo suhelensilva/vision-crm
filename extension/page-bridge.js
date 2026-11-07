@@ -90,8 +90,96 @@
     return { phone, name, dbg }
   }
 
+  // ── Leitura em massa: etiquetas, contatos e estado das conversas ──
+  const arr = (col) => {
+    if (!col) return []
+    try {
+      if (typeof col.getModelsArray === "function") return col.getModelsArray()
+      if (Array.isArray(col.models)) return col.models
+      if (Array.isArray(col._models)) return col._models
+    } catch {}
+    return []
+  }
+  const serial = (w) => (w && (w._serialized || (w.user ? w.user + "@" + w.server : ""))) || String(w || "")
+
+  function lastMessageOf(chat) {
+    try {
+      const msgs = chat.msgs
+      if (msgs && typeof msgs.last === "function") return msgs.last()
+      const list = arr(msgs)
+      return list.length ? list[list.length - 1] : null
+    } catch { return null }
+  }
+
+  function scan() {
+    const dbg = { versao: "scan1" }
+    const labelsOut = []
+    const chatsOut = []
+    let semTelefone = 0
+    let grupos = 0
+    try {
+      const C = collections()
+      dbg.temCollections = !!C
+      if (!C) return { labels: labelsOut, chats: chatsOut, semTelefone, grupos, dbg }
+
+      // etiquetas (WhatsApp Business) e quais conversas estão em cada uma
+      const labelModels = arr(C.Label)
+      dbg.temLabel = !!C.Label
+      dbg.qtdEtiquetas = labelModels.length
+      const labelsOfChat = new Map() // id da conversa -> [nomes]
+      for (const l of labelModels) {
+        const name = String(l.name || "").trim()
+        if (!name) continue
+        labelsOut.push({ name, color: typeof l.hexColor === "string" ? l.hexColor : undefined })
+        const items = arr(l.labelItemCollection)
+        for (const it of items) {
+          if (it.parentType && it.parentType !== "Chat") continue
+          const key = serial(it.parentId)
+          if (!key) continue
+          if (!labelsOfChat.has(key)) labelsOfChat.set(key, [])
+          labelsOfChat.get(key).push(name)
+        }
+      }
+      dbg.conversasComEtiqueta = labelsOfChat.size
+
+      const chats = arr(C.Chat)
+      dbg.qtdConversas = chats.length
+      const sample = []
+      for (const chat of chats) {
+        const id = chat && chat.id
+        const server = id && id.server
+        if (!id) continue
+        if (server === "g.us" || chat.isGroup) { grupos++; continue }
+        if (server !== "c.us" && server !== "lid") continue // lista de transmissão, canal, status...
+        const throwaway = {}
+        const phone = phoneFromChat(chat, throwaway)
+        if (!phone || phone === "GROUP") { semTelefone++; if (sample.length < 3) sample.push(throwaway.tentativas || throwaway.servidor); continue }
+
+        const last = lastMessageOf(chat)
+        const lastAtSec = (last && last.t) || chat.t || 0
+        const lastFromMe = last && last.id ? !!last.id.fromMe : null
+        const name = String(chat.formattedTitle || chat.name || (chat.contact && (chat.contact.name || chat.contact.pushname)) || "").trim()
+        const myLabels = new Set([...(labelsOfChat.get(serial(id)) || [])])
+        chatsOut.push({
+          phone,
+          name: name && !/^[+\d\s()-]+$/.test(name) ? name : "",
+          labels: [...myLabels],
+          unread: typeof chat.unreadCount === "number" ? Math.max(0, chat.unreadCount) : 0,
+          archived: !!chat.archive,
+          lastFromMe,
+          lastAt: lastAtSec ? lastAtSec * 1000 : null,
+        })
+      }
+      dbg.amostraSemTelefone = sample
+    } catch (e) { dbg.erro = String(e).slice(0, 160) }
+    return { labels: labelsOut, chats: chatsOut, semTelefone, grupos, dbg }
+  }
+
   document.addEventListener("vcrm-req", (ev) => {
-    const out = answer()
-    document.dispatchEvent(new CustomEvent("vcrm-res", { detail: JSON.stringify({ id: ev.detail, ...out }) }))
+    let id = ev.detail
+    let kind = "chat"
+    try { const d = JSON.parse(ev.detail); if (d && typeof d === "object") { id = d.id; kind = d.kind || "chat" } } catch {}
+    const out = kind === "scan" ? scan() : answer()
+    document.dispatchEvent(new CustomEvent("vcrm-res", { detail: JSON.stringify({ id, ...out }) }))
   })
 })()
