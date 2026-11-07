@@ -235,3 +235,6 @@ html.vcrm-on body { padding-right: var(--vcrm-pad, 56px) !important; background:
 .vc-check span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .vc-check em { font-style: normal; font-size: 11px; font-weight: 700; color: var(--accent-text); background: rgba(224, 36, 94, 0.14); border-radius: 999px; padding: 1px 8px; }
 .vc-quick { display: flex; gap: 6px; }
+
+/* O aviso fica à direita, ao lado do painel do Hotzapp (não cobre a lista de conversas) */
+#vcrm-wait { left: auto; right: calc(var(--vcrm-pad, 56px) + 372px); }
