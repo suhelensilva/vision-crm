@@ -1,0 +1,100 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+/// Conta da taróloga (multiusuário / SaaS).
+model User {
+  id        String   @id @default(cuid())
+  name      String?
+  email     String   @unique
+  password  String?
+  apiToken  String?  @unique // token da extensão do Chrome
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  contacts  Contact[]
+  purchases Purchase[]
+  lists     CrmList[]
+
+  @@map("users")
+}
+
+/// Contato/cliente do CRM (vem das conversas do WhatsApp).
+model Contact {
+  id        String   @id @default(cuid())
+  userId    String
+  name      String
+  phone     String
+  email     String?
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  purchases   Purchase[]
+  memberships CrmListMember[]
+
+  @@index([userId])
+  @@index([userId, phone])
+  @@map("contacts")
+}
+
+/// Compra registrada (base da recorrência e do disparo pro Meta).
+model Purchase {
+  id          String   @id @default(cuid())
+  userId      String
+  contactId   String
+  amount      Float
+  productName String?
+  purchasedAt DateTime @default(now())
+  source      String   @default("whatsapp") // "whatsapp" | "manual" | "ad"
+
+  // Conversão Meta (CAPI)
+  ctwaClid      String?
+  metaEventSent Boolean @default(false)
+  metaEventId   String?
+
+  createdAt DateTime @default(now())
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  contact Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  @@index([userId, contactId])
+  @@index([contactId, purchasedAt])
+  @@map("purchases")
+}
+
+/// Etiqueta/Lista colorida (também vira coluna do funil kanban).
+model CrmList {
+  id        String   @id @default(cuid())
+  userId    String
+  name      String
+  color     String   @default("#8b5cf6")
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user    User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  members CrmListMember[]
+
+  @@index([userId])
+  @@map("crm_lists")
+}
+
+model CrmListMember {
+  id        String   @id @default(cuid())
+  listId    String
+  contactId String
+  createdAt DateTime @default(now())
+
+  list    CrmList @relation(fields: [listId], references: [id], onDelete: Cascade)
+  contact Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  @@unique([listId, contactId])
+  @@index([contactId])
+  @@map("crm_list_members")
+}

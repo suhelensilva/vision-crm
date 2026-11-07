@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tarot CRM</title>
+  <style>
+    body {
+      width: 300px; margin: 0; padding: 16px;
+      font-family: "Segoe UI", system-ui, sans-serif; color: #1f2937;
+    }
+    h1 { font-size: 15px; margin: 0 0 4px; color: #6d28d9; }
+    p.sub { font-size: 12px; color: #6b7280; margin: 0 0 14px; }
+    label { display: block; font-size: 12px; font-weight: 600; margin: 10px 0 4px; }
+    input {
+      width: 100%; box-sizing: border-box; border: 1px solid #d1d5db;
+      border-radius: 8px; padding: 8px 10px; font-size: 13px; outline: none;
+    }
+    input:focus { border-color: #a855f7; box-shadow: 0 0 0 2px #e9d5ff; }
+    button {
+      width: 100%; margin-top: 14px; background: #7c3aed; color: #fff;
+      border: none; border-radius: 8px; padding: 10px; font-size: 13px;
+      font-weight: 600; cursor: pointer;
+    }
+    button:hover { background: #6d28d9; }
+    .msg { font-size: 12px; margin-top: 10px; min-height: 16px; }
+    .ok { color: #059669; }
+    .err { color: #dc2626; }
+  </style>
+</head>
+<body>
+  <h1>✦ Tarot CRM</h1>
+  <p class="sub">Conecte ao seu sistema de agendamento.</p>
+
+  <label for="apiUrl">URL do sistema</label>
+  <input id="apiUrl" type="text" placeholder="http://localhost:3000" />
+
+  <label for="token">Token de acesso</label>
+  <input id="token" type="password" placeholder="crm_..." />
+
+  <button id="save">Salvar e testar conexão</button>
+  <div class="msg" id="msg"></div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

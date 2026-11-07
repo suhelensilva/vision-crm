@@ -1,0 +1,27 @@
+{
+  "manifest_version": 3,
+  "name": "Tarot CRM — WhatsApp",
+  "version": "0.1.0",
+  "description": "CRM sobre o WhatsApp Web: histórico de compras, recorrência e etiquetas das suas clientes.",
+  "permissions": ["storage"],
+  "host_permissions": [
+    "https://web.whatsapp.com/*",
+    "http://localhost:3001/*",
+    "https://*.vercel.app/*"
+  ],
+  "action": {
+    "default_title": "Tarot CRM",
+    "default_popup": "popup/popup.html"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://web.whatsapp.com/*"],
+      "js": ["content.js"],
+      "css": ["panel.css"],
+      "run_at": "document_idle"
+    }
+  ]
+}
