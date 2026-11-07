@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Vision CRM — WhatsApp",
-  "version": "0.1.0",
-  "description": "CRM sobre o WhatsApp Web: histórico de compras, recorrência e etiquetas das suas clientes.",
+  "version": "0.2.0",
+  "description": "CRM sobre o WhatsApp Web: dados da cliente, notas, cobranças, listas e respostas rápidas.",
   "permissions": ["storage"],
   "host_permissions": [
     "https://web.whatsapp.com/*",

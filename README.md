@@ -167,6 +167,12 @@ Página **Respostas rápidas** (`/dashboard/respostas`): mensagens prontas.
 
 Todas as cores ficam em variáveis no topo de `server/src/app/globals.css` (fundo azul-marinho, vinho fluorescente `--accent`, vermelho do Visão `--vred`, dourado `--gold`). Estilos compartilhados de botões, cartões e selos ficam em `server/src/lib/ui.ts`. Pra criar o tema claro, basta trocar os valores dessas variáveis. Menu lateral em `components/dash-nav.tsx`, ícones Lucide.
 
+## Extensão no WhatsApp Web (v0.2)
+
+Coluna de ícones à direita (Esta conversa, Notas, Cobranças, Respostas rápidas, Painel web) e painel que abre ao lado. Acima do campo de mensagem fica a barra de respostas rápidas (clique escreve no campo; quem aperta Enter é você) e, ao digitar `;`, abre a lista de atalhos. Texto e contato funcionam; anexos (áudio, imagem, vídeo, documento) ainda não são enviados pela extensão. Cobrar escreve a mensagem no campo, não envia sozinho.
+
+Testada contra um WhatsApp simulado (fluxos de compra, lista, nota, cobrança, chips e atalho). **Ainda não testada no WhatsApp Web real**: se algo não detectar o nome/telefone ou não escrever no campo, ajuste só `getActivePhone`, `getActiveName` e `getComposer` em `extension/content.js`.
+
 ## Fila de entregas
 
 1. Etiquetas/Listas (feito)
