@@ -1367,6 +1367,95 @@ function onComposerInput(e) {
   ;(footer ? footer.parentNode : document.body).insertBefore(pop, footer || null)
 }
 
+// ── "Salvar como resposta rápida" a partir de uma mensagem sua ───────────────
+
+const MSG_BTN_ID = "vcrm-msgbtn"
+const MSG_MENU_ID = "vcrm-msgmenu"
+const TEXT_SEL = '[data-testid="selectable-text"], span.selectable-text'
+let msgHover = null // { text }
+let msgHideTimer = null
+
+/** Texto de uma mensagem (inclui emojis, que no WhatsApp são imagens com o emoji no "alt"). */
+function messageText(row) {
+  const parts = []
+  for (const el of row.querySelectorAll(TEXT_SEL)) {
+    if (el.parentElement && el.parentElement.closest(TEXT_SEL)) continue // não repete elementos aninhados
+    let t = ""
+    const walk = (n) => {
+      for (const c of n.childNodes) {
+        if (c.nodeType === 3) t += c.nodeValue
+        else if (c.nodeName === "IMG" && c.alt) t += c.alt
+        else if (c.nodeName === "BR") t += "\n"
+        else walk(c)
+      }
+    }
+    walk(el)
+    if (t.trim()) parts.push(t.trim())
+  }
+  return parts.join("\n").trim()
+}
+
+function hideMsgUi() {
+  const b = document.getElementById(MSG_BTN_ID)
+  const m = document.getElementById(MSG_MENU_ID)
+  if (b) b.style.display = "none"
+  if (m) m.remove()
+}
+function hideMsgSoon() {
+  clearTimeout(msgHideTimer)
+  msgHideTimer = setTimeout(hideMsgUi, 350)
+}
+
+function onMsgHover(e) {
+  if (state.status === "no_config" || state.status === "bad_token" || modalOpen()) return
+  const t = e.target
+  if (t.closest && t.closest(`#${MSG_BTN_ID}, #${MSG_MENU_ID}`)) { clearTimeout(msgHideTimer); return }
+  const row = t.closest && t.closest('[class*="message-out"]')
+  const main = document.querySelector("#main")
+  if (!row || !main || !main.contains(row)) return hideMsgSoon()
+  const text = messageText(row)
+  if (!text) return hideMsgSoon() // áudio, foto, figurinha: sem texto pra copiar
+  clearTimeout(msgHideTimer)
+  const first = row.querySelector(TEXT_SEL)
+  const r = first.getBoundingClientRect()
+  let b = document.getElementById(MSG_BTN_ID)
+  if (!b) {
+    b = document.createElement("button")
+    b.id = MSG_BTN_ID
+    b.title = "Salvar como resposta rápida"
+    b.innerHTML = icon("zap", 16)
+    b.addEventListener("mouseleave", hideMsgSoon)
+    b.addEventListener("click", onMsgButtonClick)
+    document.body.appendChild(b)
+  }
+  msgHover = { text }
+  b.style.display = "grid"
+  b.style.left = Math.max(8, Math.round(r.left - 52)) + "px"
+  b.style.top = Math.round(r.top + r.height / 2 - 14) + "px"
+}
+
+function onMsgButtonClick() {
+  const b = document.getElementById(MSG_BTN_ID)
+  if (!b || !msgHover) return
+  let m = document.getElementById(MSG_MENU_ID)
+  if (m) return m.remove()
+  m = document.createElement("div")
+  m.id = MSG_MENU_ID
+  m.innerHTML = `<small>VISION CRM</small><button>${icon("text", 16)}<span>Salvar como resposta rápida</span><em>Texto</em></button>`
+  m.addEventListener("mouseenter", () => clearTimeout(msgHideTimer))
+  m.addEventListener("mouseleave", hideMsgSoon)
+  m.querySelector("button").addEventListener("click", () => {
+    const text = msgHover.text
+    hideMsgUi()
+    openReplyForm({ text })
+    setTimeout(() => { const i = document.querySelector("#vcrm-root input[name='name']"); if (i) i.focus() }, 80)
+  })
+  document.body.appendChild(m)
+  const r = b.getBoundingClientRect()
+  m.style.left = Math.round(Math.max(8, r.left - 20)) + "px"
+  m.style.top = Math.round(r.bottom + 6) + "px"
+}
+
 // ── Eventos do painel ────────────────────────────────────────────────────────
 
 async function onClick(e) {
@@ -1643,6 +1732,7 @@ function startObserver() {
     bodyTimer = setTimeout(() => { ensureSide(); ensureHeaderBar(); renderWaiting() }, 150)
   }).observe(document.body, { childList: true })
   window.addEventListener("resize", () => { ensureSide(); ensureHeaderBar() })
+  document.addEventListener("mouseover", onMsgHover, true)
   document.addEventListener("input", onComposerInput, true)
   document.addEventListener("keydown", (e) => { if (e.key === "Escape") closePop() }, true)
   // token/URL mudaram no popup: recarrega

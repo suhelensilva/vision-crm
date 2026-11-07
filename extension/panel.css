@@ -382,3 +382,14 @@ html.vcrm-on body { padding-right: var(--vcrm-pad, 44px) !important; }
 .rp-vars { display: flex; flex-wrap: wrap; gap: 6px; }
 .rp-vars button { padding: 4px 10px; border-radius: 999px; border: 1px solid var(--soft); background: rgba(255, 255, 255, 0.07); color: #d1d7db; font-size: 11px; cursor: pointer; }
 .rp-vars button:hover { background: rgba(255, 255, 255, 0.14); }
+
+/* ═══ "Salvar como resposta rápida" ao passar o mouse numa mensagem sua ═══ */
+#vcrm-msgbtn { position: fixed; z-index: 2147482990; display: none; place-items: center; width: 28px; height: 28px; padding: 0; cursor: pointer; border: 0; border-radius: 50%; background: rgba(32, 44, 51, 0.95); color: #5aa9ff; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4); }
+#vcrm-msgbtn:hover { background: #2a3942; color: #8cc4ff; }
+#vcrm-msgmenu { position: fixed; z-index: 2147482991; min-width: 270px; padding: 8px; background: #1f2427; color: #e9edef; border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 12px; box-shadow: 0 14px 36px rgba(0, 0, 0, 0.55); font-family: "Segoe UI", system-ui, sans-serif; }
+#vcrm-msgmenu small { display: block; padding: 4px 8px 6px; font-size: 11px; font-weight: 700; letter-spacing: 0.8px; color: #8696a0; }
+#vcrm-msgmenu button { display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px; border: 0; border-radius: 8px; background: rgba(255, 255, 255, 0.05); color: #e9edef; font-size: 14px; text-align: left; cursor: pointer; }
+#vcrm-msgmenu button:hover { background: rgba(255, 255, 255, 0.1); }
+#vcrm-msgmenu button svg { color: #34d399; }
+#vcrm-msgmenu button span { flex: 1; }
+#vcrm-msgmenu button em { font-style: normal; font-size: 12px; color: #8696a0; }
