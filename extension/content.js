@@ -69,6 +69,8 @@ const ICONS = {
   chevrondown: '<path d="m6 9 6 6 6-6"/>',
   filter: '<path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z"/>',
   chevronright: '<path d="m9 18 6-6-6-6"/>',
+  copy: '<rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>',
+  pencil: '<path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/><path d="m15 5 4 4"/>',
   alarm: '<circle cx="12" cy="13" r="8"/><path d="M12 9v4l2 2"/><path d="M5 3 2 6"/><path d="m22 6-3-3"/><path d="M6.38 18.7 4 21"/><path d="M17.64 18.67 20 21"/>',
   circlecheck: '<circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/>',
   columns: '<rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/><path d="M15 3v18"/>',
@@ -295,6 +297,14 @@ function render() {
   ).join("")
 
   const active = TABS.find((t) => t.id === state.tab)
+  // Se o formulário de resposta está aberto, guarda o que foi digitado e onde estava o cursor,
+  // porque a tela se redesenha sozinha de vez em quando (nada do que você digita pode sumir).
+  let keep = null
+  if (rp.form) {
+    syncReplyForm()
+    const a = document.activeElement
+    if (a && root.contains(a) && a.name) keep = { name: a.name, s: a.selectionStart, e: a.selectionEnd }
+  }
   root.innerHTML = `
     <aside class="vc-rail">
       <div class="vc-logo" title="Vision CRM">${icon("spark", 20)}</div>
@@ -312,6 +322,10 @@ function render() {
     </section>` : ""}
     ${state.toast ? `<div class="vc-toast">${esc(state.toast)}</div>` : ""}
   `
+  if (keep) {
+    const el = root.querySelector(`[name="${keep.name}"]`)
+    if (el) { el.focus(); try { el.setSelectionRange(keep.s, keep.e) } catch {} }
+  }
 }
 
 function renderBody() {
@@ -590,18 +604,176 @@ function matchReplies(q) {
   return list.sort((a, b) => Number(b.favorite) - Number(a.favorite) || b.usageCount - a.usageCount)
 }
 
+// ── Aba: Respostas rápidas (cópia do painel do Hotzapp, tudo dentro da conversa) ──
+
+const rp = { form: null, prefsOpen: false, msg: "" }
+const catName = (r) => r.category || "Sem categoria"
+const VAR_CHIPS = [["{primeiro_nome}", "Primeiro nome"], ["{nome_completo}", "Nome completo"], ["{saudacao}", "Saudação"], ["{seu_nome}", "Seu nome"], ["{telefone}", "Telefone"], ["{data_de_hoje}", "Data de hoje"], ["{hora_agora}", "Hora agora"]]
+
+async function loadReplies() {
+  const res = await api("GET", "/api/crm/quick-replies")
+  if (res.ok && Array.isArray(res.data)) state.replies = res.data
+}
+
+function openReplyForm(init) {
+  state.open = true
+  state.tab = "respostas"
+  rp.form = { mode: "new", type: "TEXT", id: null, name: "", category: "", shortcut: "", text: "", contactName: "", contactPhone: "", ...init }
+  rp.msg = ""
+  render()
+}
+
+/** Guarda o que foi digitado, pra não se perder ao trocar de tipo. */
+function syncReplyForm() {
+  const form = document.querySelector("#vcrm-root form[data-form='rpform']")
+  if (!form || !rp.form) return
+  const fd = new FormData(form)
+  for (const k of ["name", "category", "shortcut", "text", "contactName", "contactPhone"]) if (fd.has(k)) rp.form[k] = String(fd.get(k))
+}
+
+function rpCard(r) {
+  const compact = prefs.compact
+  const acts = `<span class="rp-actions">
+      <button data-rp-act="send" data-rp-id="${esc(r.id)}" title="Enviar">${icon("send", 14)}</button>
+      <button data-rp-act="dup" data-rp-id="${esc(r.id)}" title="Duplicar">${icon("copy", 14)}</button>
+      <button data-rp-act="edit" data-rp-id="${esc(r.id)}" title="Editar">${icon("pencil", 14)}</button>
+      <button data-rp-act="del" data-rp-id="${esc(r.id)}" title="Excluir">${icon("trash", 14)}</button></span>`
+  const star = `<button class="rp-star ${r.favorite ? "on" : ""}" data-rp-act="fav" data-rp-id="${esc(r.id)}" title="Favorita">${icon("star", 15)}</button>`
+  const tile = `<span class="rp-tile t-${r.type}">${icon(TYPE_ICON[r.type] === "paperclip" ? BAR_ICON[r.type] || "file" : TYPE_ICON[r.type] || "text", 15)}</span>`
+  if (compact) {
+    return `<div class="rp-card compact">${tile}<b class="rp-name">${esc(r.name)}</b>${acts}<em>${r.usageCount}×</em>${star}</div>`
+  }
+  const preview = r.type === "TEXT" ? esc((r.text || "").slice(0, 120)) : ""
+  return `<div class="rp-card">${tile}
+    <div class="rp-main"><b class="rp-name">${esc(r.name)}${r.shortcut ? ` <code>;${esc(r.shortcut)}</code>` : ""}</b>
+      ${preview ? `<div class="rp-preview">${preview}</div>` : ""}
+      <div class="rp-meta">${r.category ? `<span class="rp-cat" style="--h:${catHue(r.category)}">${esc(r.category)}</span>` : ""}<em>usada ${r.usageCount}×</em></div></div>
+    ${star}${acts}</div>`
+}
+
 function renderReplies() {
-  const list = matchReplies(state.repliesQuery)
-  return `
-    <input class="vc-search" data-search placeholder="Buscar mensagem…" value="${esc(state.repliesQuery)}" />
-    <p class="vc-hint">Clique pra escrever no campo de mensagem. Você revisa e aperta Enter. Digite <code>;</code> no campo pra buscar pelo atalho.</p>
-    ${list.length ? list.map((r) => `
-      <button class="vc-reply" data-reply="${esc(r.id)}">
-        <span class="vc-rico">${icon(TYPE_ICON[r.type] || "text", 15)}</span>
-        <span class="vc-rtxt"><b>${r.favorite ? `<i class="vc-fav">${icon("star", 12)}</i>` : ""}${esc(r.name)}${r.shortcut ? ` <code>;${esc(r.shortcut)}</code>` : ""}</b>
-        <span>${esc(replyPreview(r))}</span></span>
-      </button>`).join("") : `<p class="vc-muted">Nenhuma resposta encontrada. Crie no painel web, em Respostas rápidas.</p>`}
-  `
+  if (rp.form) return renderReplyForm()
+  const q = state.repliesQuery.trim().toLowerCase()
+  const list = state.replies.filter((r) => !q || r.name.toLowerCase().includes(q) || (r.shortcut || "").toLowerCase().includes(q) || (r.text || "").toLowerCase().includes(q) || catName(r).toLowerCase().includes(q))
+  const groups = new Map()
+  for (const r of list) { const c = catName(r); if (!groups.has(c)) groups.set(c, []); groups.get(c).push(r) }
+  const cats = [...groups.keys()].sort((a, b) => (a === "Sem categoria" ? 1 : b === "Sem categoria" ? -1 : a.localeCompare(b, "pt-BR")))
+
+  const prefsBox = rp.prefsOpen ? `<div class="vc-card rp-prefs">
+      <div class="vc-sec first">Preferências</div>
+      <div class="rp-line"><span>Estilo dos chips</span><span class="rp-seg"><button type="button" data-rp-act="style-icon" class="${prefs.chipStyle === "icon" ? "on" : ""}">Ícone</button><button type="button" data-rp-act="style-color" class="${prefs.chipStyle === "color" ? "on" : ""}">Colorido</button></span></div>
+      <label class="vc-check"><input type="checkbox" data-pref="sendDirect" ${prefs.sendDirect ? "checked" : ""}/> <span>Mensagem sai direto</span></label>
+    </div>` : ""
+
+  return `<div class="rp-top">
+      <div class="rp-search"><input class="vc-search" data-search placeholder="Buscar mensagem…" value="${esc(state.repliesQuery)}" /></div>
+      <button class="vc-btn" data-rp-act="new">${icon("plus", 14)} Nova</button>
+    </div>
+    <div class="rp-sub"><span>Na conversa, comece com <code>;</code> e escolha uma.</span>
+      <span class="rp-tools"><button data-rp-act="compact" class="${prefs.compact ? "on" : ""}" title="Lista compacta">${icon("list", 16)}</button><button data-rp-act="prefs" class="${rp.prefsOpen ? "on" : ""}" title="Preferências">${icon("settings", 16)}</button></span></div>
+    ${prefsBox}
+    ${rp.msg ? `<div class="vc-note">${esc(rp.msg)}</div>` : ""}
+    ${cats.length ? cats.map((c) => {
+      const closed = !!(prefs.collapsed && prefs.collapsed[c])
+      const items = groups.get(c)
+      return `<div class="rp-cat-head" data-rp-act="toggle" data-rp-cat="${esc(c)}"><i style="background:hsl(${catHue(c)} 60% 55%)"></i><b>${esc(c.toUpperCase())}</b><span>(${items.length})</span><em>${icon(closed ? "chevronright" : "chevrondown", 14)}</em></div>${closed ? "" : items.map(rpCard).join("")}`
+    }).join("") : `<p class="vc-muted">${state.replies.length ? "Nenhuma resposta encontrada." : "Você ainda não tem respostas rápidas. Clique em + Nova pra criar a primeira."}</p>`}`
+}
+
+function renderReplyForm() {
+  const f = rp.form
+  const isEdit = f.mode === "edit"
+  const cats = [...new Set(state.replies.map((r) => r.category).filter(Boolean))]
+  return `<form class="vc-card rp-form" data-form="rpform">
+    <div class="vc-sec first">${isEdit ? "Editar" : "Nova"} ${f.type === "CONTACT" ? "cartão de contato" : "mensagem de texto"}</div>
+    ${isEdit ? "" : `<div class="rp-seg wide"><button type="button" data-rp-act="type-TEXT" class="${f.type === "TEXT" ? "on" : ""}">Texto</button><button type="button" data-rp-act="type-CONTACT" class="${f.type === "CONTACT" ? "on" : ""}">Contato</button></div>
+      <p class="vc-hint">Áudio, imagem, vídeo e documento: crie pelo painel web (é preciso enviar o arquivo).</p>`}
+    <label class="rp-l">Nome <b>*</b></label>
+    <input name="name" maxlength="80" placeholder="Como você vai achar essa mensagem depois" value="${esc(f.name)}" required />
+    <label class="rp-l">Categoria <span>· só você vê (opcional)</span></label>
+    <input name="category" maxlength="40" list="rp-cats" placeholder="Ex.: Orçamentos" value="${esc(f.category)}" />
+    <datalist id="rp-cats">${cats.map((c) => `<option value="${esc(c)}"></option>`).join("")}</datalist>
+    ${f.type === "TEXT" ? `
+      <label class="rp-l">Mensagem <b>*</b></label>
+      <textarea name="text" rows="6" maxlength="4096" placeholder="Digite sua mensagem aqui…" required>${esc(f.text)}</textarea>
+      <div class="rp-vars">${VAR_CHIPS.map(([t, l]) => `<button type="button" data-rp-var="${esc(t)}">${esc(l)}</button>`).join("")}</div>
+      <p class="vc-hint">Clique pra inserir. O cliente recebe tudo preenchido.</p>`
+    : `
+      <label class="rp-l">Nome do contato <b>*</b></label>
+      <input name="contactName" maxlength="100" value="${esc(f.contactName)}" required />
+      <label class="rp-l">Telefone do contato <b>*</b></label>
+      <input name="contactPhone" maxlength="30" placeholder="11 99999-8888" value="${esc(f.contactPhone)}" required />`}
+    <label class="rp-l">Atalho <span>· opcional, digite ; e o atalho na conversa</span></label>
+    <input name="shortcut" maxlength="30" placeholder="ex.: pix" value="${esc(f.shortcut)}" />
+    <div class="vc-note">${esc(rp.msg)}</div>
+    <div class="vc-actions"><button type="button" class="vc-ghost" data-rp-act="cancel">Cancelar</button><button class="vc-btn">Salvar</button></div>
+  </form>`
+}
+
+async function onReplyAction(act, id, btn) {
+  const r = id ? state.replies.find((x) => x.id === id) : null
+  if (act === "new") return openReplyForm({})
+  if (act === "cancel") { rp.form = null; rp.msg = ""; return render() }
+  if (act === "compact") { prefs.compact = !prefs.compact; savePrefs(); return render() }
+  if (act === "prefs") { rp.prefsOpen = !rp.prefsOpen; return render() }
+  if (act === "style-icon" || act === "style-color") { prefs.chipStyle = act === "style-icon" ? "icon" : "color"; savePrefs(); ensureBar(); return render() }
+  if (act === "toggle") {
+    const c = btn.getAttribute("data-rp-cat")
+    prefs.collapsed = prefs.collapsed || {}
+    prefs.collapsed[c] = !prefs.collapsed[c]
+    savePrefs()
+    return render()
+  }
+  if (act.startsWith("type-")) { syncReplyForm(); rp.form.type = act.slice(5); return render() }
+  if (!r) return
+  if (act === "send") return useReply(r)
+  if (act === "fav") {
+    r.favorite = !r.favorite
+    render()
+    const res = await api("PATCH", `/api/crm/quick-replies/${r.id}`, { favorite: r.favorite })
+    if (!res.ok) { r.favorite = !r.favorite; toast("Não consegui favoritar."); render() }
+    ensureBar()
+    return
+  }
+  if (act === "dup") {
+    const res = await api("POST", `/api/crm/quick-replies/${r.id}/duplicate`)
+    if (!res.ok) return toast((res.data && res.data.error) || "Não consegui duplicar.")
+    await loadReplies(); ensureBar(); render()
+    return toast("Duplicada.")
+  }
+  if (act === "edit") {
+    if (r.type !== "TEXT" && r.type !== "CONTACT") return toast("Pra editar áudio, imagem, vídeo ou documento, use o painel web.")
+    return openReplyForm({ mode: "edit", id: r.id, type: r.type, name: r.name, category: r.category || "", shortcut: r.shortcut || "", text: r.text || "", contactName: r.contactName || "", contactPhone: r.contactPhone || "" })
+  }
+  if (act === "del") {
+    if (!confirm(`Excluir a resposta "${r.name}"?`)) return
+    const res = await api("DELETE", `/api/crm/quick-replies/${r.id}`)
+    if (!res.ok) return toast("Não consegui excluir.")
+    state.replies = state.replies.filter((x) => x.id !== r.id)
+    ensureBar(); render()
+    toast("Excluída.")
+  }
+}
+
+async function submitReplyForm(form) {
+  syncReplyForm()
+  const f = rp.form
+  const body = { name: f.name.trim(), category: f.category.trim() || null, shortcut: f.shortcut.trim() || null }
+  if (f.type === "TEXT") body.text = f.text
+  else { body.contactName = f.contactName; body.contactPhone = f.contactPhone }
+  if (f.mode === "new") body.type = f.type
+  rp.msg = "Salvando…"
+  render()
+  const res = f.mode === "edit"
+    ? await api("PATCH", `/api/crm/quick-replies/${f.id}`, body)
+    : await api("POST", "/api/crm/quick-replies", body)
+  if (!res.ok) { rp.msg = (res.data && res.data.error) || "Não consegui salvar."; return render() }
+  rp.form = null
+  rp.msg = ""
+  await loadReplies()
+  ensureBar()
+  render()
+  toast("Resposta salva.")
 }
 
 function replyPreview(r) {
@@ -1043,7 +1215,7 @@ function endConversation() {
 const BAR_ICON = { TEXT: "text", CONTACT: "user", AUDIO: "mic", IMAGE: "image", VIDEO: "film", DOCUMENT: "file" }
 
 // ── Preferências da barra (como a engrenagem do Hotzapp) ──
-const prefs = { sendDirect: true, chipStyle: "icon", barMin: false, barCat: null }
+const prefs = { sendDirect: true, chipStyle: "icon", barMin: false, barCat: null, compact: false, collapsed: {} }
 
 function savePrefs() {
   try { chrome.storage.local.set({ vcrmPrefs: prefs }).catch(() => {}) } catch {}
@@ -1198,6 +1370,18 @@ function onComposerInput(e) {
 // ── Eventos do painel ────────────────────────────────────────────────────────
 
 async function onClick(e) {
+  // Respostas rápidas (cartões, botões ao passar o mouse, categorias, formulário)
+  const rpEl = e.target.closest("[data-rp-act]")
+  if (rpEl) return onReplyAction(rpEl.dataset.rpAct, rpEl.dataset.rpId, rpEl)
+  const rpVar = e.target.closest("[data-rp-var]")
+  if (rpVar) {
+    const ta = document.querySelector("#vcrm-root textarea[name='text']")
+    if (ta) {
+      ta.focus()
+      ta.setRangeText(rpVar.dataset.rpVar, ta.selectionStart, ta.selectionEnd, "end")
+    }
+    return
+  }
   const t = e.target.closest("button")
   if (!t) return
 
@@ -1279,6 +1463,7 @@ async function onSubmit(e) {
   if (!form) return
   e.preventDefault()
   const kind = form.dataset.form
+  if (kind === "rpform") return submitReplyForm(form)
   const f = new FormData(form)
   const msg = (m) => { const el = form.querySelector("[data-msg]"); if (el) el.textContent = m }
 
@@ -1342,6 +1527,11 @@ async function onSubmit(e) {
 }
 
 function onInput(e) {
+  if (e.target.matches("[data-pref]")) {
+    prefs[e.target.getAttribute("data-pref")] = e.target.checked
+    savePrefs()
+    return
+  }
   if (e.target.matches("[data-imp-label]")) {
     const n = e.target.getAttribute("data-imp-label")
     if (e.target.checked) imp.selected.add(n)
