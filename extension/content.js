@@ -398,12 +398,20 @@ function renderNotes() {
 
 // ── Aba: Importar do WhatsApp ─────────────────────────────────────────────────
 
-const imp = { phase: "idle", scan: null, result: null, msg: "", done: 0, total: 0, withoutLabel: true, archived: true }
+const imp = { phase: "idle", scan: null, result: null, msg: "", done: 0, total: 0, withoutLabel: false, archived: true, selected: new Set() }
 
+/** Conversas que vão entrar, já só com as etiquetas escolhidas. */
 function importable() {
   const s = imp.scan
   if (!s) return []
-  return s.chats.filter((c) => (imp.withoutLabel || c.labels.length) && (imp.archived || !c.archived))
+  const out = []
+  for (const c of s.chats) {
+    if (!imp.archived && c.archived) continue
+    const mine = c.labels.filter((l) => imp.selected.has(l))
+    if (mine.length) out.push({ ...c, labels: mine })
+    else if (imp.withoutLabel) out.push({ ...c, labels: [] }) // sem etiqueta, ou só com etiquetas não escolhidas
+  }
+  return out
 }
 
 function renderImport() {
@@ -424,11 +432,17 @@ function renderImport() {
   if (imp.phase === "ready" && s) {
     const list = importable()
     const withLabel = s.chats.filter((c) => c.labels.length).length
-    const waiting = s.chats.filter((c) => c.lastFromMe === false).length
+    const noLabel = s.chats.length - withLabel
+    const counts = new Map()
+    for (const c of s.chats) for (const l of c.labels) counts.set(l, (counts.get(l) || 0) + 1)
+    const names = [...new Set([...s.labels.map((l) => l.name), ...counts.keys()])]
     return box(`<b style="color:#fff">Encontrei no seu WhatsApp</b>
-      <p class="vc-muted">${s.labels.length} etiquetas · ${s.chats.length} conversas com telefone (${withLabel} com etiqueta, ${waiting} aguardando sua resposta)${s.semTelefone ? ` · ${s.semTelefone} sem telefone descoberto (não entram)` : ""}${s.grupos ? ` · ${s.grupos} grupos ignorados` : ""}.</p>
-      <label class="vc-check"><input type="checkbox" data-imp-opt="withoutLabel" ${imp.withoutLabel ? "checked" : ""}/> Incluir conversas sem etiqueta</label>
-      <label class="vc-check"><input type="checkbox" data-imp-opt="archived" ${imp.archived ? "checked" : ""}/> Incluir conversas arquivadas</label>
+      <p class="vc-muted">${s.labels.length} etiquetas · ${s.chats.length} conversas com telefone${s.semTelefone ? ` · ${s.semTelefone} sem telefone descoberto (não entram)` : ""}${s.grupos ? ` · ${s.grupos} grupos ignorados` : ""}.</p>
+      <div class="vc-sec first">Quais etiquetas importar?</div>
+      <div class="vc-quick"><button class="vc-ghost" data-act="imp-all">Marcar todas</button><button class="vc-ghost" data-act="imp-none">Desmarcar todas</button></div>
+      <div class="vc-labels">${names.length ? names.map((n) => `<label class="vc-check"><input type="checkbox" data-imp-label="${esc(n)}" ${imp.selected.has(n) ? "checked" : ""}/> <span>${esc(n)}</span> <em>${counts.get(n) || 0}</em></label>`).join("") : `<p class="vc-muted">Nenhuma etiqueta encontrada.</p>`}</div>
+      <label class="vc-check"><input type="checkbox" data-imp-opt="withoutLabel" ${imp.withoutLabel ? "checked" : ""}/> <span>Também as conversas sem etiqueta</span> <em>${noLabel}</em></label>
+      <label class="vc-check"><input type="checkbox" data-imp-opt="archived" ${imp.archived ? "checked" : ""}/> <span>Incluir conversas arquivadas</span></label>
       <button class="vc-btn" data-act="imp-go" ${list.length ? "" : "disabled"}>${icon("download", 15)} Importar ${list.length} contatos</button>
       <button class="vc-ghost" data-act="imp-diag">Copiar diagnóstico da leitura</button>`)
   }
@@ -449,6 +463,7 @@ async function importScan() {
     return render()
   }
   imp.scan = r
+  imp.selected = new Set([...r.labels.map((l) => l.name), ...r.chats.flatMap((c) => c.labels)]) // começa com todas marcadas
   imp.phase = r.chats.length ? "ready" : "idle"
   if (!r.chats.length) imp.msg = "Não achei conversas pra importar. Clique em \"Copiar diagnóstico da leitura\" e me mande."
   render()
@@ -777,6 +792,12 @@ async function onClick(e) {
   }
   if (act === "imp-scan") return importScan()
   if (act === "imp-go") return importGo()
+  if (act === "imp-all" || act === "imp-none") {
+    imp.selected = act === "imp-all"
+      ? new Set([...imp.scan.labels.map((l) => l.name), ...imp.scan.chats.flatMap((c) => c.labels)])
+      : new Set()
+    return render()
+  }
   if (act === "imp-reset") { imp.phase = "idle"; imp.result = null; return render() }
   if (act === "imp-diag") {
     const s = imp.scan || {}
@@ -898,6 +919,12 @@ async function onSubmit(e) {
 }
 
 function onInput(e) {
+  if (e.target.matches("[data-imp-label]")) {
+    const n = e.target.getAttribute("data-imp-label")
+    if (e.target.checked) imp.selected.add(n)
+    else imp.selected.delete(n)
+    return render()
+  }
   if (e.target.matches("[data-imp-opt]")) {
     imp[e.target.getAttribute("data-imp-opt")] = e.target.checked
     return render()
