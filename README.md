@@ -58,12 +58,30 @@ Cada compra registrada vira um evento `Purchase` no Pixel da taróloga.
 - `test_event_code` aparece em "Testar eventos", mas o Meta ainda usa esses
   eventos na medição. Deixe vazio no dia a dia.
 
+## Funil (kanban)
+
+Página **Funil** do painel (`/dashboard/funil`). As colunas são as listas da
+taróloga, mais "Sem lista". Arrastar um card troca de coluna.
+
+- Card: nome, telefone, total gasto e nº de compras, próximo passo com prazo
+  (atrasado / hoje / futuro) e "Parada há N dias" (3 dias ou mais).
+- "Parada" conta dias desde a última movimentação (compra, mudar de lista,
+  próximo passo). Abrir a conversa no WhatsApp **não** conta.
+- Uma cliente pode estar em várias listas e aparece em cada coluna.
+- Dá pra registrar compra e definir próximo passo direto no card, criar
+  contato à mão, criar/renomear/excluir listas, buscar e filtrar.
+- As rotas `/api/crm/funnel`, `/contacts` e `/lists` aceitam o token da
+  extensão **ou** o login do painel (`getAuthUser`). Tudo checa o dono do dado.
+- "Próximo passo" com data só (`2026-11-10`) é salvo ao meio-dia de Brasília,
+  pra o dia não voltar por causa do fuso.
+- Limite: lê até 2000 contatos e mostra até 100 cards por coluna.
+
 ## Fila de entregas
 
 1. Etiquetas/Listas (feito)
 2. Disparo pro Meta (feito e testado com um Meta simulado; falta testar com
    o Pixel real)
-3. Funil kanban
+3. Funil kanban (feito; falta o "Origem" e a aba "Resultados")
 4. Cobranças
 5. Dados do lead e Notas
 6. Respostas rápidas

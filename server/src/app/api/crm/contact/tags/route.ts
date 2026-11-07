@@ -49,6 +49,7 @@ export async function POST(req: NextRequest) {
   } else {
     await prisma.crmListMember.deleteMany({ where: { listId: list.id, contactId: contact.id } })
   }
+  await prisma.contact.update({ where: { id: contact.id }, data: { lastActivityAt: new Date() } })
 
   return NextResponse.json(await buildContact(user.id, contact.id))
 }

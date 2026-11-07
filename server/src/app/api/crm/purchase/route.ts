@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse, after } from "next/server"
 import { z } from "zod"
-import { prisma } from "@/lib/prisma"
 import { getUserFromToken, normalizePhone } from "@/lib/crm-auth"
-import { buildContact, findContactByPhone } from "@/lib/crm"
+import { buildContact } from "@/lib/crm"
 import { sendPurchaseEvent } from "@/lib/meta"
+import { recordPurchaseByPhone } from "@/lib/purchases"
 
 const schema = z.object({
   phone: z.string().min(1),
@@ -15,7 +15,7 @@ const schema = z.object({
   purchasedAt: z.string().optional(),
 })
 
-// POST /api/crm/purchase -> registra compra (cria o contato se não existir).
+// POST /api/crm/purchase -> registra compra pelo telefone (cria o contato se não existir).
 export async function POST(req: NextRequest) {
   const user = await getUserFromToken(req)
   if (!user) return NextResponse.json({ error: "Token inválido" }, { status: 401 })
@@ -31,33 +31,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Telefone inválido" }, { status: 400 })
   }
 
-  let contact = await findContactByPhone(user.id, data.phone)
-  if (!contact) {
-    contact = await prisma.contact.create({
-      data: {
-        userId: user.id,
-        name: data.name?.trim() || "Cliente WhatsApp",
-        phone: normalizePhone(data.phone),
-      },
-    })
-  } else if (data.name?.trim() && (contact.name === "Cliente WhatsApp" || !contact.name)) {
-    contact = await prisma.contact.update({
-      where: { id: contact.id },
-      data: { name: data.name.trim() },
-    })
-  }
-
-  const purchase = await prisma.purchase.create({
-    data: {
-      userId: user.id,
-      contactId: contact.id,
-      amount: data.amount,
-      productName: data.productName?.trim() || null,
-      source: data.source ?? "whatsapp",
-      ctwaClid: data.ctwaClid || null,
-      purchasedAt: data.purchasedAt ? new Date(data.purchasedAt) : undefined,
-    },
-  })
+  const { contact, purchase } = await recordPurchaseByPhone(user.id, data)
 
   // Envia a conversão ao Meta depois de responder. Se falhar, o erro fica salvo
   // na compra e dá pra reenviar pelo painel; a compra em si nunca é perdida.

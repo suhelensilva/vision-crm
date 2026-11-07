@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
 import { prisma } from "@/lib/prisma"
-import { getUserFromToken } from "@/lib/crm-auth"
+import { getAuthUser } from "@/lib/crm-auth"
 
 const patchSchema = z.object({
   name: z.string().min(1).max(60).optional(),
@@ -10,7 +10,7 @@ const patchSchema = z.object({
 })
 
 export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
-  const user = await getUserFromToken(req)
+  const user = await getAuthUser(req)
   if (!user) return NextResponse.json({ error: "Token inválido" }, { status: 401 })
 
   const { id } = await ctx.params
@@ -37,7 +37,7 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
 }
 
 export async function DELETE(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
-  const user = await getUserFromToken(req)
+  const user = await getAuthUser(req)
   if (!user) return NextResponse.json({ error: "Token inválido" }, { status: 401 })
 
   const { id } = await ctx.params
