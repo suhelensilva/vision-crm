@@ -45,33 +45,25 @@ export default function CadastroPage() {
   }
 
   return (
-    <div style={wrap}>
-      <form onSubmit={handleSubmit} style={card}>
-        <h1 style={title}>✦ Vision CRM</h1>
-        <p style={sub}>Crie sua conta</p>
-        <label style={label}>Nome</label>
-        <input style={input} value={name} onChange={(e) => setName(e.target.value)} required />
-        <label style={label}>Email</label>
-        <input style={input} type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
-        <label style={label}>Senha (mínimo 6 caracteres)</label>
-        <PasswordInput value={password} onChange={setPassword} minLength={6} autoComplete="new-password" />
-        <label style={label}>Confirmar senha</label>
-        <PasswordInput value={confirm} onChange={setConfirm} minLength={6} autoComplete="new-password" />
-        {mismatch && <p style={{ color: "#dc2626", fontSize: 12, margin: "6px 0 0" }}>As senhas não são iguais.</p>}
-        {error && <p style={{ color: "#dc2626", fontSize: 13 }}>{error}</p>}
-        <button style={button} disabled={loading || mismatch}>{loading ? "Criando..." : "Criar conta"}</button>
-        <p style={{ fontSize: 13, textAlign: "center", marginTop: 12 }}>
+    <div className="auth-bg">
+      <form onSubmit={handleSubmit} className="auth-card">
+        <h1 className="auth-title">✦ Vision CRM</h1>
+        <p className="auth-sub">Crie sua conta</p>
+        <label className="auth-label">Nome</label>
+        <input className="auth-input" value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" required />
+        <label className="auth-label">Email</label>
+        <input className="auth-input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" required />
+        <label className="auth-label">Senha (mínimo 6 caracteres)</label>
+        <PasswordInput variant="dark" value={password} onChange={setPassword} minLength={6} autoComplete="new-password" />
+        <label className="auth-label">Confirmar senha</label>
+        <PasswordInput variant="dark" value={confirm} onChange={setConfirm} minLength={6} autoComplete="new-password" />
+        {mismatch && <p className="auth-error" style={{ fontSize: 12, marginTop: 6 }}>As senhas não são iguais.</p>}
+        {error && <p className="auth-error">{error}</p>}
+        <button className="auth-btn" disabled={loading || mismatch}>{loading ? "Criando..." : "Criar conta"}</button>
+        <p className="auth-foot">
           Já tem conta? <Link href="/login">Entrar</Link>
         </p>
       </form>
     </div>
   )
 }
-
-const wrap: React.CSSProperties = { minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }
-const card: React.CSSProperties = { background: "#fff", padding: 28, borderRadius: 16, width: 340, boxShadow: "0 10px 30px rgba(124,58,237,0.12)", display: "flex", flexDirection: "column" }
-const title: React.CSSProperties = { margin: 0, color: "#6d28d9", fontSize: 22 }
-const sub: React.CSSProperties = { marginTop: 4, marginBottom: 18, color: "#6b7280", fontSize: 14 }
-const label: React.CSSProperties = { fontSize: 13, fontWeight: 600, marginTop: 10, marginBottom: 4 }
-const input: React.CSSProperties = { border: "1px solid #d1d5db", borderRadius: 8, padding: "10px 12px", fontSize: 14 }
-const button: React.CSSProperties = { marginTop: 18, background: "#7c3aed", color: "#fff", border: "none", borderRadius: 8, padding: 12, fontSize: 14, fontWeight: 600, cursor: "pointer" }

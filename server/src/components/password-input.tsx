@@ -8,11 +8,14 @@ type Props = {
   placeholder?: string
   minLength?: number
   autoComplete?: string
+  /** "dark" é o campo das telas de entrar e cadastrar (usa a classe .auth-input). */
+  variant?: "light" | "dark"
 }
 
 /** Campo de senha com botão "mostrar / ocultar" pra ver o que está digitando. */
-export function PasswordInput({ value, onChange, placeholder, minLength, autoComplete }: Props) {
+export function PasswordInput({ value, onChange, placeholder, minLength, autoComplete, variant = "light" }: Props) {
   const [visible, setVisible] = useState(false)
+  const dark = variant === "dark"
 
   return (
     <div style={{ position: "relative" }}>
@@ -24,13 +27,18 @@ export function PasswordInput({ value, onChange, placeholder, minLength, autoCom
         minLength={minLength}
         autoComplete={autoComplete}
         required
-        style={{
-          width: "100%",
-          border: "1px solid #d1d5db",
-          borderRadius: 8,
-          padding: "10px 64px 10px 12px",
-          fontSize: 14,
-        }}
+        className={dark ? "auth-input" : undefined}
+        style={
+          dark
+            ? { paddingRight: 70 }
+            : {
+                width: "100%",
+                border: "1px solid #d1d5db",
+                borderRadius: 8,
+                padding: "10px 64px 10px 12px",
+                fontSize: 14,
+              }
+        }
       />
       <button
         type="button"
@@ -43,7 +51,7 @@ export function PasswordInput({ value, onChange, placeholder, minLength, autoCom
           transform: "translateY(-50%)",
           background: "transparent",
           border: "none",
-          color: "#7c3aed",
+          color: dark ? "#ff5c8a" : "#7c3aed",
           fontSize: 12,
           fontWeight: 600,
           cursor: "pointer",
