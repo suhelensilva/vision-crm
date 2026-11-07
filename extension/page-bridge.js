@@ -175,11 +175,77 @@
     return { labels: labelsOut, chats: chatsOut, semTelefone, grupos, dbg }
   }
 
+  // ── Quem está esperando resposta (a última mensagem é da cliente) ──
+  const TYPE_LABEL = { ptt: "Mensagem de voz", audio: "Mensagem de voz", image: "Foto", video: "Vídeo", sticker: "Figurinha", document: "Documento", location: "Localização", vcard: "Contato", gif: "GIF" }
+
+  function waiting(minMinutes, maxHours) {
+    const dbg = { versao: "wait1" }
+    const out = []
+    try {
+      const C = collections()
+      if (!C) return { waiting: out, dbg: { ...dbg, semCollections: true } }
+      const now = Date.now()
+      for (const chat of arr(C.Chat)) {
+        const id = chat && chat.id
+        const server = id && id.server
+        if (!id || server === "g.us" || chat.isGroup) continue
+        if (server !== "c.us" && server !== "lid") continue
+        if (chat.archive) continue
+        const last = lastMessageOf(chat)
+        if (!last || !last.id || last.id.fromMe !== false) continue
+        const t = (last.t || chat.t || 0) * 1000
+        if (!t) continue
+        const mins = Math.floor((now - t) / 60000)
+        if (mins < minMinutes || mins > maxHours * 60) continue
+        const type = String(last.type || "chat")
+        let preview = TYPE_LABEL[type] || ""
+        if (!preview) preview = String(last.body || last.caption || "Mensagem").replace(/\s+/g, " ").slice(0, 50)
+        out.push({
+          key: serial(id),
+          name: String(chat.formattedTitle || chat.name || (chat.contact && (chat.contact.name || chat.contact.pushname)) || "").trim() || "Contato",
+          preview,
+          mins,
+        })
+      }
+      out.sort((a, b) => b.mins - a.mins)
+      dbg.total = out.length
+    } catch (e) { dbg.erro = String(e).slice(0, 160) }
+    return { waiting: out.slice(0, 30), dbg }
+  }
+
+  // ── Abrir uma conversa pelo id ──
+  function openChat(key) {
+    const dbg = { versao: "open1" }
+    try {
+      const C = collections()
+      const chat = C && arr(C.Chat).find((c) => c && c.id && serial(c.id) === key)
+      dbg.achouChat = !!chat
+      if (!chat) return { opened: false, dbg }
+      for (const mod of ["WAWebCmd", "WAWebCmdCollection"]) {
+        const M = req(mod)
+        const Cmd = M && (M.Cmd || M)
+        dbg["mod_" + mod] = !!Cmd
+        if (!Cmd) continue
+        for (const fn of ["openChatAt", "openChatBottom", "openChatFromUnread"]) {
+          if (typeof Cmd[fn] === "function") {
+            try { Cmd[fn](chat); dbg.via = mod + "." + fn; return { opened: true, dbg } } catch (e) { dbg["erro_" + fn] = String(e).slice(0, 80) }
+          }
+        }
+      }
+    } catch (e) { dbg.erro = String(e).slice(0, 120) }
+    return { opened: false, dbg }
+  }
+
   document.addEventListener("vcrm-req", (ev) => {
     let id = ev.detail
     let kind = "chat"
-    try { const d = JSON.parse(ev.detail); if (d && typeof d === "object") { id = d.id; kind = d.kind || "chat" } } catch {}
-    const out = kind === "scan" ? scan() : answer()
+    let arg = null
+    try { const d = JSON.parse(ev.detail); if (d && typeof d === "object") { id = d.id; kind = d.kind || "chat"; arg = d.arg } } catch {}
+    const out =
+      kind === "scan" ? scan()
+      : kind === "waiting" ? waiting((arg && arg.minMinutes) || 60, (arg && arg.maxHours) || 72)
+      : kind === "open" ? openChat(String(arg || ""))
+      : answer()
     document.dispatchEvent(new CustomEvent("vcrm-res", { detail: JSON.stringify({ id, ...out }) }))
   })
 })()

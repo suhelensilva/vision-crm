@@ -141,7 +141,7 @@ function getActivePhone() {
 
 // Pede à página (page-bridge.js) a conversa aberta. Devolve {phone, name, dbg} ou null.
 let bridgeSeq = 0
-function askBridge(kind = "chat", timeoutMs = 1200) {
+function askBridge(kind = "chat", timeoutMs = 1200, arg = null) {
   return new Promise((resolve) => {
     const id = ++bridgeSeq
     const done = (ev) => {
@@ -154,7 +154,7 @@ function askBridge(kind = "chat", timeoutMs = 1200) {
     }
     const t = setTimeout(() => { document.removeEventListener("vcrm-res", done); resolve(null) }, timeoutMs)
     document.addEventListener("vcrm-res", done)
-    document.dispatchEvent(new CustomEvent("vcrm-req", { detail: JSON.stringify({ id, kind }) }))
+    document.dispatchEvent(new CustomEvent("vcrm-req", { detail: JSON.stringify({ id, kind, arg }) }))
   })
 }
 
@@ -622,6 +622,60 @@ function ensureSide() {
   el.style.top = Math.round(r.top + r.height * 0.42) + "px"
 }
 
+// ── Aviso: "N clientes esperam sua resposta" ─────────────────────────────────
+
+const WAIT_ID = "vcrm-wait"
+const WAIT_MIN_MINUTES = 60 // só avisa de quem espera há pelo menos 1 hora
+const WAIT_MAX_HOURS = 72 // e ignora o que é mais velho que 3 dias
+let waitSnoozeUntil = 0
+let waitList = []
+
+const waitFmt = (mins) => (mins >= 1440 ? Math.floor(mins / 1440) + " d" : mins >= 60 ? Math.floor(mins / 60) + " h" : mins + " min")
+
+function renderWaiting() {
+  let el = document.getElementById(WAIT_ID)
+  const hide = !waitList.length || Date.now() < waitSnoozeUntil || state.status === "no_config" || state.status === "bad_token"
+  if (hide) { if (el) el.remove(); return }
+  if (!el) {
+    el = document.createElement("div")
+    el.id = WAIT_ID
+    el.addEventListener("click", async (e) => {
+      const open = e.target.closest("[data-wait-open]")
+      if (open) {
+        const r = await askBridge("open", 3000, open.getAttribute("data-wait-open"))
+        if (!r || !r.opened) toast("Não consegui abrir sozinho. Procure o nome na lista de conversas.")
+        return
+      }
+      const act = e.target.closest("[data-wait-act]")
+      if (!act) return
+      if (act.getAttribute("data-wait-act") === "later") { waitSnoozeUntil = Date.now() + 30 * 60000; renderWaiting() }
+      if (act.getAttribute("data-wait-act") === "panel" && state.apiUrl) window.open(state.apiUrl + "/dashboard/pendencias", "_blank")
+    })
+    document.body.appendChild(el)
+  }
+  const shown = waitList.slice(0, 5)
+  const more = waitList.length - shown.length
+  const html = `
+    <b>${waitList.length} ${waitList.length === 1 ? "cliente espera" : "clientes esperam"} sua resposta</b>
+    <p>Clique no nome para abrir a conversa.</p>
+    ${shown.map((w) => `
+      <button class="vw-row" data-wait-open="${esc(w.key)}">
+        <span class="vw-av">${esc((w.name || "?").trim().slice(0, 1).toUpperCase())}</span>
+        <span class="vw-tx"><b>${esc(w.name)}</b><small>${esc(w.preview)}</small></span>
+        <span class="vw-time ${w.mins >= 180 ? "late" : ""}">${waitFmt(w.mins)}</span>
+      </button>`).join("")}
+    ${more > 0 ? `<p class="vw-more">e mais ${more}</p>` : ""}
+    <div class="vw-foot"><button data-wait-act="panel">Abrir pendências</button><button data-wait-act="later">Agora não</button></div>`
+  if (el.dataset.sig !== html) { el.innerHTML = html; el.dataset.sig = html }
+}
+
+async function checkWaiting() {
+  if (!document.querySelector("#app")) return
+  const r = await askBridge("waiting", 5000, { minMinutes: WAIT_MIN_MINUTES, maxHours: WAIT_MAX_HOURS })
+  if (r && Array.isArray(r.waiting)) waitList = r.waiting
+  renderWaiting()
+}
+
 // ── Barra de respostas acima do campo + atalho ";" ───────────────────────────
 
 function ensureBar() {
@@ -924,6 +978,9 @@ function init() {
   render()
   startObserver()
   refresh(true)
+  // aviso de quem espera resposta: confere ao abrir (depois que o WhatsApp carregou) e a cada minuto
+  setTimeout(checkWaiting, 6000)
+  setInterval(checkWaiting, 60000)
 }
 
 const boot = setInterval(() => {
