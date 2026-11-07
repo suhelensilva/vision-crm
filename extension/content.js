@@ -165,7 +165,7 @@ async function resolveChat() {
   if (b && b.phone) return { phone: b.phone, name: (b.name || getActiveName() || "").trim() || null }
   // plano B: título do cabeçalho é um número (contato sem nome salvo)
   const nm = getActiveName()
-  const only = nm ? nm.replace(/[s()+-]/g, "") : ""
+  const only = nm ? nm.replace(/[ ()+\- ]/g, "") : ""
   if (/^[0-9]{10,15}$/.test(only)) return { phone: only, name: nm }
   const legacy = getActivePhone()
   return { phone: legacy, name: nm }
