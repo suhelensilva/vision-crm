@@ -26,6 +26,7 @@ model User {
   purchases Purchase[]
   lists     CrmList[]
   charges   Charge[]
+  notes     Note[]
 
   @@map("users")
 }
@@ -37,7 +38,10 @@ model Contact {
   name      String
   phone     String
   email     String?
-  notes     String?
+
+  // Dados do lead
+  source    String?   // origem: "anuncio" | "organico" | "indicacao" | "outro"
+  birthDate DateTime? // nascimento (guardado ao meio-dia de Brasília)
 
   // Funil
   nextStep       String?   // próximo passo ("ligar sexta", "mandar áudio")
@@ -50,6 +54,7 @@ model Contact {
   user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
   purchases   Purchase[]
   charges     Charge[]
+  notes       Note[]
   memberships CrmListMember[]
 
   @@index([userId])
@@ -85,6 +90,21 @@ model Purchase {
   @@index([contactId, purchasedAt])
   @@index([userId, metaEventSent])
   @@map("purchases")
+}
+
+/// Anotação sobre uma cliente (várias por contato, em ordem de data).
+model Note {
+  id        String   @id @default(cuid())
+  userId    String
+  contactId String
+  text      String
+  createdAt DateTime @default(now())
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  contact Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  @@index([contactId, createdAt])
+  @@map("notes")
 }
 
 enum ChargeStatus {

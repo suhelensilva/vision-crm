@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 import type { Funnel, FunnelCard, FunnelColumn } from "@/lib/funnel"
 import { withCountryCode } from "@/lib/phone"
+import { SOURCES, SOURCE_LABEL, sourceLabel } from "@/lib/sources"
+import { ContactDrawer } from "@/components/contact-drawer"
 
 const TZ = "America/Sao_Paulo"
 const COLORS = ["#8b5cf6", "#ec4899", "#f59e0b", "#10b981", "#3b82f6", "#ef4444", "#14b8a6", "#a855f7"]
@@ -14,6 +16,7 @@ const shortDate = (iso: string) =>
 const dateInput = (iso: string) => new Date(iso).toLocaleDateString("en-CA", { timeZone: TZ })
 
 type StepFilter = "todos" | "atrasado" | "hoje" | "nenhum"
+type SourceFilter = "todas" | "sem" | (typeof SOURCES)[number]
 type Drag = { contactId: string; fromId: string | null } | null
 
 async function call(method: string, url: string, body?: unknown) {
@@ -32,6 +35,8 @@ export function FunnelBoard() {
   const [error, setError] = useState<string | null>(null)
   const [search, setSearch] = useState("")
   const [stepFilter, setStepFilter] = useState<StepFilter>("todos")
+  const [sourceFilter, setSourceFilter] = useState<SourceFilter>("todas")
+  const [openContactId, setOpenContactId] = useState<string | null>(null)
   const [onlyIdle, setOnlyIdle] = useState(false)
   const [drag, setDrag] = useState<Drag>(null)
   const [overCol, setOverCol] = useState<string | null>(null)
@@ -57,9 +62,11 @@ export function FunnelBoard() {
       if (q && !c.name.toLowerCase().includes(q) && !c.phone.includes(q.replace(/\D/g, "") || "§")) return false
       if (stepFilter !== "todos" && c.nextStepState !== stepFilter) return false
       if (onlyIdle && c.daysIdle < IDLE_DAYS) return false
+      if (sourceFilter === "sem" && c.source) return false
+      if (sourceFilter !== "todas" && sourceFilter !== "sem" && c.source !== sourceFilter) return false
       return true
     },
-    [search, stepFilter, onlyIdle]
+    [search, stepFilter, onlyIdle, sourceFilter]
   )
 
   async function moveCard(contactId: string, fromId: string | null, toId: string | null) {
@@ -110,7 +117,7 @@ export function FunnelBoard() {
     return <p style={{ padding: 24, color: error ? "#dc2626" : "#6b7280" }}>{error ?? "Carregando o funil..."}</p>
   }
 
-  const filtering = search.trim() !== "" || stepFilter !== "todos" || onlyIdle
+  const filtering = search.trim() !== "" || stepFilter !== "todos" || onlyIdle || sourceFilter !== "todas"
 
   return (
     <div style={{ padding: "16px 20px" }}>
@@ -127,6 +134,13 @@ export function FunnelBoard() {
           <option value="atrasado">Atrasado</option>
           <option value="hoje">Para hoje</option>
           <option value="nenhum">Nenhum</option>
+        </select>
+        <select value={sourceFilter} onChange={(e) => setSourceFilter(e.target.value as SourceFilter)} style={field}>
+          <option value="todas">Origem: todas</option>
+          {SOURCES.map((s) => (
+            <option key={s} value={s}>{SOURCE_LABEL[s]}</option>
+          ))}
+          <option value="sem">Sem origem</option>
         </select>
         <label style={{ fontSize: 13, display: "flex", alignItems: "center", gap: 6 }}>
           <input type="checkbox" checked={onlyIdle} onChange={(e) => setOnlyIdle(e.target.checked)} />
@@ -188,6 +202,7 @@ export function FunnelBoard() {
           onDragEnd={() => { setDrag(null); setOverCol(null) }}
           onChanged={load}
           onError={setError}
+          onOpen={setOpenContactId}
         />
         {funnel.lists.map((l) => (
           <Column
@@ -204,6 +219,7 @@ export function FunnelBoard() {
             onDragEnd={() => { setDrag(null); setOverCol(null) }}
             onChanged={load}
             onError={setError}
+            onOpen={setOpenContactId}
             onAddContact={() => setAddContactFor(l.id)}
           />
         ))}
@@ -213,6 +229,10 @@ export function FunnelBoard() {
         <p style={{ fontSize: 13, color: "#6b7280" }}>
           Crie sua primeira lista em <b>+ Lista</b> (ex.: Novos, Em conversa, Compradoras) e arraste os contatos entre elas.
         </p>
+      )}
+
+      {openContactId && (
+        <ContactDrawer contactId={openContactId} onClose={() => setOpenContactId(null)} onChanged={load} />
       )}
     </div>
   )
@@ -233,6 +253,7 @@ type ColumnProps = {
   onDragEnd: () => void
   onChanged: () => Promise<void>
   onError: (msg: string) => void
+  onOpen: (contactId: string) => void
   onAddContact?: () => void
 }
 
@@ -314,6 +335,7 @@ function Column(p: ColumnProps) {
             onDragEnd={p.onDragEnd}
             onChanged={p.onChanged}
             onError={p.onError}
+            onOpen={() => p.onOpen(c.id)}
           />
         ))}
         {p.cards.length === 0 && (
@@ -341,13 +363,14 @@ const STEP_STYLE = {
 } as const
 
 function CardView({
-  card, onDragStart, onDragEnd, onChanged, onError,
+  card, onDragStart, onDragEnd, onChanged, onError, onOpen,
 }: {
   card: FunnelCard
   onDragStart: () => void
   onDragEnd: () => void
   onChanged: () => Promise<void>
   onError: (m: string) => void
+  onOpen: () => void
 }) {
   const [mode, setMode] = useState<null | "buy" | "step" | "charge">(null)
   const [amount, setAmount] = useState("")
@@ -420,7 +443,13 @@ function CardView({
       }}
     >
       <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
-        <strong style={{ fontSize: 14, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{card.name}</strong>
+        <strong
+          onClick={onOpen}
+          title="Abrir dados, notas e histórico"
+          style={{ fontSize: 14, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", cursor: "pointer" }}
+        >
+          {card.name}
+        </strong>
         <a
           href={`https://wa.me/${withCountryCode(card.phone)}`}
           target="_blank"
@@ -431,7 +460,19 @@ function CardView({
           Abrir conversa ›
         </a>
       </div>
-      <div style={{ fontSize: 12, color: "#6b7280", marginTop: 2 }}>{card.phone}</div>
+      <div style={{ fontSize: 12, color: "#6b7280", marginTop: 2 }}>
+        {card.phone}
+        {sourceLabel(card.source) && (
+          <span style={{ marginLeft: 6, background: "#ede9fe", color: "#6d28d9", fontSize: 10, fontWeight: 700, padding: "1px 6px", borderRadius: 999 }}>
+            {sourceLabel(card.source)}
+          </span>
+        )}
+        {card.notesCount > 0 && (
+          <span title="Notas" style={{ marginLeft: 6, color: "#6b7280", fontSize: 11 }}>
+            · {card.notesCount} {card.notesCount === 1 ? "nota" : "notas"}
+          </span>
+        )}
+      </div>
 
       <div style={{ fontSize: 12, marginTop: 6, color: card.purchases ? "#166534" : "#9ca3af" }}>
         {card.purchases

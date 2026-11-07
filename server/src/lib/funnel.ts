@@ -18,6 +18,8 @@ export type FunnelCard = {
   daysIdle: number
   /** Cobranças em aberto desta cliente (a receber ou vencidas). */
   chargesDue: { count: number; total: number; overdue: boolean; overdueTotal: number } | null
+  source: string | null // origem do lead
+  notesCount: number
 }
 
 export type FunnelColumn = {
@@ -52,7 +54,7 @@ export function nextStepState(nextStep: string | null, nextStepAt: Date | null, 
 export async function buildFunnel(userId: string): Promise<Funnel> {
   const now = new Date()
 
-  const [lists, contacts, memberships, agg, due] = await Promise.all([
+  const [lists, contacts, memberships, agg, due, noteCounts] = await Promise.all([
     prisma.crmList.findMany({
       where: { userId },
       orderBy: [{ order: "asc" }, { createdAt: "asc" }],
@@ -74,12 +76,14 @@ export async function buildFunnel(userId: string): Promise<Funnel> {
       _max: { purchasedAt: true },
     }),
     pendingByContact(userId, now),
+    prisma.note.groupBy({ by: ["contactId"], where: { userId }, _count: { _all: true } }),
   ])
 
   const truncated = contacts.length > MAX_CONTACTS
   const visible = truncated ? contacts.slice(0, MAX_CONTACTS) : contacts
 
   const stats = new Map(agg.map((a) => [a.contactId, a]))
+  const notesBy = new Map(noteCounts.map((n) => [n.contactId, n._count._all]))
 
   const cards = new Map<string, FunnelCard>()
   for (const c of visible) {
@@ -97,6 +101,8 @@ export async function buildFunnel(userId: string): Promise<Funnel> {
       lastActivityAt: c.lastActivityAt.toISOString(),
       daysIdle: Math.max(0, Math.floor((now.getTime() - c.lastActivityAt.getTime()) / DAY_MS)),
       chargesDue: due.get(c.id) ?? null,
+      source: c.source,
+      notesCount: notesBy.get(c.id) ?? 0,
     })
   }
 

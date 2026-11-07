@@ -96,15 +96,36 @@ Página **Cobranças** (`/dashboard/cobrancas`): dinheiro a receber de uma clien
 - Telefones guardados com código do país (55) quando faltar: `lib/phone.ts`.
   O `wa.me` e o Meta exigem isso.
 
+## Dados do lead e Notas
+
+Clicar no **nome** de um card do funil abre a gaveta do contato, com três abas:
+
+- **Dados:** nome, e-mail, origem (anúncio, orgânico, indicação, outro) e
+  nascimento. O telefone é só leitura: ele identifica a cliente.
+- **Notas:** várias, em ordem da mais nova pra mais antiga, até 2000
+  caracteres, com opção de apagar. O texto é sempre exibido como texto (HTML
+  digitado na nota não é executado).
+- **Histórico:** compras, total gasto, recorrência e etiquetas.
+
+Regras:
+
+- Adicionar nota e mexer no próximo passo contam como atividade (zeram o
+  "parada há N dias"). Corrigir e-mail, origem ou nascimento **não** conta.
+- Nascimento e prazos são salvos ao meio-dia de Brasília (`lib/dates.ts`).
+  Nascimento no futuro ou antes de 1900 é recusado.
+- O funil ganhou o filtro **Origem** e mostra a origem e o nº de notas no card.
+- O campo antigo `Contact.notes` (nunca usado) foi removido e trocado pelo
+  modelo `Note`.
+
 ## Fila de entregas
 
 1. Etiquetas/Listas (feito)
 2. Disparo pro Meta (feito e testado com um Meta simulado; falta testar com
    o Pixel real)
-3. Funil kanban (feito; falta o "Origem" e a aba "Resultados")
+3. Funil kanban (feito; falta a aba "Resultados")
 4. Cobranças (feito; falta o botão "Cobrar" no painel da extensão e a regra
    "quando pagar, mover de lista")
-5. Dados do lead e Notas
+5. Dados do lead e Notas (feito na gaveta do funil; falta mostrar na extensão)
 6. Respostas rápidas
 7. Lembretes e Adiadas
 8. Painel do Dia
