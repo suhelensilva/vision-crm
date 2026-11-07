@@ -78,16 +78,21 @@
     const dbg = {}
     let phone = ""
     let name = ""
+    let key = ""
+    let lastT = 0
     try {
       const chat = findActiveChat(dbg)
       dbg.achouChat = !!chat
       if (chat) {
+        key = serial(chat.id)
+        const lm = lastMessageOf(chat)
+        lastT = ((lm && lm.t) || chat.t || 0) * 1000
         phone = phoneFromChat(chat, dbg)
         name = (chat.formattedTitle || chat.name || (chat.contact && (chat.contact.name || chat.contact.pushname)) || "") + ""
         dbg.chaves = Object.keys(chat).slice(0, 20)
       }
     } catch (e) { dbg.erro = String(e).slice(0, 120) }
-    return { phone, name, dbg }
+    return { phone, name, key, lastT, dbg }
   }
 
   // ── Leitura em massa: etiquetas, contatos e estado das conversas ──

@@ -63,7 +63,11 @@ const ICONS = {
   bell: '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>',
   checklist: '<path d="m3 17 2 2 4-4"/><path d="m3 7 2 2 4-4"/><path d="M13 6h8"/><path d="M13 12h8"/><path d="M13 18h8"/>',
   chevron: '<path d="m15 18-6-6 6-6"/>',
+  alarm: '<circle cx="12" cy="13" r="8"/><path d="M12 9v4l2 2"/><path d="M5 3 2 6"/><path d="m22 6-3-3"/><path d="M6.38 18.7 4 21"/><path d="M17.64 18.67 20 21"/>',
+  circlecheck: '<circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/>',
+  columns: '<rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/><path d="M15 3v18"/>',
   mic: '<path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/>',
+  mic_old: '<path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/>',
   image: '<rect width="18" height="18" x="3" y="3" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21"/>',
   film: '<rect width="18" height="18" x="3" y="3" rx="2"/><path d="M7 3v18"/><path d="M3 7.5h4"/><path d="M3 12h18"/><path d="M3 16.5h4"/><path d="M17 3v18"/><path d="M17 7.5h4"/><path d="M17 16.5h4"/>',
   file: '<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/>',
@@ -167,7 +171,7 @@ async function resolveChat() {
   const b = await askBridge()
   state.bridgeDbg = b ? b.dbg : { semResposta: true }
   if (b && b.phone === "GROUP") return { phone: null, name: null }
-  if (b && b.phone) return { phone: b.phone, name: (b.name || getActiveName() || "").trim() || null }
+  if (b && b.phone) return { phone: b.phone, name: (b.name || getActiveName() || "").trim() || null, key: b.key || "", lastT: b.lastT || 0 }
   // plano B: título do cabeçalho é um número (contato sem nome salvo)
   const nm = getActiveName()
   const only = nm ? nm.replace(/[ ()+\- ]/g, "") : ""
@@ -275,6 +279,7 @@ function render() {
   const root = ensureRoot()
   applyLayout()
   ensureSide()
+  ensureHeaderBar()
   const rail = TABS.map(
     (t) => `<button class="vc-ico ${state.open && state.tab === t.id ? "on" : ""}" data-tab="${t.id}" title="${t.label}">${icon(t.icon, 20)}<span>${t.label.split(" ")[0]}</span></button>`
   ).join("")
@@ -656,9 +661,18 @@ async function attachFile(r) {
 const SIDE_ID = "vcrm-side"
 let sideCollapsed = false
 
+/** Tem uma janela (modal) aberta no WhatsApp ou em outra extensão? Então a gente não cobre ela. */
+function modalOpen() {
+  try {
+    return !!document.querySelector('[role="dialog"], [aria-modal="true"], [data-animate-modal-popup="true"], [data-animate-modal-body="true"]')
+  } catch { return false }
+}
+
 function ensureSide() {
   const main = document.querySelector("#main")
   let el = document.getElementById(SIDE_ID)
+  if (modalOpen()) { if (el) el.style.display = "none"; return }
+  if (el) el.style.display = ""
   if (!main || state.status === "no_config" || state.status === "bad_token") { if (el) el.remove(); return }
   if (!el) {
     el = document.createElement("div")
@@ -714,7 +728,7 @@ const waitFmt = (mins) => (mins >= 1440 ? Math.floor(mins / 1440) + " d" : mins 
 
 function renderWaiting() {
   let el = document.getElementById(WAIT_ID)
-  const hide = !waitList.length || Date.now() < waitSnoozeUntil || state.status === "no_config" || state.status === "bad_token"
+  const hide = !waitList.length || Date.now() < waitSnoozeUntil || state.status === "no_config" || state.status === "bad_token" || modalOpen()
   if (hide) { if (el) el.remove(); return }
   if (!el) {
     el = document.createElement("div")
@@ -782,11 +796,151 @@ function photoFromList(name) {
 async function checkWaiting() {
   if (!document.querySelector("#app")) return
   const r = await askBridge("waiting", 5000, { minMinutes: WAIT_MIN_MINUTES, maxHours: WAIT_MAX_HOURS })
+  ensureSide() // esconde/mostra a barrinha conforme tem janela aberta
+  ensureHeaderBar()
   if (r && Array.isArray(r.waiting)) {
     waitList = r.waiting.filter((w) => !(waitHandled[w.key] >= w.lastT))
     for (const w of waitList) if (!w.pic) w.pic = photoFromList(w.name)
   }
   renderWaiting()
+}
+
+// ── Botões no cabeçalho da conversa: agendar, encerrar, funil ────────────────
+
+const HDR_ID = "vcrm-hdr"
+const HPOP_ID = "vcrm-hpop"
+let hdrPop = null // "sched" | "funnel" | null
+
+function ensureHeaderBar() {
+  const header = document.querySelector("#main header")
+  let el = document.getElementById(HDR_ID)
+  const off = !header || !state.phone || state.status === "no_config" || state.status === "bad_token" || modalOpen()
+  if (off) {
+    if (el) el.style.display = "none"
+    if (hdrPop) { hdrPop = null; renderHdrPop() }
+    return
+  }
+  if (!el) {
+    el = document.createElement("div")
+    el.id = HDR_ID
+    el.addEventListener("click", (e) => {
+      const b = e.target.closest("button")
+      if (!b) return
+      if (b.dataset.h === "end") return endConversation()
+      hdrPop = hdrPop === b.dataset.h ? null : b.dataset.h
+      renderHdrPop()
+    })
+    document.body.appendChild(el)
+    document.addEventListener("click", (e) => {
+      if (hdrPop && !e.target.closest(`#${HDR_ID}, #${HPOP_ID}`)) { hdrPop = null; renderHdrPop() }
+    }, true)
+  }
+  el.style.display = ""
+  const cur = ((state.contact && state.contact.lists) || [])[0]
+  const html =
+    `<button data-h="sched" title="Agendar conversa">${icon("alarm", 16)}</button>` +
+    `<button data-h="end" title="Encerrar conversa">${icon("circlecheck", 16)}</button>` +
+    `<button class="vh-pill" data-h="funnel" title="Adicionar ao funil">${cur ? `<i style="background:${esc(cur.color)}"></i>${esc(cur.name)}` : `${icon("columns", 13)} + Funil`}</button>`
+  if (el.dataset.sig !== html) { el.innerHTML = html; el.dataset.sig = html }
+  const r = header.getBoundingClientRect()
+  el.style.top = Math.round(r.top + (r.height - 34) / 2) + "px"
+  el.style.right = Math.round(window.innerWidth - r.right + 150) + "px"
+  if (hdrPop) renderHdrPop()
+}
+
+function schedPresets() {
+  const now = new Date()
+  const at = (days, h) => { const d = new Date(now); d.setDate(d.getDate() + days); d.setHours(h, 0, 0, 0); return d }
+  return [
+    ["Daqui 1 hora", new Date(now.getTime() + 3600e3)],
+    ["Hoje às 18h", at(0, 18)],
+    ["Amanhã 9h", at(1, 9)],
+    ["Em 3 dias", at(3, 9)],
+    ["Semana que vem", at(7, 9)],
+  ].filter(([, d]) => d.getTime() > now.getTime() + 60e3)
+}
+
+function renderHdrPop() {
+  let pop = document.getElementById(HPOP_ID)
+  const bar = document.getElementById(HDR_ID)
+  if (!hdrPop || !bar) { if (pop) pop.remove(); return }
+  if (!pop) {
+    pop = document.createElement("div")
+    pop.id = HPOP_ID
+    pop.addEventListener("click", onHdrPopClick)
+    pop.addEventListener("submit", onHdrPopSubmit)
+    document.body.appendChild(pop)
+  }
+  const r = bar.getBoundingClientRect()
+  pop.style.top = Math.round(r.bottom + 8) + "px"
+  pop.style.right = Math.round(window.innerWidth - r.right) + "px"
+  let html = ""
+  if (hdrPop === "sched") {
+    html = `<b>Agendar conversa</b>
+      <input id="vh-text" maxlength="300" placeholder="Lembrete (opcional). Ex.: cobrar o pacote" />
+      <div class="vh-chips">${schedPresets().map(([l, d]) => `<button data-sched="${d.toISOString()}">${esc(l)}</button>`).join("")}</div>
+      <form data-hform="sched"><input id="vh-at" type="datetime-local" required /><button class="vc-btn sm">Agendar</button></form>`
+  } else {
+    const ids = new Set(((state.contact && state.contact.lists) || []).map((l) => l.id))
+    html = `<b>Funil e listas</b>
+      ${state.lists.length ? state.lists.map((l) => `<button class="vh-row" data-flist="${esc(l.id)}" data-on="${ids.has(l.id) ? 1 : 0}"><i style="background:${esc(l.color)}"></i><span>${esc(l.name)}</span>${ids.has(l.id) ? icon("check", 14) : ""}</button>`).join("") : `<p class="vc-muted">Você ainda não tem listas.</p>`}
+      <form data-hform="newlist"><input name="name" placeholder="Nova lista" maxlength="60" /><button class="vc-btn sm">Criar</button></form>`
+  }
+  // No agendamento NÃO redesenha enquanto está aberto (senão o que você digitou se apaga); no funil, só se as listas mudarem.
+  const sigKey = hdrPop === "sched" ? "sched" : hdrPop + html
+  if (pop.dataset.sig !== sigKey) { pop.innerHTML = html; pop.dataset.sig = sigKey }
+}
+
+async function onHdrPopClick(e) {
+  const b = e.target.closest("button")
+  if (!b) return
+  if (b.dataset.sched) {
+    const t = document.getElementById("vh-text")
+    return scheduleChat(new Date(b.dataset.sched), t ? t.value : "")
+  }
+  if (b.dataset.flist) {
+    await changeList(b.dataset.flist, b.dataset.on === "1" ? "remove" : "add")
+    renderHdrPop()
+  }
+}
+
+async function onHdrPopSubmit(e) {
+  e.preventDefault()
+  const form = e.target.closest("form[data-hform]")
+  if (!form) return
+  if (form.dataset.hform === "sched") {
+    const v = document.getElementById("vh-at").value
+    const d = new Date(v)
+    if (Number.isNaN(d.getTime()) || d.getTime() <= Date.now()) return toast("Escolha um horário no futuro.")
+    const t = document.getElementById("vh-text")
+    return scheduleChat(d, t ? t.value : "")
+  }
+  const name = String(new FormData(form).get("name") || "").trim()
+  if (!name) return
+  const res = await api("POST", "/api/crm/lists", { name })
+  if (res.ok && res.data) { state.lists.push(res.data); await changeList(res.data.id, "add"); renderHdrPop() }
+}
+
+async function scheduleChat(due, text) {
+  const id = await ensureContact()
+  if (!id) return toast("Não consegui salvar esta cliente.")
+  const label = (text || "").trim() || `Voltar a falar com ${firstName((state.contact && state.contact.name) || state.name) || "a cliente"}`
+  const res = await api("POST", "/api/crm/reminders", { contactId: id, text: label, dueAt: due.toISOString() })
+  if (!res.ok) return toast((res.data && res.data.error) || "Não consegui agendar.")
+  hdrPop = null
+  renderHdrPop()
+  toast("Agendado para " + whenFmt(due.toISOString()))
+  refresh(true)
+}
+
+/** Encerrar: some do aviso "clientes esperam sua resposta" até a cliente escrever de novo. */
+function endConversation() {
+  if (!state.chatKey) return toast("Não consegui identificar esta conversa.")
+  waitHandled[state.chatKey] = state.lastT || Date.now()
+  chrome.storage.local.set({ vcrmHandled: waitHandled }).catch(() => {})
+  waitList = waitList.filter((x) => x.key !== state.chatKey)
+  renderWaiting()
+  toast("Conversa encerrada. Ela some do aviso até a cliente escrever de novo.")
 }
 
 // ── Barra de respostas acima do campo + atalho ";" ───────────────────────────
@@ -1045,6 +1199,8 @@ async function refresh(force) {
   const found = hasChat ? await resolveChat() : { phone: null, name: null }
   const phone = found.phone
   const name = found.name
+  state.chatKey = found.key || ""
+  state.lastT = found.lastT || 0
   const changed = phone !== state.phone
   state.phone = phone
   state.name = name
@@ -1091,9 +1247,17 @@ function startObserver() {
   const obs = new MutationObserver((muts) => {
     if (muts.every((m) => m.target.closest && m.target.closest(`#${ROOT_ID}, #${BAR_ID}, #${POP_ID}`))) return
     clearTimeout(timer)
-    timer = setTimeout(() => { refresh(false); ensureBar(); ensureSide() }, 400)
+    timer = setTimeout(() => { refresh(false); ensureBar(); ensureSide(); ensureHeaderBar() }, 400)
   })
   obs.observe(root, { childList: true, subtree: true })
+  // janelas (modais) às vezes entram direto no <body>: esconde a barrinha e o aviso na hora
+  let bodyTimer = null
+  new MutationObserver((muts) => {
+    if (muts.every((m) => [...m.addedNodes, ...m.removedNodes].every((n) => n.id === ROOT_ID || n.id === BAR_ID || n.id === POP_ID || n.id === SIDE_ID || n.id === WAIT_ID))) return
+    clearTimeout(bodyTimer)
+    bodyTimer = setTimeout(() => { ensureSide(); ensureHeaderBar(); renderWaiting() }, 150)
+  }).observe(document.body, { childList: true })
+  window.addEventListener("resize", () => { ensureSide(); ensureHeaderBar() })
   document.addEventListener("input", onComposerInput, true)
   document.addEventListener("keydown", (e) => { if (e.key === "Escape") closePop() }, true)
   // token/URL mudaram no popup: recarrega
