@@ -238,3 +238,6 @@ html.vcrm-on body { padding-right: var(--vcrm-pad, 56px) !important; background:
 
 /* O aviso fica à direita, ao lado do painel do Hotzapp (não cobre a lista de conversas) */
 #vcrm-wait { left: auto; right: calc(var(--vcrm-pad, 56px) + 372px); }
+
+/* Mesmo lugar do aviso do Hotzapp: encostado na coluna de ícones, acima do campo de mensagem */
+#vcrm-wait { left: auto; right: calc(var(--vcrm-pad, 56px) + 4px); bottom: 130px; max-height: calc(100vh - 170px); overflow-y: auto; }
