@@ -694,7 +694,7 @@ function renderWaiting() {
       const act = e.target.closest("[data-wait-act]")
       if (!act) return
       if (act.getAttribute("data-wait-act") === "later") { waitSnoozeUntil = Date.now() + 30 * 60000; renderWaiting() }
-      if (act.getAttribute("data-wait-act") === "panel" && state.apiUrl) window.open(state.apiUrl + "/dashboard/pendencias", "_blank")
+      if (act.getAttribute("data-wait-act") === "panel" && state.apiUrl) window.open(state.apiUrl + "/dashboard/painel", "_blank")
     })
     document.body.appendChild(el)
   }
@@ -713,7 +713,7 @@ function renderWaiting() {
         <button class="vw-done" data-wait-done="${esc(w.key)}" title="Já resolvi (volta a avisar se ela mandar outra mensagem)">${icon("check", 14)}</button>
       </div>`).join("")}
     ${more > 0 ? `<p class="vw-more">e mais ${more}</p>` : ""}
-    <div class="vw-foot"><button data-wait-act="panel">Abrir pendências</button><button data-wait-act="later">Agora não</button></div>`
+    <div class="vw-foot"><button data-wait-act="panel">Abrir o Painel do Dia</button><button data-wait-act="later">Agora não</button></div>`
   if (el.dataset.sig !== html) { el.innerHTML = html; el.dataset.sig = html }
 }
 
