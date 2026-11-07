@@ -63,6 +63,10 @@ const ICONS = {
   bell: '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>',
   checklist: '<path d="m3 17 2 2 4-4"/><path d="m3 7 2 2 4-4"/><path d="M13 6h8"/><path d="M13 12h8"/><path d="M13 18h8"/>',
   chevron: '<path d="m15 18-6-6 6-6"/>',
+  circleminus: '<circle cx="12" cy="12" r="10"/><path d="M8 12h8"/>',
+  settings: '<path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/>',
+  panelleft: '<rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/>',
+  chevrondown: '<path d="m6 9 6 6 6-6"/>',
   alarm: '<circle cx="12" cy="13" r="8"/><path d="M12 9v4l2 2"/><path d="M5 3 2 6"/><path d="m22 6-3-3"/><path d="M6.38 18.7 4 21"/><path d="M17.64 18.67 20 21"/>',
   circlecheck: '<circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/>',
   columns: '<rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/><path d="M15 3v18"/>',
@@ -681,6 +685,7 @@ function ensureSide() {
       const b = e.target.closest("button")
       if (!b) return
       if (b.dataset.collapse) { sideCollapsed = !sideCollapsed; return ensureSide() }
+      if (b.dataset.go === "__sched" || b.dataset.go === "__funnel") return toggleHdrPop(b.dataset.go === "__sched" ? "sched" : "funnel")
       state.open = true
       state.tab = b.dataset.go
       refresh(true)
@@ -690,6 +695,7 @@ function ensureSide() {
   }
   const n = state.reminders.filter((r) => r.state !== "feito").length
   const items = [
+    ...(hdrHidden ? [{ go: "__sched", icon: "alarm", label: "Agendar" }, { go: "__funnel", icon: "columns", label: "Funil" }] : []),
     { go: "lembretes", icon: "checklist", label: "Lembretes", badge: n },
     { go: "notas", icon: "note", label: "Notas" },
     { go: "conversa", icon: "user", label: "Dados" },
@@ -805,19 +811,35 @@ async function checkWaiting() {
   renderWaiting()
 }
 
-// ── Botões no cabeçalho da conversa: agendar, encerrar, funil ────────────────
+// ── Botões no cabeçalho da conversa: agendar, encerrar, funil (cópia do desenho do Hotzapp) ──
 
 const HDR_ID = "vcrm-hdr"
 const HPOP_ID = "vcrm-hpop"
 let hdrPop = null // "sched" | "funnel" | null
+let hdrHidden = false // "Deixar só na barrinha": esconde os botões do cabeçalho
+
+/** Onde termina o NOME da conversa (os botões ficam logo depois dele, como no Hotzapp). */
+function titleEnd(header) {
+  const t = header.querySelector("span[dir='auto'][title]") || header.querySelector("span[title]") || header.querySelector("span[dir='auto']")
+  if (!t) return null
+  const box = t.getBoundingClientRect()
+  let right = box.right
+  try {
+    const range = document.createRange()
+    range.selectNodeContents(t)
+    const text = range.getBoundingClientRect()
+    if (text.width > 0) right = Math.min(right, text.right) // nome curto: encosta no texto; nome cortado: no fim da caixa
+  } catch {}
+  return right
+}
 
 function ensureHeaderBar() {
   const header = document.querySelector("#main header")
   let el = document.getElementById(HDR_ID)
-  const off = !header || !state.phone || state.status === "no_config" || state.status === "bad_token" || modalOpen()
+  const off = !header || !state.phone || state.status === "no_config" || state.status === "bad_token" || modalOpen() || hdrHidden
   if (off) {
     if (el) el.style.display = "none"
-    if (hdrPop) { hdrPop = null; renderHdrPop() }
+    if (hdrPop && (!hdrHidden || !document.getElementById(SIDE_ID))) { hdrPop = null; renderHdrPop() }
     return
   }
   if (!el) {
@@ -827,25 +849,36 @@ function ensureHeaderBar() {
       const b = e.target.closest("button")
       if (!b) return
       if (b.dataset.h === "end") return endConversation()
-      hdrPop = hdrPop === b.dataset.h ? null : b.dataset.h
-      renderHdrPop()
+      toggleHdrPop(b.dataset.h)
     })
     document.body.appendChild(el)
     document.addEventListener("click", (e) => {
-      if (hdrPop && !e.target.closest(`#${HDR_ID}, #${HPOP_ID}`)) { hdrPop = null; renderHdrPop() }
+      if (hdrPop && !e.target.closest(`#${HDR_ID}, #${HPOP_ID}, #${SIDE_ID}`)) { hdrPop = null; renderHdrPop() }
     }, true)
   }
   el.style.display = ""
   const cur = ((state.contact && state.contact.lists) || [])[0]
+  const pill = cur
+    ? `<button class="vh-pill on" data-h="funnel" title="Etapa do funil">${icon("columns", 15)}<i style="background:${esc(cur.color)}"></i><span>${esc(cur.name)}</span>${icon("chevrondown", 13)}</button>`
+    : `<button class="vh-pill" data-h="funnel" title="Adicionar ao funil">${icon("columns", 15)}<span>+ Funil</span></button>`
   const html =
-    `<button data-h="sched" title="Agendar conversa">${icon("alarm", 16)}</button>` +
-    `<button data-h="end" title="Encerrar conversa">${icon("circlecheck", 16)}</button>` +
-    `<button class="vh-pill" data-h="funnel" title="Adicionar ao funil">${cur ? `<i style="background:${esc(cur.color)}"></i>${esc(cur.name)}` : `${icon("columns", 13)} + Funil`}</button>`
+    `<button class="vh-round" data-h="sched" title="Agendar conversa">${icon("alarm", 17)}</button>` +
+    `<button class="vh-round" data-h="end" title="Encerrar conversa">${icon("circlecheck", 17)}</button>` + pill
   if (el.dataset.sig !== html) { el.innerHTML = html; el.dataset.sig = html }
+
   const r = header.getBoundingClientRect()
-  el.style.top = Math.round(r.top + (r.height - 34) / 2) + "px"
-  el.style.right = Math.round(window.innerWidth - r.right + 150) + "px"
+  const end = titleEnd(header)
+  const maxLeft = r.right - 330 - el.offsetWidth // não invade os ícones do próprio WhatsApp
+  const left = Math.max(r.left + 120, Math.min(end == null ? r.left + 260 : end + 14, maxLeft))
+  el.style.top = Math.round(r.top + (r.height - 36) / 2) + "px"
+  el.style.left = Math.round(left) + "px"
+  el.style.right = "auto"
   if (hdrPop) renderHdrPop()
+}
+
+function toggleHdrPop(kind) {
+  hdrPop = hdrPop === kind ? null : kind
+  renderHdrPop()
 }
 
 function schedPresets() {
@@ -863,7 +896,9 @@ function schedPresets() {
 function renderHdrPop() {
   let pop = document.getElementById(HPOP_ID)
   const bar = document.getElementById(HDR_ID)
-  if (!hdrPop || !bar) { if (pop) pop.remove(); return }
+  const side = document.getElementById(SIDE_ID)
+  const anchor = !hdrHidden && bar && bar.style.display !== "none" ? bar : side
+  if (!hdrPop || !anchor) { if (pop) pop.remove(); return }
   if (!pop) {
     pop = document.createElement("div")
     pop.id = HPOP_ID
@@ -871,9 +906,12 @@ function renderHdrPop() {
     pop.addEventListener("submit", onHdrPopSubmit)
     document.body.appendChild(pop)
   }
-  const r = bar.getBoundingClientRect()
+  const r = anchor.getBoundingClientRect()
   pop.style.top = Math.round(r.bottom + 8) + "px"
-  pop.style.right = Math.round(window.innerWidth - r.right) + "px"
+  pop.style.left = Math.round(anchor === side ? r.right + 8 : r.left) + "px"
+  pop.style.right = "auto"
+  pop.classList.toggle("funnel", hdrPop === "funnel")
+
   let html = ""
   if (hdrPop === "sched") {
     html = `<b>Agendar conversa</b>
@@ -881,26 +919,67 @@ function renderHdrPop() {
       <div class="vh-chips">${schedPresets().map(([l, d]) => `<button data-sched="${d.toISOString()}">${esc(l)}</button>`).join("")}</div>
       <form data-hform="sched"><input id="vh-at" type="datetime-local" required /><button class="vc-btn sm">Agendar</button></form>`
   } else {
-    const ids = new Set(((state.contact && state.contact.lists) || []).map((l) => l.id))
-    html = `<b>Funil e listas</b>
-      ${state.lists.length ? state.lists.map((l) => `<button class="vh-row" data-flist="${esc(l.id)}" data-on="${ids.has(l.id) ? 1 : 0}"><i style="background:${esc(l.color)}"></i><span>${esc(l.name)}</span>${ids.has(l.id) ? icon("check", 14) : ""}</button>`).join("") : `<p class="vc-muted">Você ainda não tem listas.</p>`}
-      <form data-hform="newlist"><input name="name" placeholder="Nova lista" maxlength="60" /><button class="vc-btn sm">Criar</button></form>`
+    const cur = ((state.contact && state.contact.lists) || [])[0]
+    html = `<div class="vf-head"><b>Etapa do funil, no seu CRM</b><span>Escolha em que ponto da venda esta conversa está.</span></div>
+      <div class="vf-sep"></div>
+      ${state.lists.length ? state.lists.map((l) => `<button class="vf-row" data-stage="${esc(l.id)}"><i style="background:${esc(l.color)}"></i><span>${esc(l.name)}</span>${cur && cur.id === l.id ? icon("check", 16) : ""}</button>`).join("") : `<p class="vf-empty">Você ainda não tem etapas. Crie abaixo.</p>`}
+      <form class="vf-new" data-hform="newlist"><input name="name" placeholder="Nova etapa" maxlength="60" /><button class="vc-btn sm">Criar</button></form>
+      <div class="vf-sep"></div>
+      <button class="vf-row" data-fact="out" ${cur ? "" : "disabled"}>${icon("circleminus", 16)}<span>Tirar do funil</span></button>
+      <button class="vf-row" data-fact="config">${icon("settings", 16)}<span>Configurar funil</span></button>
+      <div class="vf-sep"></div>
+      <button class="vf-row" data-fact="hide">${icon("panelleft", 16)}<span>${hdrHidden ? "Mostrar no cabeçalho" : "Deixar só na barrinha"}</span></button>`
   }
-  // No agendamento NÃO redesenha enquanto está aberto (senão o que você digitou se apaga); no funil, só se as listas mudarem.
+  // No agendamento NÃO redesenha enquanto está aberto (senão o que você digitou se apaga); no funil, só se mudar.
   const sigKey = hdrPop === "sched" ? "sched" : hdrPop + html
   if (pop.dataset.sig !== sigKey) { pop.innerHTML = html; pop.dataset.sig = sigKey }
+  // sempre dentro da tela: se não coubrer embaixo, sobe
+  const maxTop = window.innerHeight - pop.offsetHeight - 12
+  if (parseInt(pop.style.top, 10) > maxTop) pop.style.top = Math.max(8, Math.round(maxTop)) + "px"
+}
+
+async function setStage(listId) {
+  const id = await ensureContact()
+  if (!id) return toast("Não consegui salvar esta cliente.")
+  const cur = ((state.contact && state.contact.lists) || [])[0]
+  if (cur && cur.id === listId) return
+  const res = cur
+    ? await api("POST", "/api/crm/funnel/move", { contactId: id, fromListId: cur.id, toListId: listId })
+    : await api("POST", "/api/crm/contact/tags", { phone: state.phone, name: state.name || undefined, listId, action: "add" })
+  if (!res.ok) return toast("Não consegui mudar a etapa.")
+  hdrPop = null // fecha o menu depois de escolher (como no Hotzapp)
+  renderHdrPop()
+  await refresh(true)
+}
+
+async function leaveFunnel() {
+  const lists = (state.contact && state.contact.lists) || []
+  for (const l of lists) await api("POST", "/api/crm/contact/tags", { phone: state.phone, listId: l.id, action: "remove" })
+  hdrPop = null
+  await refresh(true)
+  renderHdrPop()
+  toast("Tirei esta conversa do funil.")
 }
 
 async function onHdrPopClick(e) {
   const b = e.target.closest("button")
-  if (!b) return
+  if (!b || b.disabled) return
   if (b.dataset.sched) {
     const t = document.getElementById("vh-text")
     return scheduleChat(new Date(b.dataset.sched), t ? t.value : "")
   }
-  if (b.dataset.flist) {
-    await changeList(b.dataset.flist, b.dataset.on === "1" ? "remove" : "add")
+  if (b.dataset.stage) return setStage(b.dataset.stage)
+  const act = b.dataset.fact
+  if (act === "out") return leaveFunnel()
+  if (act === "config") { if (state.apiUrl) window.open(state.apiUrl + "/dashboard/funil", "_blank"); return }
+  if (act === "hide") {
+    hdrHidden = !hdrHidden
+    chrome.storage.local.set({ vcrmHdrHidden: hdrHidden }).catch(() => {})
+    hdrPop = null
     renderHdrPop()
+    ensureHeaderBar()
+    ensureSide()
+    toast(hdrHidden ? "Agendar e Funil agora ficam só na barrinha." : "Botões de volta no cabeçalho.")
   }
 }
 
@@ -918,7 +997,7 @@ async function onHdrPopSubmit(e) {
   const name = String(new FormData(form).get("name") || "").trim()
   if (!name) return
   const res = await api("POST", "/api/crm/lists", { name })
-  if (res.ok && res.data) { state.lists.push(res.data); await changeList(res.data.id, "add"); renderHdrPop() }
+  if (res.ok && res.data) { state.lists.push(res.data); await setStage(res.data.id) }
 }
 
 async function scheduleChat(due, text) {
@@ -1270,7 +1349,7 @@ function init() {
   startObserver()
   refresh(true)
   // aviso de quem espera resposta: confere ao abrir (depois que o WhatsApp carregou) e a cada minuto
-  chrome.storage.local.get(["vcrmHandled"]).then((c) => { waitHandled = c.vcrmHandled || {} }).catch(() => {})
+  chrome.storage.local.get(["vcrmHandled", "vcrmHdrHidden"]).then((c) => { waitHandled = c.vcrmHandled || {}; hdrHidden = !!c.vcrmHdrHidden; ensureHeaderBar(); ensureSide() }).catch(() => {})
   setTimeout(checkWaiting, 4000)
   setInterval(checkWaiting, 5000) // lê só a memória do WhatsApp: é leve, e mantém a lista em tempo real
 }

@@ -260,3 +260,30 @@ html.vcrm-on body { padding-right: var(--vcrm-pad, 56px) !important; background:
 #vcrm-hpop .vh-row:hover { background: rgba(255, 255, 255, 0.08); }
 #vcrm-hpop .vh-row span { flex: 1; }
 #vcrm-hpop .vh-row svg { color: #7ef0c0; }
+
+/* ═══ Cabeçalho do chat: cópia do desenho do Hotzapp (botões redondos escuros + pílula do funil) ═══ */
+#vcrm-hdr { gap: 8px; height: 36px; }
+#vcrm-hdr button { height: 36px; background: #2a3033; color: #d1d7db; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 999px; padding: 0; min-width: 36px; font-weight: 500; }
+#vcrm-hdr button:hover { background: #343b3f; color: #fff; }
+#vcrm-hdr .vh-round { width: 36px; }
+#vcrm-hdr .vh-pill { gap: 7px; padding: 0 13px; border: 1px dashed rgba(255, 255, 255, 0.35); background: #1f2427; color: #e9edef; }
+#vcrm-hdr .vh-pill.on { border: 1px solid #3b82f6; background: #1f2427; }
+#vcrm-hdr .vh-pill span { max-width: 130px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#vcrm-hdr .vh-pill i { width: 10px; height: 10px; border-radius: 50%; flex: none; }
+#vcrm-hdr .vh-pill svg:last-child { opacity: 0.7; }
+
+/* Menu "Etapa do funil" (igual ao do Hotzapp) */
+#vcrm-hpop.funnel { width: 270px; padding: 6px 0; gap: 0; background: #1f2427; border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 12px; color: #e9edef; }
+#vcrm-hpop .vf-head { display: flex; flex-direction: column; gap: 3px; padding: 12px 16px 10px; }
+#vcrm-hpop .vf-head b { font-size: 14px; color: #fff; }
+#vcrm-hpop .vf-head span { font-size: 12.5px; color: #aebac1; line-height: 1.35; }
+#vcrm-hpop .vf-sep { height: 1px; margin: 4px 0; background: rgba(255, 255, 255, 0.1); }
+#vcrm-hpop .vf-row { display: flex; align-items: center; gap: 12px; width: 100%; padding: 10px 16px; border: 0; background: transparent; color: #e9edef; font-size: 14px; text-align: left; cursor: pointer; }
+#vcrm-hpop .vf-row:hover:not(:disabled) { background: rgba(255, 255, 255, 0.07); }
+#vcrm-hpop .vf-row:disabled { opacity: 0.4; cursor: default; }
+#vcrm-hpop .vf-row i { width: 10px; height: 10px; border-radius: 50%; flex: none; }
+#vcrm-hpop .vf-row span { flex: 1; }
+#vcrm-hpop .vf-row svg { color: #aebac1; flex: none; }
+#vcrm-hpop .vf-row[data-stage] svg { color: #53a6fa; }
+#vcrm-hpop .vf-empty { margin: 0; padding: 8px 16px; font-size: 13px; color: #aebac1; }
+#vcrm-hpop .vf-new { padding: 6px 16px; }
