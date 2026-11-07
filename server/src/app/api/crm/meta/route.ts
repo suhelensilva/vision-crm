@@ -1,68 +1,41 @@
-import { NextRequest, NextResponse } from "next/server"
-import { z } from "zod"
+import { NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
-import { decryptSecret, encryptSecret } from "@/lib/crypto"
+import { decryptSecret } from "@/lib/crypto"
 import { META_GRAPH_VERSION } from "@/lib/meta"
 
-// GET: configuração atual do Meta. O token NUNCA volta inteiro, só os 4 últimos caracteres.
+// GET: pixels da conta e a qual pixel cada lista aponta. O token NUNCA volta inteiro, só os 4 últimos caracteres.
 export async function GET() {
   const session = await auth()
   if (!session) return NextResponse.json({ error: "Não autorizado" }, { status: 401 })
+  const userId = session.user.id
 
-  const user = await prisma.user.findUnique({
-    where: { id: session.user.id },
-    select: { metaDatasetId: true, metaAccessToken: true, metaTestEventCode: true },
-  })
-
-  let tokenHint: string | null = null
-  if (user?.metaAccessToken) {
-    try {
-      tokenHint = "••••" + decryptSecret(user.metaAccessToken).slice(-4)
-    } catch {
-      tokenHint = "(ilegível, salve de novo)"
-    }
-  }
+  const [pixels, lists] = await Promise.all([
+    prisma.metaPixel.findMany({ where: { userId }, orderBy: { createdAt: "asc" } }),
+    prisma.crmList.findMany({
+      where: { userId },
+      orderBy: [{ order: "asc" }, { createdAt: "asc" }],
+      select: { id: true, name: true, color: true, metaPixelId: true },
+    }),
+  ])
 
   return NextResponse.json({
-    datasetId: user?.metaDatasetId ?? "",
-    hasToken: Boolean(user?.metaAccessToken),
-    tokenHint,
-    testEventCode: user?.metaTestEventCode ?? "",
     graphVersion: META_GRAPH_VERSION,
+    pixels: pixels.map((p) => {
+      let tokenHint = "(ilegível, salve de novo)"
+      try {
+        tokenHint = "••••" + decryptSecret(p.accessToken).slice(-4)
+      } catch {}
+      return {
+        id: p.id,
+        name: p.name,
+        datasetId: p.datasetId,
+        tokenHint,
+        testEventCode: p.testEventCode ?? "",
+        repeatMode: p.repeatMode,
+        isDefault: p.isDefault,
+      }
+    }),
+    lists,
   })
-}
-
-const schema = z.object({
-  datasetId: z.string().trim().regex(/^\d{5,25}$/, "O ID do Pixel tem só números").or(z.literal("")),
-  accessToken: z.string().trim().max(1000).optional(), // vazio = mantém o atual
-  clearToken: z.boolean().optional(),
-  testEventCode: z.string().trim().max(50).optional(),
-})
-
-// PUT: salva a configuração.
-export async function PUT(req: NextRequest) {
-  const session = await auth()
-  if (!session) return NextResponse.json({ error: "Não autorizado" }, { status: 401 })
-
-  const parsed = schema.safeParse(await req.json().catch(() => null))
-  if (!parsed.success) {
-    return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Dados inválidos" }, { status: 400 })
-  }
-  const data = parsed.data
-
-  await prisma.user.update({
-    where: { id: session.user.id },
-    data: {
-      metaDatasetId: data.datasetId || null,
-      metaTestEventCode: data.testEventCode || null,
-      ...(data.clearToken
-        ? { metaAccessToken: null }
-        : data.accessToken
-          ? { metaAccessToken: encryptSecret(data.accessToken) }
-          : {}),
-    },
-  })
-
-  return NextResponse.json({ ok: true })
 }

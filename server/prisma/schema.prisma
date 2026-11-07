@@ -14,10 +14,6 @@ model User {
   password  String?
   apiToken  String?  @unique // token da extensão do Chrome
 
-  // Conversions API do Meta (cada taróloga usa o próprio Pixel/Dataset)
-  metaDatasetId     String? // ID do Pixel / conjunto de dados
-  metaAccessToken   String? // token de acesso, guardado CRIPTOGRAFADO (AES-256-GCM)
-  metaTestEventCode String? // código de "Testar eventos" do Events Manager (opcional)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -28,6 +24,7 @@ model User {
   charges   Charge[]
   notes     Note[]
   reminders Reminder[]
+  metaPixels MetaPixel[]
   quickReplies QuickReply[]
 
   @@map("users")
@@ -77,6 +74,7 @@ model Purchase {
   source      String   @default("whatsapp") // "whatsapp" | "manual" | "ad"
 
   // Conversão Meta (CAPI)
+  metaPixelId   String? // pixel usado (ou tentado) no envio
   ctwaClid      String?
   metaEventSent Boolean   @default(false)
   metaEventId   String?
@@ -87,6 +85,7 @@ model Purchase {
 
   user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   contact Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  metaPixel MetaPixel? @relation(fields: [metaPixelId], references: [id], onDelete: SetNull)
   charge  Charge? // cobrança que originou esta compra (se veio de "marcar como paga")
 
   @@index([userId, contactId])
@@ -187,6 +186,26 @@ model Reminder {
   @@map("reminders")
 }
 
+/// Destino de conversões (pixel/conjunto de dados do Meta). Cada lista pode apontar pra um.
+model MetaPixel {
+  id            String   @id @default(cuid())
+  userId        String
+  name          String
+  datasetId     String
+  accessToken   String // criptografado (lib/crypto)
+  testEventCode String?
+  repeatMode    String   @default("purchase") // recompras: "purchase" (igual à 1ª) | "custom" (evento Recompra) | "none" (não envia)
+  isDefault     Boolean  @default(false) // usado quando nenhuma lista da cliente aponta pra um pixel
+  createdAt     DateTime @default(now())
+
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lists     CrmList[]
+  purchases Purchase[]
+
+  @@index([userId])
+  @@map("meta_pixels")
+}
+
 enum ChargeStatus {
   PENDING
   PAID
@@ -226,11 +245,13 @@ model CrmList {
   name      String
   color     String   @default("#8b5cf6")
   order     Int      @default(0)
+  metaPixelId String? // pixel que recebe as compras das clientes desta lista
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   user    User            @relation(fields: [userId], references: [id], onDelete: Cascade)
   members CrmListMember[]
+  metaPixel MetaPixel? @relation(fields: [metaPixelId], references: [id], onDelete: SetNull)
 
   @@index([userId])
   @@map("crm_lists")

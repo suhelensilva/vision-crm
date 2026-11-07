@@ -39,24 +39,14 @@ Abre em `http://localhost:3001`. Cadastre sua conta, entre, e gere o token.
 Em produção, adicione o domínio do CRM em `host_permissions` no
 `extension/manifest.json`.
 
-## Conversões pro Meta (Conversions API)
+## Conversões pro Meta (Conversions API, vários pixels)
 
-Cada compra registrada vira um evento `Purchase` no Pixel da taróloga.
+Cada compra vira um evento **Purchase** com valor, data e telefone criptografado (SHA-256). `action_source = chat` (WhatsApp Web; o formato business_messaging exige a API oficial).
 
-- Configure em **Painel → Conversões pro Meta**: ID do Pixel e token de acesso
-  (Events Manager → seu Pixel → Configurações → API de Conversões → gerar token).
-  O token é guardado criptografado (AES-256-GCM, chave derivada do
-  `NEXTAUTH_SECRET`; se esse segredo mudar, salve o token de novo).
-- Formato: `action_source: "chat"`, com telefone/nome/ID só em SHA-256. O Meta
-  liga o evento à pessoa pelo telefone. O formato `business_messaging` exige a
-  API oficial do WhatsApp, que este projeto não usa.
-- Evento com mais de 7 dias é recusado pelo Meta (e derruba a requisição
-  inteira), então vira "Expirado" e não é reenviado.
-- Falhou? O erro fica salvo na compra e dá pra usar **Reenviar pendentes**.
-- `META_GRAPH_VERSION` (padrão `v27.0`) e `META_GRAPH_BASE` podem ser trocados
-  por variável de ambiente.
-- `test_event_code` aparece em "Testar eventos", mas o Meta ainda usa esses
-  eventos na medição. Deixe vazio no dia a dia.
+- **Vários pixels:** cadastre quantos precisar em Configurações (cada um com nome, ID, token e código de teste opcional; token guardado criptografado, só os 4 últimos aparecem). Cada **lista** aponta pra um pixel ou usa o **pixel padrão**. A compra vai pro pixel da primeira lista da cliente (ordem do funil) que tiver pixel; sem nenhum e sem padrão, fica **Sem pixel** (nada é enviado e o motivo aparece).
+- **Recompras por pixel:** todas como Purchase (padrão), como evento separado `Recompra`, ou não enviar. O evento leva `purchase_number`.
+- Limite do Meta: eventos de até 7 dias; passou disso vira Expirado. `test_event_code` não isola a medição real.
+- Testado só contra um Meta simulado (`META_GRAPH_BASE`); falta testar com o pixel real.
 
 ## Funil (kanban)
 

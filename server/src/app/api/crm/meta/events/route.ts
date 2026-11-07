@@ -2,7 +2,7 @@ import { NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 
-// GET: últimas compras com o status do envio ao Meta.
+// GET: últimas compras com o status do envio ao Meta e o pixel usado.
 export async function GET() {
   const session = await auth()
   if (!session) return NextResponse.json({ error: "Não autorizado" }, { status: 401 })
@@ -11,7 +11,7 @@ export async function GET() {
     where: { userId: session.user.id },
     orderBy: { purchasedAt: "desc" },
     take: 20,
-    include: { contact: { select: { name: true } } },
+    include: { contact: { select: { name: true } }, metaPixel: { select: { name: true } } },
   })
 
   return NextResponse.json(
@@ -21,13 +21,18 @@ export async function GET() {
       amount: p.amount,
       productName: p.productName,
       purchasedAt: p.purchasedAt.toISOString(),
+      pixelName: p.metaPixel?.name ?? null,
       status: p.metaEventSent
         ? "enviado"
         : p.metaError?.startsWith("Expirado")
           ? "expirado"
-          : p.metaError
-            ? "falhou"
-            : "pendente",
+          : p.metaError?.startsWith("Sem pixel")
+            ? "sem_pixel"
+            : p.metaError?.startsWith("Recompra não enviada")
+              ? "ignorada"
+              : p.metaError
+                ? "falhou"
+                : "pendente",
       error: p.metaError,
     }))
   )
