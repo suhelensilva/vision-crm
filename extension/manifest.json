@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Vision CRM — WhatsApp",
-  "version": "0.16.0",
+  "version": "0.16.1",
   "description": "CRM sobre o WhatsApp Web: dados da cliente, notas, cobranças, listas e respostas rápidas.",
   "permissions": [
     "storage"

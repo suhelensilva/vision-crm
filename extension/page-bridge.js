@@ -297,10 +297,19 @@
       const msgs = arr(chat.msgs)
       dbg.qtdMensagensCarregadas = msgs.length
       let i = 0
+      const counts = {}
+      const typeKeys = {} // campos de cada TIPO de mensagem (pra achar o do aviso de anúncio)
       for (const m of msgs) {
         const t = String(m.type || "?") + (m.subtype ? "/" + m.subtype : "")
         out.tipos[t] = (out.tipos[t] || 0) + 1
-        if (i < 3) out.primeiras.push({ n: i, tipo: t, deMim: !!(m.id && m.id.fromMe), campos: Object.keys(m).slice(0, 60) })
+        try {
+          for (const k of Object.keys(m)) {
+            counts[k] = (counts[k] || 0) + 1
+            if (!typeKeys[t]) typeKeys[t] = new Set()
+            typeKeys[t].add(k)
+          }
+        } catch {}
+        if (i < 2) out.primeiras.push({ n: i, tipo: t, deMim: !!(m.id && m.id.fromMe) })
         const suspeitos = adKeys(m)
         const system = /notification|system|ctwa|gp2|e2e/i.test(t)
         if (Object.keys(suspeitos).length || (system && out.mensagens.length < 12)) {
@@ -309,6 +318,18 @@
         i++
         if (i > 600) break
       }
+      // Campos RAROS (aparecem em poucas mensagens): é onde costuma ficar o que é de anúncio.
+      const n = msgs.length || 1
+      out.camposRaros = Object.entries(counts).filter(([, c]) => c < n * 0.5).sort((a, b) => a[1] - b[1]).slice(0, 60).map(([k, c]) => k + ":" + c)
+      // Campos que só existem em tipos "estranhos" (aviso/sistema), sem repetir os comuns
+      const comuns = new Set(Object.keys(counts).filter((k) => counts[k] >= n * 0.5))
+      out.camposPorTipoEspecial = {}
+      for (const [t, set] of Object.entries(typeKeys)) {
+        if (/^(chat|ptt|image|video|sticker|audio|document)$/.test(t)) continue
+        out.camposPorTipoEspecial[t] = [...set].filter((k) => !comuns.has(k)).slice(0, 40)
+      }
+      // Campos da conversa (só os NOMES), pra ver se existe algum de origem
+      try { out.camposDaConversa = Object.keys(chat).filter((k) => /entry|source|ad|ctwa|origin|referr|conversion|campaign|ref/i.test(k)).slice(0, 60) } catch {}
     } catch (e) { dbg.erro = String(e).slice(0, 160) }
 
     // O aviso "Esta conversa foi iniciada através de um anúncio..." na tela (texto do aviso e links dele)
