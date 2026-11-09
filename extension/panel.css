@@ -393,3 +393,11 @@ html.vcrm-on body { padding-right: var(--vcrm-pad, 44px) !important; }
 #vcrm-msgmenu button svg { color: #34d399; }
 #vcrm-msgmenu button span { flex: 1; }
 #vcrm-msgmenu button em { font-style: normal; font-size: 12px; color: #8696a0; }
+
+/* ═══ Origem do anúncio ═══ */
+.vc-card.ad { gap: 6px; }
+.vc-ad-banner { margin: 0; font-size: 13px; color: var(--accent-text); }
+.vc-ad-row { display: flex; gap: 8px; justify-content: space-between; font-size: 12px; padding: 3px 0; border-top: 1px solid var(--soft); }
+.vc-ad-row span { color: var(--muted); flex: none; }
+.vc-ad-row b { color: #fff; font-weight: 600; text-align: right; word-break: break-all; }
+.vc-tiny { font-size: 11px !important; color: var(--faint) !important; margin-top: 8px; align-self: flex-start; }

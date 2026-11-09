@@ -262,6 +262,73 @@
     return { opened: false, dbg }
   }
 
+  // ── Diagnóstico: o que a conversa guarda sobre o ANÚNCIO que a trouxe ──
+  // Só LÊ. Não devolve texto de mensagem, só os nomes dos campos, os tipos e os valores que
+  // parecem de anúncio (id, clique, link, origem).
+  const AD_KEY = /ctwa|referral|adsource|ad_id|adid|entrypoint|conversionsource|externalad|sourceid|sourceurl|sourcetype|clid|campaign|utm|fbclid|greeting/i
+  const brief = (v) => {
+    if (v == null) return v
+    if (typeof v === "string") return v.length > 24 ? v.slice(0, 14) + "…(" + v.length + " caracteres)" : v
+    if (typeof v === "number" || typeof v === "boolean") return v
+    if (Array.isArray(v)) return "lista(" + v.length + ")"
+    if (typeof v === "object") return "objeto{" + Object.keys(v).slice(0, 12).join(",") + "}"
+    return typeof v
+  }
+  function adKeys(obj, depth = 0, out = {}, prefix = "") {
+    if (!obj || typeof obj !== "object" || depth > 2) return out
+    let keys = []
+    try { keys = Object.keys(obj) } catch {}
+    for (const k of keys) {
+      let v
+      try { v = obj[k] } catch { continue }
+      if (AD_KEY.test(k)) out[prefix + k] = brief(v)
+      if (v && typeof v === "object" && !Array.isArray(v) && depth < 2 && /context|ctwa|referral|ad|source|signal/i.test(k)) adKeys(v, depth + 1, out, prefix + k + ".")
+    }
+    return out
+  }
+
+  function adInfo() {
+    const dbg = { versao: "ad1" }
+    const out = { chatKeys: {}, tipos: {}, mensagens: [], primeiras: [], banner: null, dbg }
+    try {
+      const chat = findActiveChat(dbg)
+      if (!chat) return { ...out, erro: "nenhuma conversa aberta" }
+      out.chatKeys = adKeys(chat)
+      const msgs = arr(chat.msgs)
+      dbg.qtdMensagensCarregadas = msgs.length
+      let i = 0
+      for (const m of msgs) {
+        const t = String(m.type || "?") + (m.subtype ? "/" + m.subtype : "")
+        out.tipos[t] = (out.tipos[t] || 0) + 1
+        if (i < 3) out.primeiras.push({ n: i, tipo: t, deMim: !!(m.id && m.id.fromMe), campos: Object.keys(m).slice(0, 60) })
+        const suspeitos = adKeys(m)
+        const system = /notification|system|ctwa|gp2|e2e/i.test(t)
+        if (Object.keys(suspeitos).length || (system && out.mensagens.length < 12)) {
+          if (out.mensagens.length < 25) out.mensagens.push({ n: i, tipo: t, deMim: !!(m.id && m.id.fromMe), suspeitos })
+        }
+        i++
+        if (i > 600) break
+      }
+    } catch (e) { dbg.erro = String(e).slice(0, 160) }
+
+    // O aviso "Esta conversa foi iniciada através de um anúncio..." na tela (texto do aviso e links dele)
+    try {
+      const main = document.querySelector("#main")
+      if (main) {
+        const hit = [...main.querySelectorAll("span, div")].find((n) => n.children.length < 4 && /an[uú]ncio|campanha|ad\b/i.test(n.textContent || "") && (n.textContent || "").length < 220 && /iniciad|veio|origem|come[cç]ou/i.test(n.textContent || ""))
+        if (hit) {
+          const box = hit.closest("[role='row'], [data-id], div") || hit
+          out.banner = {
+            texto: (hit.textContent || "").trim().slice(0, 200),
+            links: [...box.querySelectorAll("a[href]")].map((a) => a.href).slice(0, 5),
+            atributosData: [...new Set([...box.querySelectorAll("*")].flatMap((n) => [...n.attributes].map((a) => a.name).filter((x) => /^data-/.test(x))))].slice(0, 20),
+          }
+        }
+      }
+    } catch (e) { dbg.erroBanner = String(e).slice(0, 100) }
+    return out
+  }
+
   document.addEventListener("vcrm-req", (ev) => {
     let id = ev.detail
     let kind = "chat"
@@ -271,6 +338,7 @@
       kind === "scan" ? scan()
       : kind === "waiting" ? waiting((arg && arg.minMinutes) || 60, (arg && arg.maxHours) || 72)
       : kind === "open" ? openChat(String(arg || ""))
+      : kind === "adinfo" ? adInfo()
       : answer()
     document.dispatchEvent(new CustomEvent("vcrm-res", { detail: JSON.stringify({ id, ...out }) }))
   })

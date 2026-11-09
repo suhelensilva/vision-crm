@@ -339,12 +339,43 @@ function renderBody() {
   if (state.tab === "notas") return renderNotes()
   if (state.tab === "lembretes") return renderReminders()
   if (state.tab === "cobrancas") return renderCharges()
-  return renderConversa()
+  return renderConversa() + `<button class="vc-link vc-tiny" data-act="ad-copy" title="Lê o que o WhatsApp guarda sobre o anúncio desta conversa">Copiar origem do anúncio (diagnóstico)</button>`
 }
 
 const empty = (t, s) => `<div class="vc-empty"><b>${esc(t)}</b><p>${esc(s)}</p><button class="vc-ghost" data-act="diag" style="margin-top:12px">Copiar diagnóstico</button></div>`
 
 // ── Aba: Esta conversa ────────────────────────────────────────────────────────
+
+// ── Origem do anúncio: tudo que o WhatsApp guarda sobre como esta cliente chegou ──
+function adFields(a) {
+  const f = {}
+  if (!a) return f
+  Object.assign(f, a.chatKeys || {})
+  for (const m of a.mensagens || []) Object.assign(f, m.suspeitos || {})
+  return f
+}
+
+function adOriginBlock() {
+  const a = state.adInfo
+  const head = `<div class="vc-sec first">Origem do anúncio</div>`
+  if (a === undefined) return `<div class="vc-card ad">${head}<p class="vc-muted">Lendo a conversa…</p></div>`
+  const rows = Object.entries(adFields(a)).slice(0, 14)
+  const banner = a && a.banner
+  const found = rows.length > 0 || !!banner
+  return `<div class="vc-card ad">${head}
+    ${banner ? `<p class="vc-ad-banner">${esc(banner.texto)}</p>` : ""}
+    ${rows.map(([k, v]) => `<div class="vc-ad-row"><span>${esc(k)}</span><b>${esc(String(v))}</b></div>`).join("")}
+    ${banner && banner.links && banner.links.length ? `<div class="vc-ad-row"><span>link</span><b>${esc(banner.links[0])}</b></div>` : ""}
+    ${found ? "" : `<p class="vc-muted">Não achei dado de anúncio nesta conversa. Pode ser conversa orgânica, ou o começo dela ainda não carregou: role até o topo da conversa e abra de novo.</p>`}
+    <button class="vc-link" data-act="ad-copy">Copiar detalhes técnicos</button></div>`
+}
+
+async function loadAdInfo(forChat) {
+  const r = await askBridge("adinfo", 5000)
+  if (state.phone !== forChat) return // trocou de conversa enquanto lia
+  state.adInfo = r && !r.erro ? r : null
+  if (state.open && state.tab === "conversa") render()
+}
 
 function renderConversa() {
   const c = state.contact
@@ -1486,6 +1517,14 @@ async function onClick(e) {
     try { await navigator.clipboard.writeText(text); toast("Diagnóstico copiado. Cole aqui no chat.") } catch { window.prompt("Copie este texto e cole no chat:", text) }
     return
   }
+  if (act === "ad-copy") {
+    // Só lê quando você clica. Não grava nada, não manda nada.
+    toast("Lendo a conversa…")
+    const r = await askBridge("adinfo", 6000)
+    const text = JSON.stringify(r || { aviso: "não consegui ler a conversa" }, null, 1)
+    try { await navigator.clipboard.writeText(text); toast("Copiado. Cole aqui no chat.") } catch { window.prompt("Copie e cole no chat:", text) }
+    return
+  }
   if (act === "imp-scan") return importScan()
   if (act === "imp-go") return importGo()
   if (act === "imp-all" || act === "imp-none") {
@@ -1685,7 +1724,7 @@ async function refresh(force) {
   state.apiUrl = (cfg.apiUrl || "").replace(/\/+$/, "")
   if (!cfg.apiUrl || !cfg.token) { state.status = "no_config"; return render() }
 
-  if (changed) { state.contact = null; state.detail = null; state.charges = []; state.reminders = [] }
+  if (changed) { state.contact = null; state.detail = null; state.charges = []; state.reminders = []; state.adInfo = undefined }
   state.status = "loading"
   if (state.open) render()
 
