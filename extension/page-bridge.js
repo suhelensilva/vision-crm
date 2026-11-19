@@ -216,7 +216,7 @@
         if (chat.archive) continue
         const last = lastMessageOf(chat)
         if (!last || !last.id || last.id.fromMe !== false) continue
-        const t = (last.t || chat.t || 0) * 1000
+        const t = (last.t || 0) * 1000 // só a hora da própria mensagem (a da conversa muda ao sincronizar)
         if (!t) continue
         const mins = Math.floor((now - t) / 60000)
         if (mins < minMinutes || mins > maxHours * 60) continue
