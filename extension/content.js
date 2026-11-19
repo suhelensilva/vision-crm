@@ -917,6 +917,7 @@ function fileApi(path) {
  * ENVIA É VOCÊ (Enter). Áudio entra como arquivo de áudio, ainda não como "gravado na hora".
  */
 async function attachFile(r) {
+  const who = state.name || "a cliente"
   const target = state.chatKey // a conversa de quando você clicou (se trocar de conversa, o áudio vai pra ela mesmo)
   const box = getComposer()
   if (!box) { toast("Abra uma conversa pra usar esta resposta."); return }
@@ -935,10 +936,15 @@ async function attachFile(r) {
   if (r.type === "AUDIO" && r.asVoiceNote) {
     // a cliente vê "gravando áudio…" pelo tempo do áudio (no máximo 30 segundos)
     const secs = await audioSeconds(file)
-    await simulateState("recording", Math.min(30, Math.round(secs)) * 1000, target)
-    toast("Enviando como mensagem de voz…")
-    const v = await askBridge("sendptt", 30000, { base64: res.base64, mime: r.mediaMime || res.mime || "audio/ogg", chat: target })
+    toast(`Enviando áudio para ${who}…`)
+    // fila por conversa: roda em segundo plano, você já pode abrir outra conversa
+    const v = await enqueueSend(target || "?", async () => {
+      await simulateState("recording", Math.min(30, Math.round(secs)) * 1000, target)
+      return askBridge("sendptt", 30000, { base64: res.base64, mime: r.mediaMime || res.mime || "audio/ogg", chat: target })
+    })
     if (v && v.ok) { api("POST", `/api/crm/quick-replies/${r.id}/use`); toast("Enviado como mensagem de voz."); return }
+    const nowChat = await askBridge("chat", 1500)
+    if (target && nowChat && nowChat.key && nowChat.key !== target) { toast(`Não consegui enviar o áudio para ${who}. Volte na conversa e clique de novo.`, 8000); return }
     try { await navigator.clipboard.writeText(JSON.stringify(v, null, 1)) } catch {}
     const why = v && v.dbg ? "[" + (v.dbg.etapa || "") + "] " + String((v.dbg.tentativas || []).join(" | ") || v.dbg.excecao || (v.dbg.temMediaPrep === false ? "sem MediaPrep" : v.dbg.temOpaqueData === false ? "sem OpaqueData" : "")).slice(0, 220) : ""
     toast((v && v.erro ? v.erro : "Não consegui enviar como mensagem de voz.") + " Mandei como arquivo. Detalhe: " + (why || "nenhum") + (v && v.dbg && v.dbg.fonteEnvio ? " FONTE: " + String(v.dbg.fonteEnvio).slice(0, 520) : ""), 25000)
