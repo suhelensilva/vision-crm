@@ -1567,6 +1567,7 @@ function ensureBar() {
   }).join("")
   const html =
     `<button class="vb-filter${prefs.barCat ? " on" : ""}" data-bar="filter" title="Filtrar por categoria">${icon("filter", 15)}</button>` +
+    `<button class="vb-chip vb-pix" data-bar="pix" title="Enviar a sua chave Pix (cartão com botão de copiar)"><i class="vb-ic">${icon("wallet", 14)}</i>Pix</button>` +
     `<button class="vb-min" data-bar="min" title="${prefs.barMin ? "Mostrar respostas" : "Recolher"}">${prefs.barMin ? icon("plus", 13) : "−"}</button>` +
     (prefs.barMin ? "" : `<div class="vb-chips">${chips || '<span class="vb-none">Nenhuma resposta nesta categoria.</span>'}</div><button class="vb-next" data-bar="next" title="Mais">${icon("chevronright", 14)}</button>`)
   if (bar.dataset.sig !== html) {
@@ -1628,6 +1629,20 @@ function onBarClick(e) {
   if (k === "min") { prefs.barMin = !prefs.barMin; savePrefs(); return ensureBar() }
   if (k === "next") { const c = document.querySelector("#vcrm-bar .vb-chips"); if (c) c.scrollBy({ left: 320, behavior: "smooth" }); return }
   if (k === "filter") { return document.getElementById("vcrm-barmenu") ? closeBarMenu() : openBarMenu(b) }
+  if (k === "pix") return sendMyPix()
+}
+
+/** Manda a chave Pix que você salvou no WhatsApp (cartão nativo com botão de copiar) pra conversa aberta. */
+async function sendMyPix() {
+  const target = state.chatKey
+  if (!target) return toast("Abra uma conversa pra mandar o Pix.")
+  const who = state.name || "a cliente"
+  toast(`Enviando seu Pix para ${who}…`)
+  const v = await enqueueSend(target, () => askBridge("sendpixkey", 25000, { chat: target }))
+  if (v && v.ok) return toast(`Pix enviado para ${who}.`)
+  try { await navigator.clipboard.writeText(JSON.stringify(v, null, 1)) } catch {}
+  const dd = (v && v.dbg) || {}
+  toast(((v && v.erro) || "Não consegui enviar o Pix.") + " [" + (dd.erros || []).join(" | ").slice(0, 200) + "]", 15000)
 }
 
 function closePop() { const p = document.getElementById(POP_ID); if (p) p.remove() }
