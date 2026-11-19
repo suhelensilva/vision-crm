@@ -408,15 +408,15 @@
       dbg.etapa = "envio"
       try { dbg.fonteEnvio = String(prep.sendToChat).slice(0, 700) } catch {}
       const tries = [
-        {},
-        { caption: "", isCaptionByUser: false, quotedMsg: null, addEvenWhilePreparing: true },
-        { caption: "", isCaptionByUser: true, quotedMsg: undefined, productMsgOptions: undefined, footer: undefined },
+        { chat, options: {} },
+        { chat, options: {}, earlyUpload: null },
+        { chat, options: { caption: "", isCaptionByUser: false }, earlyUpload: false },
       ]
       let lastErr = null
       let sent = false
       dbg.tentativas = []
       for (const opt of tries) {
-        try { await prep.sendToChat(chat, opt); sent = true; break } catch (e) { lastErr = e; dbg.tentativas.push(String(e && e.message || e).slice(0, 90)) }
+        try { await prep.sendToChat(opt); sent = true; break } catch (e) { lastErr = e; dbg.tentativas.push(String(e && e.message || e).slice(0, 90)) }
       }
       if (!sent) throw lastErr
       return { ok: true, dbg }
