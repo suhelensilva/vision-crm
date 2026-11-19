@@ -468,6 +468,26 @@
           try { if (typeof o.set === "function") o.set({ waveform: wave }) } catch {}
         }
       }
+      try {
+        dbg.prepKeys = Object.keys(prep || {}).slice(0, 20)
+        dbg.mediaKeys = Object.keys(media || {}).slice(0, 40)
+        // onde, dentro do prep, existe um campo de onda (dois níveis)
+        const paths = []
+        const seen = new Set()
+        const walk = (o, path, depth) => {
+          if (!o || typeof o !== "object" || seen.has(o) || depth > 2) return
+          seen.add(o)
+          let ks = []
+          try { ks = Object.keys(o) } catch {}
+          for (const k of ks) {
+            if (/wave/i.test(k)) paths.push(path + "." + k)
+            let v; try { v = o[k] } catch { continue }
+            if (v && typeof v === "object") walk(v, path + "." + k, depth + 1)
+          }
+        }
+        walk(prep, "prep", 0)
+        dbg.caminhosOnda = paths.slice(0, 12)
+      } catch (e) { dbg.erroCaminhos = String(e).slice(0, 60) }
       dbg.etapa = "envio"
       try { dbg.fonteEnvio = String(prep.sendToChat).slice(0, 700) } catch {}
       const wopt = wave ? { waveform: wave } : {}
