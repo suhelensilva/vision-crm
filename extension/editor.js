@@ -73,8 +73,8 @@ function openReplyEditor(opts) {
   if (old) old.remove()
   const item = opts.item || null
   const S = {
-    kind: item ? item.type : null,
-    name: item ? item.name || "" : "",
+    kind: item ? item.type : opts.kind || null,
+    name: item ? item.name || "" : opts.name || "",
     category: item ? item.category || "" : "",
     shortcut: item ? item.shortcut || "" : "",
     text: item ? item.text || "" : opts.text || "",
@@ -83,7 +83,7 @@ function openReplyEditor(opts) {
     viewOnce: item ? !!item.viewOnce : false,
     asVoiceNote: item ? !!item.asVoiceNote : false,
     more: !!(item && item.shortcut),
-    file: null,
+    file: item ? null : opts.file || null,
     fileErr: "",
     err: "",
     busy: false,

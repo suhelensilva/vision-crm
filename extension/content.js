@@ -654,6 +654,9 @@ function openReplyForm(init) {
   openReplyEditor({
     item,
     text: init && init.text ? init.text : "",
+    kind: init && init.kind ? init.kind : null,
+    file: init && init.file ? init.file : null,
+    name: init && init.name ? init.name : "",
     categories: [...new Set(state.replies.map((r) => r.category).filter(Boolean))],
     onSaved: async () => { await loadReplies(); ensureBar(); render(); toast("Resposta salva.") },
   })
@@ -1593,18 +1596,29 @@ function hideMsgSoon() {
   msgHideTimer = setTimeout(hideMsgUi, 350)
 }
 
+/** O botão de reagir (emoji) que o WhatsApp mostra ao passar o mouse numa mensagem, se existir. */
+function findReactButton(box) {
+  try {
+    for (const sel of ['[aria-label*="eagir"]', '[aria-label*="eact"]', '[data-testid*="react"]', '[data-icon*="react"]', '[data-icon="emoji-react"]']) {
+      const el = box.querySelector(sel)
+      if (el) return el.closest("button, [role='button']") || el
+    }
+  } catch {}
+  return null
+}
+
 function onMsgHover(e) {
   if (state.status === "no_config" || state.status === "bad_token" || modalOpen()) return
   const t = e.target
   if (t.closest && t.closest(`#${MSG_BTN_ID}, #${MSG_MENU_ID}`)) { clearTimeout(msgHideTimer); return }
-  const row = t.closest && t.closest('[class*="message-out"]')
   const main = document.querySelector("#main")
-  if (!row || !main || !main.contains(row)) return hideMsgSoon()
-  const text = messageText(row)
-  if (!text) return hideMsgSoon() // áudio, foto, figurinha: sem texto pra copiar
+  const holder = t.closest && t.closest("[data-id]")
+  const row = holder && main && main.contains(holder) ? holder : null
+  if (!row || !/^(true|false)_/.test(row.getAttribute("data-id") || "")) return hideMsgSoon()
+  const out = /^true_/.test(row.getAttribute("data-id") || "")
   clearTimeout(msgHideTimer)
-  const first = row.querySelector(TEXT_SEL)
-  const r = first.getBoundingClientRect()
+  const bubble = row.querySelector('[class*="message-out"], [class*="message-in"]') || row
+  const br = bubble.getBoundingClientRect()
   let b = document.getElementById(MSG_BTN_ID)
   if (!b) {
     b = document.createElement("button")
@@ -1615,31 +1629,53 @@ function onMsgHover(e) {
     b.addEventListener("click", onMsgButtonClick)
     document.body.appendChild(b)
   }
-  msgHover = { text }
+  msgHover = { id: row.getAttribute("data-id"), text: messageText(row), row }
   b.style.display = "grid"
-  b.style.left = Math.max(8, Math.round(r.left - 52)) + "px"
-  b.style.top = Math.round(r.top + r.height / 2 - 14) + "px"
+  // do lado do emoji de reagir (que o WhatsApp mostra ao passar o mouse); sem ele, do lado do balão
+  const react = findReactButton(row)
+  const rr = react ? react.getBoundingClientRect() : null
+  let left, top
+  if (rr && rr.width) {
+    const reactOnLeft = rr.left + rr.width / 2 < br.left + br.width / 2
+    left = reactOnLeft ? rr.left - 34 : rr.right + 6
+    top = rr.top + rr.height / 2 - 14
+  } else {
+    left = out ? br.left - 38 : br.right + 10
+    top = br.top + Math.min(br.height / 2, 30) - 14
+  }
+  b.style.left = Math.max(8, Math.round(left)) + "px"
+  b.style.top = Math.round(top) + "px"
 }
 
-function onMsgButtonClick() {
-  const b = document.getElementById(MSG_BTN_ID)
-  if (!b || !msgHover) return
-  let m = document.getElementById(MSG_MENU_ID)
-  if (m) return m.remove()
-  m = document.createElement("div")
-  m.id = MSG_MENU_ID
-  m.innerHTML = `<small>VISION CRM</small><button>${icon("text", 16)}<span>Salvar como resposta rápida</span><em>Texto</em></button>`
-  m.addEventListener("mouseenter", () => clearTimeout(msgHideTimer))
-  m.addEventListener("mouseleave", hideMsgSoon)
-  m.querySelector("button").addEventListener("click", () => {
-    const text = msgHover.text
-    hideMsgUi()
-    openReplyForm({ text })
-  })
-  document.body.appendChild(m)
-  const r = b.getBoundingClientRect()
-  m.style.left = Math.round(Math.max(8, r.left - 20)) + "px"
-  m.style.top = Math.round(r.bottom + 6) + "px"
+const MIME_EXT = { "audio/ogg": "ogg", "audio/mpeg": "mp3", "audio/mp3": "mp3", "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "video/mp4": "mp4", "video/3gpp": "3gp", "application/pdf": "pdf" }
+const KIND_BY_TYPE = { chat: "TEXT", image: "IMAGE", video: "VIDEO", ptt: "AUDIO", audio: "AUDIO", document: "DOCUMENT" }
+
+async function onMsgButtonClick() {
+  if (!msgHover) return
+  const { id, text } = msgHover
+  hideMsgUi()
+  toast("Pegando a mensagem…")
+  const info = await askBridge("msginfo", 3000, { id })
+  // sem leitura interna: se a mensagem tem texto na tela, usa ele
+  if (!info || !info.ok) { if (text) return openReplyForm({ text }); return toast("Não consegui ler essa mensagem.") }
+  const kind = KIND_BY_TYPE[info.type]
+  if (!kind) return toast("Esse tipo de mensagem (figurinha, enquete, etc.) não vira resposta rápida.")
+  if (kind === "TEXT") return openReplyForm({ text: info.text || text || "" })
+  const med = await askBridge("msgmedia", 40000, { id })
+  if (!med || !med.ok) {
+    try { await navigator.clipboard.writeText(JSON.stringify(med, null, 1)) } catch {}
+    return toast((med && med.erro) || "Não consegui pegar o arquivo.", 8000)
+  }
+  try {
+    const bin = atob(med.base64)
+    const bytes = new Uint8Array(bin.length)
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i)
+    const mime = (med.mime || info.mime || "").split(";")[0].trim().toLowerCase()
+    let name = info.filename || ""
+    if (!/\.[A-Za-z0-9]{1,8}$/.test(name)) name = (kind === "AUDIO" ? "audio" : kind === "IMAGE" ? "imagem" : kind === "VIDEO" ? "video" : "documento") + "." + (MIME_EXT[mime] || "bin")
+    const file = new File([bytes], name, { type: med.mime || info.mime || "application/octet-stream" })
+    openReplyForm({ kind, file, text: kind === "AUDIO" ? "" : info.text || "", name: name.replace(/\.[A-Za-z0-9]{1,8}$/, "").slice(0, 60) })
+  } catch { toast("O arquivo veio com defeito.") }
 }
 
 // ── Eventos do painel ────────────────────────────────────────────────────────

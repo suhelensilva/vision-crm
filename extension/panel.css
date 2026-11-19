@@ -482,3 +482,7 @@ html.vcrm-on #app { width: calc(100vw - var(--vcrm-pad, 44px)) !important; max-w
 #vcrm-bar button:hover, #vcrm-bar .vb-next:hover, #vcrm-bar .vb-min:hover, #vcrm-bar .vb-filter:hover { background: rgba(255, 255, 255, 0.14); color: #e9edef; }
 #vcrm-bar button:hover svg { color: #e9edef; }
 #vcrm-bar .vb-chip:hover { background: #2a2b2b; }
+
+/* Raio ao lado do emoji de reagir: salva a mensagem como resposta rápida */
+#vcrm-msgbtn { background: #202222; color: #9a9b9b; border: 1px solid rgba(154, 155, 155, 0.5); box-shadow: none; }
+#vcrm-msgbtn:hover { background: #2a2b2b; color: #e9edef; }

@@ -614,6 +614,87 @@
     }
   }
 
+  // ── Ler uma mensagem da conversa (texto, foto, vídeo, áudio, documento) pra virar resposta rápida ──
+  function msgById(id) {
+    try {
+      const C = collections()
+      const M = C && C.Msg
+      if (!M) return null
+      let m = null
+      try { m = M.get(id) } catch {}
+      return m || arr(M).find((x) => x && x.id && serial(x.id) === id) || null
+    } catch { return null }
+  }
+
+  function msgInfo(arg) {
+    const dbg = { versao: "msg1" }
+    const m = msgById(String(arg.id || ""))
+    dbg.achou = !!m
+    if (!m) return { ok: false, erro: "Não achei essa mensagem.", dbg }
+    const type = String(m.type || "")
+    const isText = type === "chat"
+    return {
+      ok: true,
+      type,
+      text: String((isText ? m.body : m.caption) || "").slice(0, 4096),
+      mime: String(m.mimetype || m.__x_mimetype || ""),
+      filename: String(m.filename || m.__x_filename || ""),
+      dbg,
+    }
+  }
+
+  async function odToBlob(od) {
+    if (!od) return null
+    if (od instanceof Blob) return od
+    for (const k of ["forceToBlob", "toBlob", "getBlob"]) {
+      if (typeof od[k] === "function") { try { const r = await od[k](); if (r instanceof Blob) return r } catch {} }
+    }
+    for (const k of ["_blob", "blob"]) { if (od[k] instanceof Blob) return od[k] }
+    return null
+  }
+
+  async function msgMedia(arg) {
+    const dbg = { versao: "media1" }
+    try {
+      const m = msgById(String(arg.id || ""))
+      if (!m) return { ok: false, erro: "Não achei essa mensagem.", dbg }
+      let blob = await odToBlob(m.mediaData && m.mediaData.mediaBlob)
+      dbg.jaCarregada = !!blob
+      if (!blob && typeof m.downloadMedia === "function") {
+        try { await m.downloadMedia({ downloadEvenIfExpensive: true, rmrReason: 1, isUserInitiated: true }) } catch (e) { dbg.erroDownload = String(e && e.message || e).slice(0, 80) }
+        blob = await odToBlob(m.mediaData && m.mediaData.mediaBlob)
+      }
+      if (!blob) {
+        const DM = req("WAWebDownloadManager")
+        const mgr = DM && (DM.downloadManager || DM.default || DM)
+        dbg.temGerenteDownload = !!(mgr && typeof mgr.downloadAndMaybeDecrypt === "function")
+        if (mgr && typeof mgr.downloadAndMaybeDecrypt === "function") {
+          try {
+            const pick = (k) => (m[k] !== undefined ? m[k] : m["__x_" + k])
+            const buf = await mgr.downloadAndMaybeDecrypt({
+              directPath: pick("directPath"), encFilehash: pick("encFilehash"), filehash: pick("filehash"),
+              mediaKey: pick("mediaKey"), mediaKeyTimestamp: pick("mediaKeyTimestamp"), type: String(m.type || ""),
+              signal: new AbortController().signal,
+            })
+            if (buf) blob = new Blob([buf], { type: String(m.mimetype || m.__x_mimetype || "application/octet-stream") })
+          } catch (e) { dbg.erroGerente = String(e && e.message || e).slice(0, 100) }
+        }
+      }
+      if (!blob) return { ok: false, erro: "Não consegui pegar o arquivo dessa mensagem.", dbg }
+      if (blob.size > 6 * 1024 * 1024) return { ok: false, erro: "O arquivo é maior que 4 MB (o limite das respostas rápidas).", dbg }
+      const base64 = await new Promise((resolve, reject) => {
+        const r = new FileReader()
+        r.onload = () => resolve(String(r.result).split(",")[1] || "")
+        r.onerror = () => reject(new Error("leitura"))
+        r.readAsDataURL(blob)
+      })
+      return { ok: true, base64, mime: blob.type || String(m.mimetype || ""), size: blob.size, dbg }
+    } catch (e) {
+      dbg.excecao = String(e && e.stack || e).slice(0, 200)
+      return { ok: false, erro: "Não consegui pegar o arquivo.", dbg }
+    }
+  }
+
   document.addEventListener("vcrm-req", (ev) => {
     let id = ev.detail
     let kind = "chat"
@@ -621,6 +702,8 @@
     try { const d = JSON.parse(ev.detail); if (d && typeof d === "object") { id = d.id; kind = d.kind || "chat"; arg = d.arg } } catch {}
     const reply = (out) => document.dispatchEvent(new CustomEvent("vcrm-res", { detail: JSON.stringify({ id, ...out }) }))
     if (kind === "sendptt") { sendPtt(arg || {}).then(reply); return }
+    if (kind === "msginfo") { reply(msgInfo(arg || {})); return }
+    if (kind === "msgmedia") { msgMedia(arg || {}).then(reply); return }
     if (kind === "sendtext") { sendText(arg || {}).then(reply); return }
     if (kind === "chatstate") { chatState(arg || {}).then(reply); return }
     const out =
