@@ -1673,10 +1673,10 @@ async function onMsgButtonClick() {
   toast("Pegando a mensagem…")
   const info = await askBridge("msginfo", 3000, { id })
   // sem leitura interna: se a mensagem tem texto na tela, usa ele
-  if (!info || !info.ok) { if (text) return openReplyForm({ text }); return toast("Não consegui ler essa mensagem.") }
+  if (!info || !info.ok) { if (text) return openReplyForm({ kind: "TEXT", text }); return toast("Não consegui ler essa mensagem.") }
   const kind = KIND_BY_TYPE[info.type]
   if (!kind) return toast("Esse tipo de mensagem (figurinha, enquete, etc.) não vira resposta rápida.")
-  if (kind === "TEXT") return openReplyForm({ text: info.text || text || "" })
+  if (kind === "TEXT") return openReplyForm({ kind: "TEXT", text: info.text || text || "" })
   const med = await askBridge("msgmedia", 40000, { id })
   if (!med || !med.ok) {
     try { await navigator.clipboard.writeText(JSON.stringify(med, null, 1)) } catch {}
