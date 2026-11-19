@@ -1643,10 +1643,13 @@ function onMsgHoverInner(e) {
   const dataId = (row.getAttribute && row.getAttribute("data-id")) || ""
   const mr = main.getBoundingClientRect()
   const cls = String(bubbleEl.className || "")
-  const out = /message-out/.test(cls) ? true : /message-in/.test(cls) ? false : /^true_/.test(dataId) ? true : /^false_/.test(dataId) ? false : (() => {
-    const inner = bubbleEl.querySelector(TEXT_SEL) || bubbleEl
-    const ir = inner.getBoundingClientRect()
-    return ir.left + ir.width / 2 > mr.left + mr.width / 2
+  // suas mensagens ficam encostadas à direita da conversa, as da cliente à esquerda: a posição do balão é o que manda
+  const out = (() => {
+    const b0 = visibleBubbleRect(bubbleEl) || (bubbleEl.querySelector(TEXT_SEL) || bubbleEl).getBoundingClientRect()
+    const centro = b0.left + b0.width / 2
+    const meio = mr.left + mr.width / 2
+    if (Math.abs(centro - meio) > 30) return centro > meio
+    return /message-out/.test(cls) ? true : /message-in/.test(cls) ? false : /^true_/.test(dataId)
   })()
   clearTimeout(msgHideTimer)
   const bubble = bubbleEl
