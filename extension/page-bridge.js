@@ -444,6 +444,20 @@
           if (achados.length >= 14) break
         }
         dbg.modsComOnda = achados
+        dbg.trechos = []
+        for (const n of ["WAWebAudioMessageProtoUtils", "WAWebGenerateWebMessageInfo"]) {
+          try {
+            const f = mm[n].factory || mm[n].fn || mm[n]
+            const src = String(f)
+            let from = 0
+            for (let c = 0; c < 2; c++) {
+              const k = src.toLowerCase().indexOf("waveform", from)
+              if (k < 0) break
+              dbg.trechos.push(n.replace("WAWeb", "") + ": " + src.slice(Math.max(0, k - 110), k + 130).replace(/\s+/g, " "))
+              from = k + 8
+            }
+          } catch {}
+        }
       } catch (e) { dbg.erroBusca = String(e).slice(0, 60) }
       dbg.etapa = "prep"
       const prep = mods.MediaPrep.prepRawMedia(od, wave ? { isPtt: true, waveform: wave } : { isPtt: true })
