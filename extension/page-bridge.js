@@ -435,6 +435,13 @@
         for (const o of [media, prep && prep._mediaData]) { try { if (o) o.waveform = wave } catch {} }
         dbg.ondas = true
       }
+      try {
+        const rx = /wave|dur|second|ptt|audio|mime|type|ondas/i
+        dbg.chavesMedia = Object.keys(media || {}).filter((k) => rx.test(k)).slice(0, 25)
+        dbg.chavesPrep = Object.keys(prep || {}).slice(0, 25)
+        dbg.chavesMediaDados = Object.keys((prep && prep._mediaData) || {}).filter((k) => rx.test(k)).slice(0, 25)
+        dbg.waveAntes = media && media.waveform ? "ja-tinha" : "vazio"
+      } catch {}
       dbg.etapa = "envio"
       try { dbg.fonteEnvio = String(prep.sendToChat).slice(0, 700) } catch {}
       const tries = [
