@@ -689,6 +689,7 @@
             const buf = await mgr.downloadAndMaybeDecrypt({
               directPath: pick("directPath"), encFilehash: pick("encFilehash"), filehash: pick("filehash"),
               mediaKey: pick("mediaKey"), mediaKeyTimestamp: pick("mediaKeyTimestamp"), type: String(m.type || ""),
+              mimetype: pick("mimetype"), mimeType: pick("mimetype"), size: pick("size"), filehashB64: pick("filehash"),
               signal: new AbortController().signal,
               // o WhatsApp registra o tempo do download num "medidor" interno; um medidor que não faz nada resolve
               downloadQpl: noopMeter, qpl: noopMeter, logger: noopMeter, perfLogger: noopMeter,
