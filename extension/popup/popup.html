@@ -5,33 +5,53 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Vision CRM</title>
   <style>
-    body { width: 300px; margin: 0; padding: 18px; font-family: 'Segoe UI', system-ui, sans-serif; color: #e8eefc;
-      background: radial-gradient(400px 200px at 90% -10%, rgba(59,130,246,.25), transparent 60%), #040a1c; }
-    h1 { font-size: 16px; margin: 0 0 4px; color: #fff; } h1 b { color: #e0245e; }
-    p.sub { font-size: 12px; color: #8ea0c8; margin: 0 0 14px; }
+    body { width: 300px; margin: 0; padding: 18px; font-family: 'Segoe UI', system-ui, sans-serif; color: #e8eefc; background: #131417; }
+    h1 { font-size: 16px; margin: 0 0 14px; color: #fff; } h1 b { color: #a78bfa; }
+    .hide { display: none !important; }
+    .card { background: rgba(12,33,80,.8); border: 1px solid rgba(165,214,255,.34); border-radius: 14px; padding: 14px; display: flex; align-items: center; gap: 12px; }
+    .av { width: 42px; height: 42px; flex: none; border-radius: 50%; background: #a78bfa; color: #1a1330; display: grid; place-items: center; font-weight: 700; font-size: 16px; }
+    .who { min-width: 0; }
+    .who b { display: block; font-size: 14px; color: #fff; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .who small { display: block; font-size: 11px; color: #8ea0c8; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .status { display: flex; align-items: center; gap: 7px; margin: 12px 2px 0; font-size: 12px; color: #7ef0c0; }
+    .status i { width: 8px; height: 8px; border-radius: 50%; background: #34d399; }
+    .status.off { color: #ffb39c; } .status.off i { background: #ff7a59; }
     label { display: block; font-size: 12px; font-weight: 600; margin: 10px 0 4px; color: #c9d5f2; }
     input { width: 100%; box-sizing: border-box; color: #e8eefc; background: rgba(255,255,255,.07);
       border: 1px solid rgba(143,163,214,.25); border-radius: 8px; padding: 8px 10px; font-size: 13px; outline: none; }
-    input:focus { border-color: #e0245e; box-shadow: 0 0 0 3px rgba(224,36,94,.22); }
-    button { width: 100%; margin-top: 14px; background: #e0245e; color: #fff; border: none; border-radius: 10px;
-      padding: 10px; font-size: 13px; font-weight: 600; cursor: pointer; box-shadow: 0 0 16px rgba(224,36,94,.45); }
-    button:hover { filter: brightness(1.12); }
-    .msg { font-size: 12px; margin-top: 10px; min-height: 16px; }
-    .ok { color: #7ef0c0; } .err { color: #ff8a8a; }
+    input:focus { border-color: #a78bfa; }
+    button { width: 100%; margin-top: 14px; background: #a78bfa; color: #1a1330; border: none; border-radius: 10px;
+      padding: 10px; font-size: 13px; font-weight: 600; cursor: pointer; }
+    button:hover { opacity: .88; }
+    button.ghost { background: transparent; color: #8ea0c8; border: 1px solid rgba(143,163,214,.25); margin-top: 8px; }
+    p.sub { font-size: 12px; color: #8ea0c8; margin: 0 0 6px; }
+    .msg { font-size: 12px; margin-top: 10px; min-height: 16px; color: #ff8a8a; }
   </style>
 </head>
 <body>
   <h1>Vision <b>CRM</b></h1>
-  <p class="sub">Conecte ao seu Vision CRM.</p>
 
-  <label for="apiUrl">URL do sistema</label>
-  <input id="apiUrl" type="text" placeholder="http://localhost:3001" />
+  <div id="loading" class="p sub">Verificando conexão…</div>
 
-  <label for="token">Token de acesso</label>
-  <input id="token" type="password" placeholder="crm_..." />
+  <div id="on" class="hide">
+    <div class="card">
+      <div class="av" id="av">V</div>
+      <div class="who"><b id="name"></b><small id="email"></small></div>
+    </div>
+    <div class="status"><i></i><span>Conectado e funcionando</span></div>
+    <button id="open">Abrir painel</button>
+    <button id="out" class="ghost">Desconectar</button>
+  </div>
 
-  <button id="save">Salvar e testar conexão</button>
-  <div class="msg" id="msg"></div>
+  <div id="off" class="hide">
+    <p class="sub" id="offSub">Conecte ao seu Vision CRM.</p>
+    <label for="apiUrl">URL do sistema</label>
+    <input id="apiUrl" type="text" placeholder="http://localhost:3001" />
+    <label for="token">Token de acesso</label>
+    <input id="token" type="password" placeholder="crm_..." />
+    <button id="save">Conectar</button>
+    <div class="msg" id="msg"></div>
+  </div>
 
   <script src="popup.js"></script>
 </body>

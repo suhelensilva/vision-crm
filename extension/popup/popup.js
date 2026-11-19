@@ -1,39 +1,50 @@
-const urlEl = document.getElementById("apiUrl")
-const tokenEl = document.getElementById("token")
-const msgEl = document.getElementById("msg")
+const $ = (id) => document.getElementById(id)
+const views = ["loading", "on", "off"]
+function view(name) { views.forEach((v) => $(v).classList.toggle("hide", v !== name)) }
 
-// Carrega valores salvos
-chrome.storage.local.get(["apiUrl", "token"], (cfg) => {
-  urlEl.value = cfg.apiUrl || ""
-  tokenEl.value = cfg.token || ""
-})
-
-document.getElementById("save").addEventListener("click", async () => {
-  const apiUrl = urlEl.value.trim().replace(/\/+$/, "")
-  const token = tokenEl.value.trim()
-
-  if (!apiUrl || !token) {
-    show("Preencha a URL e o token.", "err")
-    return
-  }
-
-  await chrome.storage.local.set({ apiUrl, token })
-  show("Testando conexão…", "")
-
-  const res = await new Promise((resolve) => {
-    chrome.runtime.sendMessage({ type: "api", method: "GET", path: "/api/crm/me" }, resolve)
-  })
-
-  if (res && res.ok && res.data && res.data.ok) {
-    show(`Conectado como ${res.data.name || res.data.email}. ✓`, "ok")
-  } else if (res && res.status === 401) {
-    show("Token inválido. Gere um novo em Configurações.", "err")
-  } else {
-    show("Não conectou. Confira a URL (o sistema precisa estar no ar).", "err")
-  }
-})
-
-function show(text, cls) {
-  msgEl.textContent = text
-  msgEl.className = "msg " + cls
+function api(path) {
+  return new Promise((resolve) => chrome.runtime.sendMessage({ type: "api", method: "GET", path }, resolve))
 }
+
+async function check() {
+  const cfg = await chrome.storage.local.get(["apiUrl", "token"])
+  $("apiUrl").value = cfg.apiUrl || ""
+  if (!cfg.apiUrl || !cfg.token) { $("msg").textContent = ""; return view("off") }
+
+  view("loading")
+  const res = await api("/api/crm/me")
+  if (res && res.ok && res.data && res.data.ok) {
+    const name = res.data.name || res.data.email || "Conectado"
+    $("name").textContent = name
+    $("email").textContent = res.data.email || ""
+    $("av").textContent = name.trim().charAt(0).toUpperCase()
+    return view("on")
+  }
+  $("offSub").textContent = res && res.status === 401
+    ? "Seu token não vale mais. Gere um novo em Configurações no painel."
+    : "Não conectou. Confira se o sistema está no ar."
+  view("off")
+}
+
+$("save").addEventListener("click", async () => {
+  const apiUrl = $("apiUrl").value.trim().replace(/\/+$/, "")
+  const token = $("token").value.trim()
+  if (!apiUrl || !token) { $("msg").textContent = "Preencha a URL e o token."; return }
+  await chrome.storage.local.set({ apiUrl, token })
+  $("token").value = ""
+  await check()
+  if ($("off").classList.contains("hide")) return
+  $("msg").textContent = "Não foi possível conectar. Confira a URL e o token."
+})
+
+$("open").addEventListener("click", async () => {
+  const { apiUrl } = await chrome.storage.local.get("apiUrl")
+  chrome.tabs.create({ url: apiUrl + "/dashboard" })
+})
+
+$("out").addEventListener("click", async () => {
+  await chrome.storage.local.remove("token")
+  await check()
+})
+
+check()
