@@ -935,6 +935,7 @@ const WAIT_ID = "vcrm-wait"
 const WAIT_MIN_MINUTES = 1 // avisa assim que a cliente espera há 1 minuto
 const WAIT_MAX_HOURS = 72 // e ignora o que é mais velho que 3 dias
 let waitSnoozeUntil = 0
+let waitClosed = false // depois que ela fecha o aviso, ele não volta até recarregar o WhatsApp
 let waitList = []
 let waitHandled = {} // conversa -> hora da última mensagem que você marcou como "já resolvi"
 
@@ -953,7 +954,7 @@ const waitFmt = (mins) => (mins >= 1440 ? Math.floor(mins / 1440) + " d" : mins 
 
 function renderWaiting() {
   let el = document.getElementById(WAIT_ID)
-  const hide = !waitList.length || Date.now() < waitSnoozeUntil || state.status === "no_config" || state.status === "bad_token" || modalOpen()
+  const hide = !waitList.length || waitClosed || state.status === "no_config" || state.status === "bad_token" || modalOpen()
   if (hide) { if (el) el.remove(); return }
   if (!el) {
     el = document.createElement("div")
@@ -978,7 +979,7 @@ function renderWaiting() {
       }
       const act = e.target.closest("[data-wait-act]")
       if (!act) return
-      if (act.getAttribute("data-wait-act") === "later") { waitSnoozeUntil = Date.now() + 30 * 60000; renderWaiting() }
+      if (act.getAttribute("data-wait-act") === "later") { waitClosed = true; renderWaiting() }
       if (act.getAttribute("data-wait-act") === "panel" && state.apiUrl) window.open(state.apiUrl + "/dashboard/painel", "_blank")
     })
     document.body.appendChild(el)
