@@ -39,8 +39,8 @@ html.vcrm-on body { padding-right: var(--vcrm-pad, 56px) !important; background:
 .vc-ico svg { color: #9a9b9b; }
 .vc-ico span { font-size: 9.5px; line-height: 1; }
 .vc-ico:hover { background: rgba(255, 255, 255, 0.07); }
-.vc-ico.on { background: var(--accent); color: #141515; box-shadow: 0 0 18px var(--glow); }
-.vc-ico.on svg { color: #141515; }
+.vc-ico.on { background: #3a3b3c; color: #fff; box-shadow: none; }
+.vc-ico.on svg { color: #fff; }
 
 /* ── Painel ── */
 .vc-panel {
