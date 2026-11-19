@@ -2,7 +2,7 @@
    Todas as cores do sistema vêm daqui. Pra mudar o visual (ou criar o tema
    claro), é só trocar os valores destas variáveis. */
 :root {
-  --bg: #040a1c;
+  --bg: #131417;
   --card-top: rgba(12, 33, 80, 0.8);
   --card-bottom: rgba(8, 22, 56, 0.8);
   --inner: rgba(5, 14, 38, 0.72); /* cartões dentro de cartões */
