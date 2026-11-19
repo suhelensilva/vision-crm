@@ -473,3 +473,7 @@ html.vcrm-on body { padding-right: var(--vcrm-pad, 44px) !important; }
 
 /* O WhatsApp encolhe pra caber ao lado da nossa coluna: nada dele fica escondido (botão de enviar, gravar áudio) */
 html.vcrm-on #app { width: calc(100vw - var(--vcrm-pad, 44px)) !important; max-width: calc(100vw - var(--vcrm-pad, 44px)) !important; }
+
+/* Barra de respostas rápidas: dentro do rodapé do WhatsApp, logo abaixo do campo de mensagem */
+#vcrm-bar { background: transparent; border-top: 0; padding: 2px 14px 8px; }
+#vcrm-pop { margin: 0 0 6px; }

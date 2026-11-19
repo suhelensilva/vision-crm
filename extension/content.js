@@ -1420,8 +1420,10 @@ function ensureBar() {
     const c = bar.querySelector(".vb-chips")
     if (c) c.scrollLeft = scroll
   }
-  // O Hotzapp põe a barra EMBAIXO do campo de mensagem
-  if (bar.parentNode !== footer.parentNode || bar.previousSibling !== footer) footer.parentNode.insertBefore(bar, footer.nextSibling)
+  // Embaixo do campo de mensagem, DENTRO do rodapé do WhatsApp (o rodapé dele flutua em cima da conversa;
+  // se a barra ficasse fora dele, apareceria lá em cima)
+  if (bar.parentNode !== footer) footer.appendChild(bar)
+  else if (footer.lastElementChild !== bar) footer.appendChild(bar)
 }
 
 function closeBarMenu() { const m = document.getElementById("vcrm-barmenu"); if (m) m.remove() }
@@ -1497,7 +1499,8 @@ function onComposerInput(e) {
     useReply(r)
   })
   const footer = composerFooter()
-  ;(footer ? footer.parentNode : document.body).insertBefore(pop, footer || null)
+  if (footer) footer.insertBefore(pop, footer.firstChild)
+  else document.body.appendChild(pop)
 }
 
 // ── "Salvar como resposta rápida" a partir de uma mensagem sua ───────────────
