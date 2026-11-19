@@ -778,6 +778,22 @@
         }
       }
       dbg.tiposDiferentes = tipos
+      // por dentro dos módulos mais promissores: nomes de fluxo, funções e o começo do código delas
+      dbg.detalhe = {}
+      for (const n of ["WAWebPaymentRequestMsgAction", "WAWebInteractiveMessagesNativeFlowName", "WAWebGenerateNativeFlowButtonsMessageProto", "WAWebBrazilPaymentStateKeys", "WAWebParseMsgPaymentInfo", "WAWebBrAddPixKeyMessageOffer"]) {
+        try {
+          const m = req(n)
+          if (!m) { dbg.detalhe[n] = "não carregou"; continue }
+          const o = {}
+          for (const k of Object.keys(m).slice(0, 10)) {
+            const v = m[k]
+            if (typeof v === "function") o[k] = "fn: " + String(v).slice(0, 320).replace(/\s+/g, " ")
+            else if (v && typeof v === "object") o[k] = JSON.stringify(v).slice(0, 320)
+            else o[k] = String(v).slice(0, 120)
+          }
+          dbg.detalhe[n] = o
+        } catch (e) { dbg.detalhe[n] = "erro " + String(e).slice(0, 60) }
+      }
     } catch (e) { dbg.erro = String(e).slice(0, 100) }
     return { dbg }
   }
