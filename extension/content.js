@@ -830,16 +830,16 @@ function replyPreview(r) {
  * Mostra pra cliente "digitando…" ou "gravando áudio…" durante `ms` milissegundos
  * (o WhatsApp esquece o aviso depois de uns segundos, então a gente repete).
  */
-async function simulateState(state, ms) {
+async function simulateState(state, ms, chat) {
   if (!prefs.simulate || ms <= 0) return
   const end = Date.now() + ms
   let failed = false
   while (Date.now() < end && !failed) {
-    const r = await askBridge("chatstate", 4000, { state })
+    const r = await askBridge("chatstate", 4000, { state, chat })
     if (!r || !r.ok) { failed = true; toast((r && r.erro ? r.erro : "Não consegui mostrar o digitando.") + (r && r.dbg && (r.dbg.excecao || r.dbg.candidatosEstado) ? " [" + (r.dbg.excecao || (r.dbg.candidatosEstado || []).join(",")) + "]" : ""), 12000); break }
     await new Promise((res) => setTimeout(res, Math.min(4000, Math.max(0, end - Date.now()))))
   }
-  await askBridge("chatstate", 3000, { state: "paused" })
+  await askBridge("chatstate", 3000, { state: "paused", chat })
 }
 
 const typingMsFor = (text) => Math.max(10000, Math.min(15000, String(text || "").length * 90))
@@ -862,10 +862,14 @@ async function useReply(r) {
     const text = r.type === "TEXT" ? renderVariables(r.text || "") : `${r.contactName || ""}: ${r.contactPhone || ""}`.trim()
     // "Mensagem sai direto": igual ao Hotzapp, clicar na resposta já envia.
     // Primeiro a cliente vê "digitando…" (com o campo ainda vazio), e só depois o texto entra e sai.
+    const target = state.chatKey
     if (prefs.sendDirect && prefs.simulate && r.type === "TEXT" && getComposer()) {
       const ms = typingMsFor(text)
       toast(`A cliente está vendo "digitando…" (${Math.round(ms / 1000)} s). Já já sai.`, ms)
-      await simulateState("typing", ms)
+      await simulateState("typing", ms, target)
+      // se você trocou de conversa nesse meio tempo, NÃO manda (iria pra pessoa errada)
+      const now = await askBridge("chat", 1500)
+      if (target && now && now.key && now.key !== target) { toast("Você trocou de conversa. Não enviei, pra não ir pra pessoa errada. Volte nela e clique de novo."); return }
     }
     if (!insertIntoComposer(text)) return
     api("POST", `/api/crm/quick-replies/${r.id}/use`)
@@ -896,6 +900,7 @@ function fileApi(path) {
  * ENVIA É VOCÊ (Enter). Áudio entra como arquivo de áudio, ainda não como "gravado na hora".
  */
 async function attachFile(r) {
+  const target = state.chatKey // a conversa de quando você clicou (se trocar de conversa, o áudio vai pra ela mesmo)
   const box = getComposer()
   if (!box) { toast("Abra uma conversa pra usar esta resposta."); return }
   toast("Carregando o arquivo…")
@@ -913,9 +918,9 @@ async function attachFile(r) {
   if (r.type === "AUDIO" && r.asVoiceNote) {
     // a cliente vê "gravando áudio…" pelo tempo do áudio (no máximo 30 segundos)
     const secs = await audioSeconds(file)
-    await simulateState("recording", Math.min(30, Math.round(secs)) * 1000)
+    await simulateState("recording", Math.min(30, Math.round(secs)) * 1000, target)
     toast("Enviando como mensagem de voz…")
-    const v = await askBridge("sendptt", 30000, { base64: res.base64, mime: r.mediaMime || res.mime || "audio/ogg" })
+    const v = await askBridge("sendptt", 30000, { base64: res.base64, mime: r.mediaMime || res.mime || "audio/ogg", chat: target })
     if (v && v.ok) { api("POST", `/api/crm/quick-replies/${r.id}/use`); toast("Enviado como mensagem de voz."); return }
     try { await navigator.clipboard.writeText(JSON.stringify(v, null, 1)) } catch {}
     const why = v && v.dbg ? "[" + (v.dbg.etapa || "") + "] " + String((v.dbg.tentativas || []).join(" | ") || v.dbg.excecao || (v.dbg.temMediaPrep === false ? "sem MediaPrep" : v.dbg.temOpaqueData === false ? "sem OpaqueData" : "")).slice(0, 220) : ""

@@ -411,10 +411,19 @@
     } catch (e) { dbg.erroOndas = String(e).slice(0, 80); return null }
   }
 
+  /** A conversa que a pessoa tinha aberta quando clicou (e não a que está aberta agora). */
+  function chatByKey(key, dbg) {
+    if (!key) return findActiveChat(dbg)
+    const C = collections()
+    const chat = C && arr(C.Chat).find((c) => c && c.id && serial(c.id) === key)
+    dbg.chatPorChave = !!chat
+    return chat || null
+  }
+
   async function sendPtt(arg) {
     const dbg = { versao: "ptt1" }
     try {
-      const chat = findActiveChat(dbg)
+      const chat = chatByKey(arg.chat, dbg)
       if (!chat) return { ok: false, erro: "Abra uma conversa primeiro.", dbg }
       const bin = atob(arg.base64 || "")
       const bytes = new Uint8Array(bin.length)
@@ -564,7 +573,7 @@
   async function chatState(arg) {
     const dbg = { versao: "estado1" }
     try {
-      const chat = findActiveChat(dbg)
+      const chat = chatByKey(arg.chat, dbg)
       if (!chat) return { ok: false, erro: "Abra uma conversa primeiro.", dbg }
       const fns = chatStateFns(dbg)
       const fn = arg.state === "recording" ? fns.sendChatStateRecording : arg.state === "paused" ? fns.sendChatStatePaused : fns.sendChatStateComposing
