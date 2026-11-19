@@ -364,6 +364,9 @@
     dbg.totalModulos = names.length
     const cand = names.filter((n) => /Prep|Opaque|MediaData|SendMedia|SendAudio|Ptt|Waveform|MediaBlob/i.test(n))
     dbg.candidatos = cand.slice(0, 60)
+    dbg.nomesOnda = names.filter((n) => /Wave|Ptt|Voice/i.test(n)).slice(0, 25)
+    dbg.formasOnda = {}
+    for (const n of dbg.nomesOnda.slice(0, 12)) { try { const m = req(n); if (m) dbg.formasOnda[n] = Object.keys(m).slice(0, 10) } catch {} }
     dbg.formas = {}
     for (const n of cand) {
       let m = null
