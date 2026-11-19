@@ -1608,6 +1608,10 @@ function findReactButton(box) {
 }
 
 function onMsgHover(e) {
+  try { onMsgHoverInner(e) } catch (err) { console.warn("[Vision] raio:", err) }
+}
+
+function onMsgHoverInner(e) {
   if (state.status === "no_config" || state.status === "bad_token" || modalOpen()) return
   const t = e.target
   if (t.closest && t.closest(`#${MSG_BTN_ID}, #${MSG_MENU_ID}`)) { clearTimeout(msgHideTimer); return }
@@ -1636,8 +1640,8 @@ function onMsgHover(e) {
   const rr = react ? react.getBoundingClientRect() : null
   let left, top
   if (rr && rr.width) {
-    const reactOnLeft = rr.left + rr.width / 2 < br.left + br.width / 2
-    left = reactOnLeft ? rr.left - 34 : rr.right + 6
+    // o emoji fica do lado de fora do balão: à esquerda nas suas mensagens, à direita nas da cliente
+    left = out ? rr.left - 34 : rr.right + 6
     top = rr.top + rr.height / 2 - 14
   } else {
     left = out ? br.left - 38 : br.right + 10
