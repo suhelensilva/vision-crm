@@ -820,7 +820,7 @@ async function onReplyAction(act, id, btn) {
   }
   if (act === "pixdiag") {
     toast("Procurando o Pix no WhatsApp…")
-    const r = await askBridge("pixscan", 20000)
+    const r = await askBridge("pixdump", 40000)
     const d = (r && r.dbg) || {}
     const txt = JSON.stringify(d, null, 1)
     try { await navigator.clipboard.writeText(txt) } catch {}
@@ -828,11 +828,11 @@ async function onReplyAction(act, id, btn) {
     try {
       const a = document.createElement("a")
       a.href = URL.createObjectURL(new Blob([txt], { type: "text/plain;charset=utf-8" }))
-      a.download = "vision-pix-diagnostico.txt"
+      a.download = "vision-pix-completo.txt"
       document.body.appendChild(a); a.click(); a.remove()
     } catch {}
     const tipos = Object.entries(d.tiposDiferentes || {}).map(([t, v]) => t + (v.fluxo ? "(" + v.fluxo + ")" : "")).join(", ")
-    return toast("Módulos: " + (d.modulos || []).slice(0, 14).join(", ") + " | Tipos de mensagem diferentes: " + (tipos || "nenhum") + " (diagnóstico copiado e salvo em Downloads como vision-pix-diagnostico.txt)", 60000)
+    return toast("Módulos: " + (d.modulos || []).slice(0, 14).join(", ") + " | Tipos de mensagem diferentes: " + (tipos || "nenhum") + " (diagnóstico copiado e salvo em Downloads como vision-pix-completo.txt)", 60000)
   }
   if (act === "new") return openReplyForm({})
   if (act === "newcat") { rp.newCat = true; render(); const i = document.querySelector("#vcrm-root [data-newcat]"); if (i) i.focus(); return }

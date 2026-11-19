@@ -865,6 +865,81 @@
     }
   }
 
+  // ── Despejo COMPLETO de tudo que o WhatsApp tem sobre Pix/pagamento/pedido (uma vez só, vai pra um arquivo) ──
+  function pixDump() {
+    const dbg = { versao: "dump1" }
+    try {
+      let names = []
+      try { const d = req("__debug"); if (d && d.modulesMap) names = Object.keys(d.modulesMap) } catch {}
+      const cand = names.filter((n) => /Pix|Payment|Upr[A-Z]|OrderDetails|NativeFlow|InteractiveMessage|InteractiveMsg|SendMsgChatAction|SendTextMsg|AddAndSend|Biz.*Order|BrAdd/i.test(n))
+      dbg.totalModulos = names.length
+      dbg.modulos = cand.slice(0, 300)
+      let budget = 1400000
+      const fn = (f, n) => { try { return String(f).slice(0, n).replace(/\s+/g, " ") } catch { return "" } }
+      const val = (v, depth) => {
+        if (typeof v === "function") return "fn: " + fn(v, 1400)
+        if (v && typeof v === "object") {
+          if (depth <= 0) { try { return JSON.stringify(v).slice(0, 200) } catch { return String(v).slice(0, 60) } }
+          const o = {}
+          let ks = []
+          try { ks = Object.getOwnPropertyNames(v).slice(0, 40) } catch {}
+          for (const k of ks) { try { o[k] = val(v[k], depth - 1) } catch { o[k] = "?" } }
+          return o
+        }
+        return String(v).slice(0, 120)
+      }
+      dbg.conteudo = {}
+      for (const n of cand.slice(0, 220)) {
+        if (budget < 0) { dbg.cortouEm = n; break }
+        let m = null
+        try { m = req(n) } catch {}
+        if (!m) continue
+        const o = {}
+        let ks = []
+        try { ks = Object.getOwnPropertyNames(m).slice(0, 40) } catch {}
+        for (const k of ks) { try { o[k] = val(m[k], 2) } catch { o[k] = "?" } }
+        const s = JSON.stringify(o)
+        budget -= s.length
+        dbg.conteudo[n] = o
+      }
+      // tentativas com a função do WhatsApp que monta o pedido de Pix por chave
+      try {
+        const B = req("WAWebUprPaymentRequestParams")
+        const tent = {}
+        const chaves = {
+          a: { identifierType: "EMAIL", identifierValue: "teste@exemplo.com" },
+          b: { accountType: "PIX", identifierType: "EMAIL", identifierValue: "teste@exemplo.com" },
+          c: { type: "EMAIL", value: "teste@exemplo.com" },
+          d: { pixKeyType: "EMAIL", pixKey: "teste@exemplo.com", merchantName: "Teste" },
+          e: { key: "teste@exemplo.com", keyType: "EMAIL", name: "Teste" },
+          f: { identifier_type: "EMAIL", identifier_value: "teste@exemplo.com", account_type: "pix" },
+        }
+        for (const [nome, chave] of Object.entries(chaves)) {
+          try { tent[nome] = JSON.stringify(B.buildUprPaymentRequestParams({ amount: null, currency: "BRL", offset: 100, paymentKeys: [chave], referenceId: "ref1" })).slice(0, 500) } catch (e) { tent[nome] = "erro: " + String(e && e.message || e).slice(0, 100) }
+        }
+        dbg.tentativasChave = tent
+      } catch (e) { dbg.tentativasChave = "erro " + String(e).slice(0, 80) }
+      // exemplos reais de mensagens "interactive" das suas conversas (pra copiar o formato)
+      try {
+        const C = collections()
+        const ex = []
+        for (const chat of arr(C.Chat).slice(0, 120)) {
+          let msgs = []
+          try { msgs = arr(chat.msgs).slice(-60) } catch {}
+          for (const m of msgs) {
+            if (!m || String(m.type) !== "interactive") continue
+            ex.push({ fluxo: String(m.nativeFlowName || m.__x_nativeFlowName || ""), tipo: String(m.interactiveType || m.__x_interactiveType || ""), payload: JSON.stringify(m.interactivePayload || m.__x_interactivePayload || null).slice(0, 900) })
+            if (ex.length >= 8) break
+          }
+          if (ex.length >= 8) break
+        }
+        dbg.exemplosInteractive = ex
+      } catch (e) { dbg.exemplosInteractive = "erro" }
+      try { const ks = []; for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (/pix|payment|upr/i.test(k)) ks.push(k) } dbg.chavesLocais = ks } catch {}
+    } catch (e) { dbg.erro = String(e).slice(0, 120) }
+    return { dbg }
+  }
+
   document.addEventListener("vcrm-req", (ev) => {
     let id = ev.detail
     let kind = "chat"
@@ -873,6 +948,7 @@
     const reply = (out) => document.dispatchEvent(new CustomEvent("vcrm-res", { detail: JSON.stringify({ id, ...out }) }))
     if (kind === "sendptt") { sendPtt(arg || {}).then(reply); return }
     if (kind === "qrlist") { reply(waQuickReplies()); return }
+    if (kind === "pixdump") { reply(pixDump()); return }
     if (kind === "pixscan") { reply(pixScan()); return }
     if (kind === "sendpix") { sendPix(arg || {}).then(reply); return }
     if (kind === "msginfo") { reply(msgInfo(arg || {})); return }
