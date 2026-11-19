@@ -276,3 +276,94 @@ function openReplyEditor(opts) {
   const first = root.querySelector('[data-f="name"]')
   if (first) first.focus()
 }
+
+
+/**
+ * Importar as respostas rápidas que já existem no WhatsApp (só texto): lista, você marca quais quer e importa.
+ * opts: { items: [{id, shortcut, message}], existing: [respostas do Vision], onDone }
+ */
+function openQuickReplyImport(opts) {
+  const old = document.getElementById("vcrm-ed")
+  if (old) old.remove()
+  const have = new Set((opts.existing || []).map((r) => String(r.text || "").trim()))
+  const rows = (opts.items || []).map((q, i) => ({ ...q, i, dup: have.has(String(q.message || "").trim()) }))
+  const sel = new Set(rows.filter((r) => !r.dup).map((r) => r.i))
+  let q = ""
+  let busy = false
+  let msg = ""
+
+  const root = document.createElement("div")
+  root.id = "vcrm-ed"
+  document.body.appendChild(root)
+  for (const ev of ["keydown", "keyup", "keypress", "paste", "copy", "cut"]) root.addEventListener(ev, (e) => e.stopPropagation())
+  root.addEventListener("mousedown", (e) => { if (e.target === root && !busy) close() })
+  const close = () => { root.remove(); document.removeEventListener("keydown", onKey, true) }
+  const onKey = (e) => { if (e.key === "Escape" && !busy) { e.stopPropagation(); close() } }
+  document.addEventListener("keydown", onKey, true)
+
+  const visible = () => rows.filter((r) => !q || (r.shortcut + " " + r.message).toLowerCase().includes(q))
+
+  function draw() {
+    const list = visible()
+    const keepSearch = document.activeElement && root.contains(document.activeElement) && document.activeElement.matches("[data-q]")
+    const pos = keepSearch ? document.activeElement.selectionStart : 0
+    root.innerHTML = `<div class="ed-box ed-wide" role="dialog" aria-modal="true">
+      <h2>Importar respostas rápidas do WhatsApp</h2>
+      <p class="ed-help" style="text-align:center;margin:-6px 0 12px">Só texto por enquanto. Marque as que você quer trazer; depois é só renomear e arrumar aqui.</p>
+      ${rows.length ? `
+        <input data-q placeholder="Buscar…" value="${esc(q)}" />
+        <div class="ed-toolbar">
+          <button type="button" class="ed-link" data-act="all">Marcar todas</button>
+          <button type="button" class="ed-link" data-act="none">Desmarcar todas</button>
+          <span>${sel.size} de ${rows.length} marcadas</span>
+        </div>
+        <div class="ed-list">${list.map((r) => `
+          <label class="ed-item ${r.dup ? "dup" : ""}">
+            <input type="checkbox" data-i="${r.i}" ${sel.has(r.i) ? "checked" : ""} ${busy ? "disabled" : ""}/>
+            <span class="ed-it"><b>${r.shortcut ? "/" + esc(r.shortcut) : "<i>sem atalho</i>"}</b>${r.dup ? " <em>já existe aqui</em>" : ""}<small>${esc(r.message.slice(0, 220))}</small></span>
+          </label>`).join("") || '<p class="ed-help">Nada encontrado.</p>'}</div>` :
+        `<p class="ed-help" style="text-align:center">${esc(opts.empty || "Não achei respostas rápidas no seu WhatsApp.")}</p>`}
+      ${msg ? `<p class="${msg.startsWith("!") ? "ed-err" : "ed-warn"}">${esc(msg.replace(/^!/, ""))}</p>` : ""}
+      <div class="ed-row">
+        <button type="button" class="ed-ghost" data-act="close" ${busy ? "disabled" : ""}>Fechar</button>
+        ${rows.length ? `<button type="button" class="ed-save" data-act="go" ${busy || !sel.size ? "disabled" : ""}>${busy ? "Importando…" : `Importar ${sel.size}`}</button>` : ""}
+      </div></div>`
+    if (keepSearch) { const s = root.querySelector("[data-q]"); if (s) { s.focus(); try { s.setSelectionRange(pos, pos) } catch {} } }
+  }
+
+  async function go() {
+    busy = true; msg = ""; draw()
+    let ok = 0, fail = 0, noShortcut = 0
+    for (const r of rows.filter((x) => sel.has(x.i))) {
+      const text = r.message.slice(0, 4096)
+      const base = { type: "TEXT", name: (r.shortcut || text.replace(/\s+/g, " ").slice(0, 60) || "Resposta").slice(0, 80), category: "WHATSAPP", text }
+      let res = await api("POST", "/api/crm/quick-replies", { ...base, shortcut: r.shortcut || null })
+      if (!res.ok && r.shortcut) { res = await api("POST", "/api/crm/quick-replies", { ...base, shortcut: null }); if (res.ok) noShortcut++ }
+      if (res.ok) ok++; else fail++
+    }
+    busy = false
+    msg = `${ok} importada${ok === 1 ? "" : "s"}.` + (noShortcut ? ` ${noShortcut} sem atalho (já estava em uso ou inválido).` : "") + (fail ? ` ${fail} não deu certo.` : "")
+    if (fail) msg = "!" + msg
+    draw()
+    if (opts.onDone) opts.onDone()
+  }
+
+  root.addEventListener("click", (e) => {
+    const b = e.target.closest("button")
+    if (!b) return
+    const a = b.dataset.act
+    if (a === "close") return close()
+    if (a === "all") { for (const r of visible()) sel.add(r.i); return draw() }
+    if (a === "none") { for (const r of visible()) sel.delete(r.i); return draw() }
+    if (a === "go") return go()
+  })
+  root.addEventListener("change", (e) => {
+    const c = e.target.closest("[data-i]")
+    if (!c) return
+    const i = Number(c.getAttribute("data-i"))
+    if (c.checked) sel.add(i); else sel.delete(i)
+    draw()
+  })
+  root.addEventListener("input", (e) => { if (e.target.matches("[data-q]")) { q = e.target.value.trim().toLowerCase(); draw() } })
+  draw()
+}

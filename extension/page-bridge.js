@@ -714,6 +714,40 @@
     }
   }
 
+  // ── As respostas rápidas que já existem no WhatsApp (Business): atalho + texto ──
+  function waQuickReplies() {
+    const dbg = { versao: "qr1" }
+    const out = []
+    try {
+      const C = collections()
+      let col = C && (C.QuickReply || C.QuickReplies)
+      dbg.temColecao = !!col
+      if (!col) {
+        let names = []
+        try { const d = req("__debug"); if (d && d.modulesMap) names = Object.keys(d.modulesMap) } catch {}
+        dbg.modulos = names.filter((n) => /QuickReply/i.test(n)).slice(0, 15)
+        for (const n of dbg.modulos) {
+          const m = req(n)
+          if (!m) continue
+          for (const x of [m.QuickReplyCollection, m.default, m]) { if (x && (x.models || typeof x.getModelsArray === "function")) { col = x; break } }
+          if (col) { dbg.via = n; break }
+        }
+      }
+      if (col) {
+        for (const q of arr(col)) {
+          if (!q) continue
+          const message = String(q.message !== undefined ? q.message : q.__x_message !== undefined ? q.__x_message : q.text || "")
+          const shortcut = String(q.shortcut !== undefined ? q.shortcut : q.__x_shortcut || "")
+          if (!message && !shortcut) continue
+          out.push({ id: String(q.id && q.id.toString ? q.id.toString() : out.length), shortcut, message })
+        }
+        dbg.total = out.length
+        if (!out.length) { try { dbg.chaves = Object.keys(arr(col)[0] || {}).slice(0, 12) } catch {} }
+      }
+    } catch (e) { dbg.erro = String(e).slice(0, 100) }
+    return { quickReplies: out, dbg }
+  }
+
   document.addEventListener("vcrm-req", (ev) => {
     let id = ev.detail
     let kind = "chat"
@@ -721,6 +755,7 @@
     try { const d = JSON.parse(ev.detail); if (d && typeof d === "object") { id = d.id; kind = d.kind || "chat"; arg = d.arg } } catch {}
     const reply = (out) => document.dispatchEvent(new CustomEvent("vcrm-res", { detail: JSON.stringify({ id, ...out }) }))
     if (kind === "sendptt") { sendPtt(arg || {}).then(reply); return }
+    if (kind === "qrlist") { reply(waQuickReplies()); return }
     if (kind === "msginfo") { reply(msgInfo(arg || {})); return }
     if (kind === "msgmedia") { msgMedia(arg || {}).then(reply); return }
     if (kind === "sendtext") { sendText(arg || {}).then(reply); return }

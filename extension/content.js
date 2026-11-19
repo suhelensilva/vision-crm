@@ -717,7 +717,7 @@ function renderReplies() {
       <button class="vc-btn" data-rp-act="new">${icon("plus", 14)} Nova</button>
     </div>
     <div class="rp-sub"><span>Na conversa, comece com <code>;</code> e escolha uma.</span>
-      <span class="rp-tools"><button data-rp-act="compact" class="${prefs.compact ? "on" : ""}" title="Lista compacta">${icon("list", 16)}</button><button data-rp-act="prefs" class="${rp.prefsOpen ? "on" : ""}" title="Preferências">${icon("settings", 16)}</button></span></div>
+      <span class="rp-tools"><button data-rp-act="import-wa" title="Importar as respostas rápidas do WhatsApp">${icon("download", 16)}</button><button data-rp-act="compact" class="${prefs.compact ? "on" : ""}" title="Lista compacta">${icon("list", 16)}</button><button data-rp-act="prefs" class="${rp.prefsOpen ? "on" : ""}" title="Preferências">${icon("settings", 16)}</button></span></div>
     ${prefsBox}
     ${rp.msg ? `<div class="vc-note">${esc(rp.msg)}</div>` : ""}
     ${cats.length ? cats.map((c) => {
@@ -760,6 +760,18 @@ function renderReplyForm() {
 async function onReplyAction(act, id, btn) {
   const r = id ? state.replies.find((x) => x.id === id) : null
   if (act === "new") return openReplyForm({})
+  if (act === "import-wa") {
+    toast("Lendo as respostas rápidas do WhatsApp…")
+    const r = await askBridge("qrlist", 5000)
+    if (!r) return toast("Não consegui ler o WhatsApp. Aperte F5 e tente de novo.")
+    openQuickReplyImport({
+      items: r.quickReplies || [],
+      existing: state.replies,
+      empty: "Não achei respostas rápidas no seu WhatsApp. Essa lista só existe no WhatsApp Business.",
+      onDone: async () => { await loadReplies(); ensureBar(); render() },
+    })
+    return
+  }
   if (act === "cancel") { rp.form = null; rp.msg = ""; return render() }
   if (act === "compact") { prefs.compact = !prefs.compact; savePrefs(); return render() }
   if (act === "prefs") { rp.prefsOpen = !rp.prefsOpen; return render() }

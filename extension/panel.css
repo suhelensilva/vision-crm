@@ -491,3 +491,17 @@ html.vcrm-on #app { width: calc(100vw - var(--vcrm-pad, 44px)) !important; max-w
 
 #vcrm-msgbtn { color: var(--vcrm-btn); }
 #vcrm-msgbtn:hover { color: var(--vcrm-btn); background: #2a2b2b; }
+
+#vcrm-ed .ed-wide { width: 620px; }
+#vcrm-ed .ed-toolbar { display: flex; align-items: center; gap: 14px; margin: 10px 0 6px; font-size: 12px; color: #9a9b9b; }
+#vcrm-ed .ed-toolbar span { margin-left: auto; }
+#vcrm-ed .ed-list { max-height: 46vh; overflow-y: auto; border: 1px solid rgba(154, 155, 155, 0.3); border-radius: 12px; }
+#vcrm-ed .ed-item { display: flex; gap: 10px; align-items: flex-start; margin: 0; padding: 10px 12px; font-weight: 400; cursor: pointer; border-bottom: 1px solid rgba(154, 155, 155, 0.15); }
+#vcrm-ed .ed-item:last-child { border-bottom: 0; }
+#vcrm-ed .ed-item:hover { background: rgba(255, 255, 255, 0.04); }
+#vcrm-ed .ed-item.dup { opacity: 0.6; }
+#vcrm-ed .ed-item input { accent-color: #9a9b9b; width: 16px; height: 16px; margin-top: 2px; flex: none; }
+#vcrm-ed .ed-it { min-width: 0; }
+#vcrm-ed .ed-it b { color: #fff; font-size: 13px; }
+#vcrm-ed .ed-it em { font-style: normal; font-size: 11px; color: #ffd24a; margin-left: 6px; }
+#vcrm-ed .ed-it small { display: block; margin-top: 2px; font-size: 12px; color: #c4c8ca; white-space: pre-wrap; overflow-wrap: anywhere; }
