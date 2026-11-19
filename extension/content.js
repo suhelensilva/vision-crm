@@ -748,7 +748,7 @@ function renderReplies() {
       <div class="rp-line"><span>Estilo dos chips</span><span class="rp-seg"><button type="button" data-rp-act="style-icon" class="${prefs.chipStyle === "icon" ? "on" : ""}">Ícone</button><button type="button" data-rp-act="style-color" class="${prefs.chipStyle === "color" ? "on" : ""}">Colorido</button></span></div>
       <label class="vc-check"><input type="checkbox" data-pref="sendDirect" ${prefs.sendDirect ? "checked" : ""}/> <span>Mensagem sai direto</span></label>
       <button class="vc-ghost" data-rp-act="pixdiag" style="margin-top:8px">Diagnóstico do Pix</button>
-      <button class="vc-ghost" data-rp-act="pixtest" style="margin-top:8px">Testar Pix nesta conversa</button>
+      <button class="vc-ghost" data-rp-act="pixtest" style="margin-top:8px">Testar meu Pix (chave salva) nesta conversa</button>
     </div>` : ""
 
   return `<div class="rp-top">
@@ -802,11 +802,9 @@ async function onReplyAction(act, id, btn) {
   const r = id ? state.replies.find((x) => x.id === id) : null
   if (act === "pixtest") {
     const who = state.name || "esta conversa"
-    const code = (window.prompt("Cole aqui o código Pix copia e cola. Ele será enviado de verdade para: " + who + ". Use uma conversa SUA, de teste.") || "").trim()
-    if (!code) return
-    if (!window.confirm("Enviar o Pix de teste para " + who + " agora?")) return
+    if (!window.confirm("Enviar a SUA chave Pix (a salva no WhatsApp) para " + who + " agora? Use uma conversa sua, de teste.")) return
     toast("Enviando o Pix…")
-    const v = await askBridge("sendpix", 20000, { chat: state.chatKey, code, text: "Segue o Pix 👇" })
+    const v = await askBridge("sendpixkey", 25000, { chat: state.chatKey })
     if (v && v.ok) return toast("Pix enviado. Veja na conversa se apareceu o cartão com o botão de copiar.", 8000)
     const txt = JSON.stringify(v, null, 1)
     try { await navigator.clipboard.writeText(txt) } catch {}
@@ -816,7 +814,8 @@ async function onReplyAction(act, id, btn) {
       a.download = "vision-pix-envio.txt"
       document.body.appendChild(a); a.click(); a.remove()
     } catch {}
-    return toast(((v && v.erro) || "Não consegui enviar o Pix.") + " [" + String((v && v.dbg && (v.dbg.excecao || v.dbg.etapa)) || "").slice(0, 200) + "] (detalhes salvos em Downloads: vision-pix-envio.txt)", 30000)
+    const dd = (v && v.dbg) || {}
+    return toast(((v && v.erro) || "Não consegui enviar o Pix.") + " [" + (dd.erros || []).join(" | ").slice(0, 300) + (dd.excecao || "") + "] (detalhes em Downloads: vision-pix-envio.txt)", 30000)
   }
   if (act === "pixdiag") {
     toast("Procurando o Pix no WhatsApp…")

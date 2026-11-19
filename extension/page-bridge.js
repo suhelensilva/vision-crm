@@ -940,6 +940,48 @@
     return { dbg }
   }
 
+  // ── O "/pix" nativo: manda a chave Pix que você já salvou no WhatsApp (cartão com botão de copiar) ──
+  async function sendPixKey(arg) {
+    const dbg = { versao: "pixkey1" }
+    try {
+      const chat = chatByKey(arg.chat, dbg)
+      if (!chat) return { ok: false, erro: "Não achei a conversa.", dbg }
+      const SO = req("WAWebBizSendOrderAction")
+      const CP = req("WAWebUserPrefsCustomPaymentMethods")
+      dbg.pecas = { SO: !!SO, CP: !!CP }
+      if (!SO || !CP) return { ok: false, erro: "Faltam peças do WhatsApp para o Pix.", dbg }
+      let pix = null
+      try { pix = CP.getPIX() } catch (e) { dbg.erroGetPix = String(e && e.message || e).slice(0, 80) }
+      dbg.pixSalva = !!pix
+      if (pix) { dbg.tipoChave = String(pix.key_type); dbg.chavesPix = Object.keys(pix) }
+      if (!pix) return { ok: false, erro: "Seu WhatsApp não tem uma chave Pix salva (WhatsApp Business > Pagamentos).", dbg }
+      dbg.fns = Object.keys(SO).filter((k) => /Pix/i.test(k))
+      const tentativas = [
+        ["sendPixQuickReplyMessageAndDismissTryItPixKeyPromoBanner", [chat, pix]],
+        ["sendPixQuickReplyMessageAndDismissTryItPixKeyPromoBanner", [chat]],
+        ["sendPixKeyPaymentInfoMessage", [chat, pix]],
+        ["sendPixKeyPaymentInfoMessage", [chat.id, pix]],
+      ]
+      dbg.erros = []
+      for (const [nome, args] of tentativas) {
+        const f = SO[nome]
+        if (typeof f !== "function") { dbg.erros.push(nome + ": não existe"); continue }
+        try {
+          const r = await f.apply(SO, args)
+          dbg.usou = nome + "(" + args.length + " args)"
+          try { dbg.retorno = r && typeof r === "object" ? Object.keys(r).slice(0, 8) : String(r) } catch {}
+          return { ok: true, dbg }
+        } catch (e) {
+          dbg.erros.push(nome + "(" + args.length + "): " + String(e && e.message || e).slice(0, 120))
+        }
+      }
+      return { ok: false, erro: "O WhatsApp recusou o envio do Pix.", dbg }
+    } catch (e) {
+      dbg.excecao = String(e && e.stack || e).slice(0, 300)
+      return { ok: false, erro: "O WhatsApp recusou o envio do Pix.", dbg }
+    }
+  }
+
   document.addEventListener("vcrm-req", (ev) => {
     let id = ev.detail
     let kind = "chat"
@@ -950,6 +992,7 @@
     if (kind === "qrlist") { reply(waQuickReplies()); return }
     if (kind === "pixdump") { reply(pixDump()); return }
     if (kind === "pixscan") { reply(pixScan()); return }
+    if (kind === "sendpixkey") { sendPixKey(arg || {}).then(reply); return }
     if (kind === "sendpix") { sendPix(arg || {}).then(reply); return }
     if (kind === "msginfo") { reply(msgInfo(arg || {})); return }
     if (kind === "msgmedia") { msgMedia(arg || {}).then(reply); return }
