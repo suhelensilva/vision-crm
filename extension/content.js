@@ -58,6 +58,7 @@ function api(method, path, body) {
 
 // Ícones (Lucide, traço)
 const ICONS = {
+  pix: '<path d="M12 2.8 15.2 6 12 9.2 8.8 6z"/><path d="M12 14.8 15.2 18 12 21.2 8.8 18z"/><path d="M2.8 12 6 8.8 9.2 12 6 15.2z"/><path d="M14.8 12 18 8.8 21.2 12 18 15.2z"/>',
   user: '<path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
   note: '<path d="M16 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h8l8-8V5a2 2 0 0 0-2-2h-3"/><path d="M15 21v-6h6"/>',
   wallet: '<path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2"/><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"/>',
@@ -1137,6 +1138,7 @@ function ensureSide() {
       const b = e.target.closest("button")
       if (!b) return
       if (b.dataset.collapse) { sideCollapsed = !sideCollapsed; return ensureSide() }
+      if (b.dataset.go === "__pix") return sendMyPix()
       if (b.dataset.go === "__sched" || b.dataset.go === "__funnel") return toggleHdrPop(b.dataset.go === "__sched" ? "sched" : "funnel")
       state.open = true
       state.tab = b.dataset.go
@@ -1152,6 +1154,7 @@ function ensureSide() {
     { go: "notas", icon: "note", label: "Notas" },
     { go: "conversa", icon: "user", label: "Dados" },
     { go: "cobrancas", icon: "wallet", label: "Cobrar" },
+    { go: "__pix", icon: "pix", label: "Pix" },
   ]
   const html = `<button class="vs-top" data-collapse="1" title="${sideCollapsed ? "Expandir" : "Recolher"}">${icon("chevron", 12)}</button>` +
     (items.map((i) => `<button data-go="${i.go}" title="${i.label}">${icon(i.icon, 18)}${i.badge ? `<b>${i.badge}</b>` : ""}<span>${i.label}</span></button>`).join(""))
