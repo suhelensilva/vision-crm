@@ -842,7 +842,7 @@ async function simulateState(state, ms) {
   await askBridge("chatstate", 3000, { state: "paused" })
 }
 
-const typingMsFor = (text) => Math.max(5000, Math.min(10000, String(text || "").length * 70))
+const typingMsFor = (text) => Math.max(10000, Math.min(15000, String(text || "").length * 90))
 
 function audioSeconds(file) {
   return new Promise((resolve) => {
