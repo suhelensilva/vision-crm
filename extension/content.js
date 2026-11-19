@@ -1686,7 +1686,7 @@ async function onMsgButtonClick() {
   if (!med || !med.ok) {
     try { await navigator.clipboard.writeText(JSON.stringify(med, null, 1)) } catch {}
     const dd = med && med.dbg ? med.dbg : {}
-    return toast(((med && med.erro) || "Não consegui pegar o arquivo.") + " [" + ["jaCarregada=" + dd.jaCarregada, dd.erroDownload, "gerente=" + dd.temGerenteDownload, dd.erroGerente, "props=" + JSON.stringify(dd.props || {}), dd.excecao].filter(Boolean).join(" | ") + "]", 20000)
+    return toast(((med && med.erro) || "Não consegui pegar o arquivo.") + " [" + ["jaCarregada=" + dd.jaCarregada, dd.erroDownload, "gerente=" + dd.temGerenteDownload, dd.erroGerente, "metodos=" + (dd.metodosGerente || []).join(","), "fonte=" + (dd.fonteDownload || ""), dd.excecao].filter(Boolean).join(" | ") + "]", 20000)
   }
   try {
     const bin = atob(med.base64)
