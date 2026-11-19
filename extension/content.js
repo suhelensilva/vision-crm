@@ -747,6 +747,7 @@ function renderReplies() {
       <div class="vc-sec first">Preferências</div>
       <div class="rp-line"><span>Estilo dos chips</span><span class="rp-seg"><button type="button" data-rp-act="style-icon" class="${prefs.chipStyle === "icon" ? "on" : ""}">Ícone</button><button type="button" data-rp-act="style-color" class="${prefs.chipStyle === "color" ? "on" : ""}">Colorido</button></span></div>
       <label class="vc-check"><input type="checkbox" data-pref="sendDirect" ${prefs.sendDirect ? "checked" : ""}/> <span>Mensagem sai direto</span></label>
+      <button class="vc-ghost" data-rp-act="pixdiag" style="margin-top:8px">Diagnóstico do Pix</button>
     </div>` : ""
 
   return `<div class="rp-top">
@@ -798,6 +799,15 @@ function renderReplyForm() {
 
 async function onReplyAction(act, id, btn) {
   const r = id ? state.replies.find((x) => x.id === id) : null
+  if (act === "pixdiag") {
+    toast("Procurando o Pix no WhatsApp…")
+    const r = await askBridge("pixscan", 20000)
+    const d = (r && r.dbg) || {}
+    const txt = JSON.stringify(d, null, 1)
+    try { await navigator.clipboard.writeText(txt) } catch {}
+    const tipos = Object.entries(d.tiposDiferentes || {}).map(([t, v]) => t + (v.fluxo ? "(" + v.fluxo + ")" : "")).join(", ")
+    return toast("Módulos: " + (d.modulos || []).slice(0, 14).join(", ") + " | Tipos de mensagem diferentes: " + (tipos || "nenhum") + " (diagnóstico copiado)", 60000)
+  }
   if (act === "new") return openReplyForm({})
   if (act === "newcat") { rp.newCat = true; render(); const i = document.querySelector("#vcrm-root [data-newcat]"); if (i) i.focus(); return }
   if (act === "cancelcat") { rp.newCat = false; return render() }

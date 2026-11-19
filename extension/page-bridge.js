@@ -748,6 +748,40 @@
     return { quickReplies: out, dbg }
   }
 
+  // ── Diagnóstico do Pix nativo: que peças e que tipos de mensagem o WhatsApp tem ──
+  function pixScan() {
+    const dbg = { versao: "pix1" }
+    try {
+      let names = []
+      try { const d = req("__debug"); if (d && d.modulesMap) names = Object.keys(d.modulesMap) } catch {}
+      dbg.totalModulos = names.length
+      const cand = names.filter((n) => /Pix|PaymentRequest|PaymentInfo|NativeFlow|InteractiveMsg|SendInteractive|OrderMsg|BrazilPay|PayBr|PaymentBr/i.test(n))
+      dbg.modulos = cand.slice(0, 40)
+      dbg.formas = {}
+      for (const n of cand.slice(0, 18)) { try { const m = req(n); if (m) dbg.formas[n] = Object.keys(m).slice(0, 8) } catch {} }
+      // tipos "diferentes" de mensagem nas conversas (um Pix antigo teu aparece aqui)
+      const comuns = new Set(["chat", "image", "video", "ptt", "audio", "document", "sticker", "location", "vcard", "multi_vcard", "e2e_notification", "notification_template", "gp2", "call_log", "revoked", "protocol", "ciphertext", "poll_creation", "poll_update", "reaction", "unknown", "notification", "oversized"])
+      const C = collections()
+      const tipos = {}
+      if (C) {
+        for (const chat of arr(C.Chat).slice(0, 80)) {
+          let msgs = []
+          try { msgs = arr(chat.msgs).slice(-50) } catch {}
+          for (const m of msgs) {
+            const t = String(m && m.type)
+            if (!m || comuns.has(t) || tipos[t]) continue
+            const ks = Object.keys(m).filter((k) => /native|interactive|button|pix|payment|flow|template|header|footer/i.test(k)).slice(0, 14)
+            tipos[t] = { chaves: ks }
+            try { if (m.nativeFlowName || m.__x_nativeFlowName) tipos[t].fluxo = String(m.nativeFlowName || m.__x_nativeFlowName) } catch {}
+            try { const bp = m.nativeFlowButtons || m.__x_nativeFlowButtons || m.buttons; if (bp) tipos[t].botoes = JSON.stringify(bp).slice(0, 300) } catch {}
+          }
+        }
+      }
+      dbg.tiposDiferentes = tipos
+    } catch (e) { dbg.erro = String(e).slice(0, 100) }
+    return { dbg }
+  }
+
   document.addEventListener("vcrm-req", (ev) => {
     let id = ev.detail
     let kind = "chat"
@@ -756,6 +790,7 @@
     const reply = (out) => document.dispatchEvent(new CustomEvent("vcrm-res", { detail: JSON.stringify({ id, ...out }) }))
     if (kind === "sendptt") { sendPtt(arg || {}).then(reply); return }
     if (kind === "qrlist") { reply(waQuickReplies()); return }
+    if (kind === "pixscan") { reply(pixScan()); return }
     if (kind === "msginfo") { reply(msgInfo(arg || {})); return }
     if (kind === "msgmedia") { msgMedia(arg || {}).then(reply); return }
     if (kind === "sendtext") { sendText(arg || {}).then(reply); return }
