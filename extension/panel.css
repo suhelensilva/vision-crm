@@ -23,10 +23,9 @@
 html.vcrm-on body { padding-right: var(--vcrm-pad, 56px) !important; background: #0b141a; }
 
 /* ── Coluna de ícones ── */
-.vc-rail {
   position: fixed; top: 0; right: 0; bottom: 0; width: 56px; z-index: 2147483000;
+  display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 10px 0;
   background: #141515;
-  background: linear-gradient(180deg, #0c2150, #060f2a);
   border-left: 1px solid var(--line);
   box-shadow: none;
 }
@@ -37,7 +36,7 @@ html.vcrm-on body { padding-right: var(--vcrm-pad, 56px) !important; background:
   display: flex; flex-direction: column; align-items: center; gap: 3px;
   background: transparent; color: #b9c6e6;
 }
-.vc-ico svg { color: var(--vred); }
+.vc-ico svg { color: #9a9b9b; }
 .vc-ico span { font-size: 9.5px; line-height: 1; }
 .vc-ico:hover { background: rgba(255, 255, 255, 0.07); }
 .vc-ico.on { background: var(--accent); color: #fff; box-shadow: 0 0 18px var(--glow); }
@@ -164,19 +163,19 @@ html.vcrm-on body { padding-right: var(--vcrm-pad, 56px) !important; background:
 /* ── Barrinha lateral ao lado da conversa ── */
 #vcrm-side {
   position: fixed; z-index: 2147482990; display: flex; flex-direction: column; gap: 2px; padding: 4px;
-  background: rgba(4, 10, 28, 0.94); border: 1px solid rgba(224, 36, 94, 0.4); border-radius: 14px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  background: #141515; border: 1px solid rgba(165, 214, 255, 0.34); border-radius: 14px;
+  box-shadow: none;
 }
 #vcrm-side button {
   position: relative; width: 44px; padding: 7px 0 4px; border: 0; border-radius: 10px; cursor: pointer;
   display: flex; flex-direction: column; align-items: center; gap: 2px; background: transparent; color: #b9c6e6;
 }
-#vcrm-side button svg { color: #ff8fb1; }
+#vcrm-side button svg { color: #9a9b9b; }
 #vcrm-side button span { font-size: 9px; line-height: 1; }
-#vcrm-side button:hover { background: rgba(224, 36, 94, 0.2); }
+#vcrm-side button:hover { background: rgba(255, 255, 255, 0.08); }
 #vcrm-side button b { position: absolute; top: 1px; right: 5px; min-width: 15px; height: 15px; padding: 0 4px; border-radius: 999px; font-size: 10px; line-height: 15px; text-align: center; color: #fff; background: #e0245e; }
 #vcrm-side .vs-top { padding: 2px 0; height: 16px; }
-#vcrm-side .vs-top svg { color: #8ea0c8; }
+#vcrm-side .vs-top svg { color: #9a9b9b; }
 #vcrm-side.vs-min .vs-top svg { transform: rotate(180deg); }
 
 /* ── Importar ── */
