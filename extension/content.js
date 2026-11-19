@@ -866,6 +866,15 @@ async function attachFile(r) {
     file = new File([bytes], r.mediaName || "arquivo", { type: r.mediaMime || res.mime || "application/octet-stream" })
   } catch { toast("O arquivo veio com defeito."); return }
 
+  // Áudio "como gravado na hora": manda como mensagem de voz, direto pelo WhatsApp
+  if (r.type === "AUDIO" && r.asVoiceNote) {
+    toast("Enviando como mensagem de voz…")
+    const v = await askBridge("sendptt", 30000, { base64: res.base64, mime: r.mediaMime || res.mime || "audio/ogg" })
+    if (v && v.ok) { api("POST", `/api/crm/quick-replies/${r.id}/use`); toast("Enviado como mensagem de voz."); return }
+    try { await navigator.clipboard.writeText(JSON.stringify(v, null, 1)) } catch {}
+    toast((v && v.erro ? v.erro : "Não consegui enviar como mensagem de voz.") + " Mandei como arquivo; copiei o diagnóstico.")
+  }
+
   box.focus()
   let handled = false
   try {

@@ -355,11 +355,65 @@
     return out
   }
 
+
+  // ── Enviar áudio como mensagem de voz (gravada na hora), usando as peças internas do WhatsApp ──
+  function findPttModules(dbg) {
+    const found = { MediaPrep: null, OpaqueData: null }
+    let names = []
+    try { const d = req("__debug"); if (d && d.modulesMap) names = Object.keys(d.modulesMap) } catch {}
+    const cand = names.filter((n) => /MediaPrep|OpaqueData|MediaOpaque/i.test(n))
+    dbg.candidatos = cand.slice(0, 20)
+    for (const n of cand) {
+      const m = req(n)
+      if (!m) continue
+      for (const x of [m, m.default].filter(Boolean)) {
+        if (!found.MediaPrep && typeof x.prepRawMedia === "function") found.MediaPrep = x
+        if (!found.OpaqueData && typeof x.createFromData === "function") found.OpaqueData = x
+      }
+      for (const k of Object.keys(m)) {
+        const x = m[k]
+        if (x && typeof x === "function" || (x && typeof x === "object")) {
+          if (!found.OpaqueData && x && typeof x.createFromData === "function") found.OpaqueData = x
+        }
+      }
+    }
+    return found
+  }
+
+  async function sendPtt(arg) {
+    const dbg = { versao: "ptt1" }
+    try {
+      const chat = findActiveChat(dbg)
+      if (!chat) return { ok: false, erro: "Abra uma conversa primeiro.", dbg }
+      const bin = atob(arg.base64 || "")
+      const bytes = new Uint8Array(bin.length)
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i)
+      const blob = new Blob([bytes], { type: arg.mime || "audio/ogg; codecs=opus" })
+      const mods = findPttModules(dbg)
+      dbg.temMediaPrep = !!mods.MediaPrep
+      dbg.temOpaqueData = !!mods.OpaqueData
+      if (!mods.MediaPrep || !mods.OpaqueData) return { ok: false, erro: "Não achei as peças de envio de áudio neste WhatsApp.", dbg }
+      const od = await mods.OpaqueData.createFromData(blob, blob.type)
+      const prep = mods.MediaPrep.prepRawMedia(od, { isPtt: true })
+      const media = await prep.waitForPrep()
+      dbg.tipoAntes = media && media.type
+      try { if (media) media.type = "ptt" } catch {}
+      try { if (media) media.isPtt = true } catch {}
+      await prep.sendToChat(chat, {})
+      return { ok: true, dbg }
+    } catch (e) {
+      dbg.excecao = String(e && e.stack || e).slice(0, 300)
+      return { ok: false, erro: "O WhatsApp recusou o envio como mensagem de voz.", dbg }
+    }
+  }
+
   document.addEventListener("vcrm-req", (ev) => {
     let id = ev.detail
     let kind = "chat"
     let arg = null
     try { const d = JSON.parse(ev.detail); if (d && typeof d === "object") { id = d.id; kind = d.kind || "chat"; arg = d.arg } } catch {}
+    const reply = (out) => document.dispatchEvent(new CustomEvent("vcrm-res", { detail: JSON.stringify({ id, ...out }) }))
+    if (kind === "sendptt") { sendPtt(arg || {}).then(reply); return }
     const out =
       kind === "scan" ? scan()
       : kind === "waiting" ? waiting((arg && arg.minMinutes) || 60, (arg && arg.maxHours) || 72)
