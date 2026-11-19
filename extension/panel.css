@@ -509,3 +509,16 @@ html.vcrm-on #app { width: calc(100vw - var(--vcrm-pad, 44px)) !important; max-w
 /* Caixinhas de marcar e botões selecionados: o rosa do sistema, nunca o azul padrão do navegador */
 #vcrm-root input[type="checkbox"], #vcrm-barmenu input[type="checkbox"], #vcrm-ed input[type="checkbox"], #vcrm-hpop input[type="checkbox"], #vcrm-pop input[type="checkbox"] { accent-color: var(--vcrm-btn); }
 #vcrm-barmenu .vm-seg button.on, .rp-seg button.on { background: var(--vcrm-btn); border-color: var(--vcrm-btn); color: #fff; }
+
+/* Categorias: arrastar e soltar */
+.rp-card[draggable="true"] { cursor: grab; }
+.rp-card.rp-dragging { opacity: 0.4; }
+.rp-group { border-radius: 12px; padding: 0 2px 4px; border: 1px dashed transparent; }
+.rp-group.rp-over { border-color: var(--vcrm-btn); background: rgba(255, 2, 166, 0.07); }
+.rp-empty { margin: 4px 0 8px; padding: 12px; text-align: center; font-size: 12px; color: #9a9b9b; border: 1px dashed rgba(154, 155, 155, 0.4); border-radius: 10px; }
+.rp-addcat { margin: 8px 0 0; font-size: 12px; padding: 5px 10px; display: inline-flex; align-items: center; gap: 4px; }
+.rp-newcat { display: flex; gap: 6px; margin-top: 8px; }
+.rp-newcat input { flex: 1; min-width: 0; }
+.rp-newcat .vc-btn, .rp-newcat .vc-ghost { padding: 7px 12px; font-size: 12px; }
+.rp-catdel { margin-left: 6px; width: 20px; height: 20px; display: inline-grid; place-items: center; padding: 0; border: 0; border-radius: 50%; background: transparent; color: #9a9b9b; cursor: pointer; }
+.rp-catdel:hover { background: rgba(255, 255, 255, 0.12); color: #e9edef; }

@@ -266,6 +266,42 @@ function ensureRoot() {
   root = document.createElement("div")
   root.id = ROOT_ID
   root.addEventListener("click", onClick)
+  // Arrastar uma resposta pra outra categoria (como no Kanban)
+  let dragId = null
+  const clearOver = () => root.querySelectorAll(".rp-over").forEach((n) => n.classList.remove("rp-over"))
+  root.addEventListener("dragstart", (e) => {
+    const card = e.target.closest && e.target.closest("[data-rp-drag]")
+    if (!card) return
+    dragId = card.getAttribute("data-rp-drag")
+    try { e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", "vcrm:" + dragId) } catch {}
+    card.classList.add("rp-dragging")
+  })
+  root.addEventListener("dragend", () => { dragId = null; clearOver(); root.querySelectorAll(".rp-dragging").forEach((n) => n.classList.remove("rp-dragging")) })
+  root.addEventListener("dragover", (e) => {
+    const g = dragId && e.target.closest && e.target.closest("[data-rp-drop]")
+    if (!g) return
+    e.preventDefault()
+    if (!g.classList.contains("rp-over")) { clearOver(); g.classList.add("rp-over") }
+  })
+  root.addEventListener("drop", async (e) => {
+    const g = dragId && e.target.closest && e.target.closest("[data-rp-drop]")
+    if (!g) return
+    e.preventDefault()
+    const id = dragId
+    dragId = null
+    clearOver()
+    const cat = g.getAttribute("data-rp-drop")
+    const r = state.replies.find((x) => x.id === id)
+    if (!r) return
+    const to = cat === "Sem categoria" ? null : cat
+    if ((r.category || null) === to) return
+    const res = await api("PATCH", `/api/crm/quick-replies/${id}`, { category: to })
+    if (!res.ok) return toast((res.data && res.data.error) || "Não consegui mover a resposta.")
+    await loadReplies()
+    ensureBar()
+    render()
+    toast(`Movida pra ${to || "Sem categoria"}.`)
+  })
   root.addEventListener("submit", onSubmit)
   root.addEventListener("input", onInput)
   document.body.appendChild(root)
@@ -688,10 +724,10 @@ function rpCard(r) {
   const star = `<button class="rp-star ${r.favorite ? "on" : ""}" data-rp-act="fav" data-rp-id="${esc(r.id)}" title="Favorita">${icon("star", 15)}</button>`
   const tile = `<span class="rp-tile t-${r.type}">${icon(TYPE_ICON[r.type] === "paperclip" ? BAR_ICON[r.type] || "file" : TYPE_ICON[r.type] || "text", 15)}</span>`
   if (compact) {
-    return `<div class="rp-card compact">${tile}<b class="rp-name">${esc(r.name)}</b>${acts}<em>${r.usageCount}×</em>${star}</div>`
+    return `<div class="rp-card compact" draggable="true" data-rp-drag="${esc(r.id)}">${tile}<b class="rp-name">${esc(r.name)}</b>${acts}<em>${r.usageCount}×</em>${star}</div>`
   }
   const preview = r.type === "TEXT" ? esc((r.text || "").slice(0, 120)) : ""
-  return `<div class="rp-card">${tile}
+  return `<div class="rp-card" draggable="true" data-rp-drag="${esc(r.id)}">${tile}
     <div class="rp-main"><b class="rp-name">${esc(r.name)}${r.shortcut ? ` <code>;${esc(r.shortcut)}</code>` : ""}</b>
       ${preview ? `<div class="rp-preview">${preview}</div>` : ""}
       <div class="rp-meta">${r.category ? `<span class="rp-cat" style="--h:${catHue(r.category)}">${esc(r.category)}</span>` : ""}<em>usada ${r.usageCount}×</em></div></div>
@@ -704,6 +740,7 @@ function renderReplies() {
   const list = state.replies.filter((r) => !q || r.name.toLowerCase().includes(q) || (r.shortcut || "").toLowerCase().includes(q) || (r.text || "").toLowerCase().includes(q) || catName(r).toLowerCase().includes(q))
   const groups = new Map()
   for (const r of list) { const c = catName(r); if (!groups.has(c)) groups.set(c, []); groups.get(c).push(r) }
+  if (!q) for (const ec of prefs.extraCats || []) if (!groups.has(ec)) groups.set(ec, [])
   const cats = [...groups.keys()].sort((a, b) => (a === "Sem categoria" ? 1 : b === "Sem categoria" ? -1 : a.localeCompare(b, "pt-BR")))
 
   const prefsBox = rp.prefsOpen ? `<div class="vc-card rp-prefs">
@@ -716,6 +753,7 @@ function renderReplies() {
       <div class="rp-search"><input class="vc-search" data-search placeholder="Buscar mensagem…" value="${esc(state.repliesQuery)}" /></div>
       <button class="vc-btn" data-rp-act="new">${icon("plus", 14)} Nova</button>
     </div>
+    ${rp.newCat ? `<div class="rp-newcat"><input data-newcat maxlength="40" placeholder="Nome da categoria" /><button class="vc-btn" data-rp-act="savecat">Criar</button><button class="vc-ghost" data-rp-act="cancelcat">Cancelar</button></div>` : `<button class="vc-ghost rp-addcat" data-rp-act="newcat">${icon("plus", 13)} Categoria</button>`}
     <div class="rp-sub"><span>Na conversa, comece com <code>;</code> e escolha uma.</span>
       <span class="rp-tools"><button data-rp-act="import-wa" title="Importar as respostas rápidas do WhatsApp">${icon("download", 16)}</button><button data-rp-act="compact" class="${prefs.compact ? "on" : ""}" title="Lista compacta">${icon("list", 16)}</button><button data-rp-act="prefs" class="${rp.prefsOpen ? "on" : ""}" title="Preferências">${icon("settings", 16)}</button></span></div>
     ${prefsBox}
@@ -723,7 +761,8 @@ function renderReplies() {
     ${cats.length ? cats.map((c) => {
       const closed = !!(prefs.collapsed && prefs.collapsed[c])
       const items = groups.get(c)
-      return `<div class="rp-cat-head" data-rp-act="toggle" data-rp-cat="${esc(c)}"><i style="background:hsl(${catHue(c)} 60% 55%)"></i><b>${esc(c.toUpperCase())}</b><span>(${items.length})</span><em>${icon(closed ? "chevronright" : "chevrondown", 14)}</em></div>${closed ? "" : items.map(rpCard).join("")}`
+      const canDel = !items.length && (prefs.extraCats || []).includes(c)
+      return `<div class="rp-group" data-rp-drop="${esc(c)}"><div class="rp-cat-head" data-rp-act="toggle" data-rp-cat="${esc(c)}"><i style="background:hsl(${catHue(c)} 60% 55%)"></i><b>${esc(c.toUpperCase())}</b><span>(${items.length})</span>${canDel ? `<button class="rp-catdel" data-rp-act="delcat" data-rp-cat="${esc(c)}" title="Apagar categoria vazia">${icon("x", 12)}</button>` : ""}<em>${icon(closed ? "chevronright" : "chevrondown", 14)}</em></div>${closed ? "" : items.length ? items.map(rpCard).join("") : '<div class="rp-empty">Arraste uma resposta pra cá</div>'}</div>`
     }).join("") : `<p class="vc-muted">${state.replies.length ? "Nenhuma resposta encontrada." : "Você ainda não tem respostas rápidas. Clique em + Nova pra criar a primeira."}</p>`}`
 }
 
@@ -760,6 +799,22 @@ function renderReplyForm() {
 async function onReplyAction(act, id, btn) {
   const r = id ? state.replies.find((x) => x.id === id) : null
   if (act === "new") return openReplyForm({})
+  if (act === "newcat") { rp.newCat = true; render(); const i = document.querySelector("#vcrm-root [data-newcat]"); if (i) i.focus(); return }
+  if (act === "cancelcat") { rp.newCat = false; return render() }
+  if (act === "savecat") {
+    const i = document.querySelector("#vcrm-root [data-newcat]")
+    const name = (i ? i.value : "").trim().toUpperCase().slice(0, 40)
+    if (!name) return toast("Escreva o nome da categoria.")
+    if (!(prefs.extraCats || []).includes(name)) { prefs.extraCats = [...(prefs.extraCats || []), name]; savePrefs() }
+    rp.newCat = false
+    toast("Categoria criada. Arraste as respostas pra ela.")
+    return render()
+  }
+  if (act === "delcat") {
+    const cat = btn && btn.dataset.rpCat
+    prefs.extraCats = (prefs.extraCats || []).filter((x) => x !== cat); savePrefs()
+    return render()
+  }
   if (act === "import-wa") {
     toast("Lendo as respostas rápidas do WhatsApp…")
     const r = await askBridge("qrlist", 5000)
@@ -1398,7 +1453,7 @@ function endConversation() {
 const BAR_ICON = { TEXT: "text", CONTACT: "user", AUDIO: "mic", IMAGE: "image", VIDEO: "film", DOCUMENT: "file" }
 
 // ── Preferências da barra (como a engrenagem do Hotzapp) ──
-const prefs = { simulate: true, sendDirect: true, chipStyle: "icon", barMin: false, barCat: null, compact: false, collapsed: {} }
+const prefs = { extraCats: [], simulate: true, sendDirect: true, chipStyle: "icon", barMin: false, barCat: null, compact: false, collapsed: {} }
 
 function savePrefs() {
   try { chrome.storage.local.set({ vcrmPrefs: prefs }).catch(() => {}) } catch {}
