@@ -27,7 +27,7 @@
   --accent-text: #ff8fb1; /* texto e links em vinho claro */
   --accent-soft: rgba(224, 36, 94, 0.14);
   --accent-line: rgba(224, 36, 94, 0.36);
-  --glow: rgba(224, 36, 94, 0.45);
+  --glow: transparent;
   --vred: #d13a52; /* vermelho do Visão: títulos pequenos e ícones */
   --gold: #e3b341; /* dourado do Visão: favoritos */
 
@@ -49,7 +49,7 @@
   --danger: #ff7a8a;
 
   --overlay: rgba(2, 6, 18, 0.68);
-  --card-shadow: 0 0 28px rgba(224, 36, 94, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  --card-shadow: none;
   color-scheme: dark;
 }
 
@@ -60,10 +60,7 @@ html, body {
   font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
   color: var(--text);
   background-color: var(--bg);
-  background-image:
-    radial-gradient(1100px 560px at 85% -8%, rgba(59, 130, 246, 0.2), transparent 60%),
-    radial-gradient(900px 520px at -5% 105%, rgba(224, 36, 94, 0.14), transparent 60%);
-  background-attachment: fixed;
+  background-image: none;
 }
 a { color: var(--accent-text); }
 code { background: var(--field); padding: 1px 6px; border-radius: 6px; font-size: 0.92em; }
@@ -83,12 +80,12 @@ input::placeholder, textarea::placeholder { color: var(--faint); }
 input:focus, select:focus, textarea:focus {
   outline: none;
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(224, 36, 94, 0.22);
+  box-shadow: none;
 }
 select option { background: #0a1a40; color: var(--text); }
 input[type="checkbox"] { accent-color: var(--accent); }
 button { font-family: inherit; }
-button:hover:not(:disabled) { filter: brightness(1.1); }
+button:hover:not(:disabled) { filter: none; opacity: 0.88; }
 button:disabled { cursor: not-allowed; }
 button:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
@@ -101,7 +98,7 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outlin
   padding: 16px;
 }
 .v-card {
-  background: linear-gradient(180deg, var(--card-top), var(--card-bottom));
+  background: var(--card-top);
   border: 1px solid var(--line);
   border-radius: 18px;
   box-shadow: var(--card-shadow);
@@ -136,7 +133,7 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outlin
 .v-nav.off svg { color: var(--faint); opacity: 0.7; }
 .v-soon { margin-left: auto; white-space: nowrap; flex: none; font-size: 10px; font-weight: 700; color: var(--faint); border: 1px solid var(--soft); border-radius: 999px; padding: 1px 7px; }
 .v-me { margin-top: auto; display: flex; align-items: center; gap: 10px; padding: 12px 8px 4px; border-top: 1px solid var(--soft); }
-.v-av { width: 34px; height: 34px; flex: none; border-radius: 50%; display: grid; place-items: center; font-size: 12px; font-weight: 700; color: var(--on-accent); background: linear-gradient(135deg, #3b82f6, var(--accent)); }
+.v-av { width: 34px; height: 34px; flex: none; border-radius: 50%; display: grid; place-items: center; font-size: 12px; font-weight: 700; color: var(--on-accent); background: var(--accent); }
 .v-me small { display: block; color: var(--muted); font-size: 11px; }
 .v-me .who { min-width: 0; flex: 1; font-size: 13px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .v-out { background: transparent; border: 1px solid var(--soft); color: var(--muted); border-radius: 10px; padding: 6px 8px; cursor: pointer; display: grid; place-items: center; }
@@ -231,7 +228,7 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outlin
   border: none;
   border-radius: 8px;
   background: var(--accent);
-  box-shadow: 0 0 18px var(--glow);
+  box-shadow: 0 0 18px rgba(224, 36, 94, 0.45);
 }
 .auth-btn:hover:not(:disabled) { background: var(--accent-hover); filter: none; }
 .auth-btn:disabled { opacity: 0.55; cursor: not-allowed; box-shadow: none; }

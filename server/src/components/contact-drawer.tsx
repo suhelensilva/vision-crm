@@ -288,7 +288,7 @@ function Stat({ value, text }: { value: string; text: string }) {
 const overlay: React.CSSProperties = { position: "fixed", inset: 0, background: "var(--overlay)", zIndex: 50, display: "flex", justifyContent: "flex-end" }
 const panel: React.CSSProperties = {
   width: 410, maxWidth: "100vw", height: "100%", overflowY: "auto", padding: 20,
-  background: "linear-gradient(180deg, var(--panel-1), var(--panel-2))",
+  background: "var(--panel-1)",
   borderLeft: "1px solid var(--line)",
-  boxShadow: "-12px 0 40px rgba(224, 36, 94, 0.14)",
+  boxShadow: "none",
 }

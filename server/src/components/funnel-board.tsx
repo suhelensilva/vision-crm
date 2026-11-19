@@ -330,7 +330,7 @@ function Column(p: ColumnProps) {
       }}
     >
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10, position: "relative" }}>
-        <span style={{ width: 9, height: 9, borderRadius: "50%", background: p.color, boxShadow: `0 0 8px ${p.color}`, flex: "none" }} />
+        <span style={{ width: 9, height: 9, borderRadius: "50%", background: p.color, flex: "none" }} />
         {renaming ? (
           <input
             autoFocus
@@ -633,7 +633,7 @@ function NewListForm({ nextColor, onDone }: { nextColor: string; onDone: (error?
           <button key={c} onClick={() => setColor(c)} aria-label={`Cor ${c}`}
             style={{ width: 22, height: 22, borderRadius: "50%", background: c, cursor: "pointer", padding: 0,
               border: color === c ? "2px solid var(--strong)" : "2px solid transparent",
-              boxShadow: color === c ? `0 0 10px ${c}` : "none" }} />
+              boxShadow: "none" }} />
         ))}
       </div>
       <button onClick={create} disabled={busy || !name.trim()} style={btn}>{busy ? "Criando..." : "Criar lista"}</button>
@@ -697,6 +697,6 @@ const panel: React.CSSProperties = { ...card, display: "flex", alignItems: "cent
 const form: React.CSSProperties = { display: "flex", flexDirection: "column", gap: 7, marginTop: 11, paddingTop: 11, borderTop: "1px solid var(--soft)" }
 const popup: React.CSSProperties = {
   position: "absolute", top: 28, right: 0, zIndex: 10, display: "flex", flexDirection: "column", minWidth: 140,
-  background: "var(--popup)", border: "1px solid var(--line)", borderRadius: 10, boxShadow: "0 10px 28px rgba(0,0,0,0.5)", overflow: "hidden",
+  background: "var(--popup)", border: "1px solid var(--line)", borderRadius: 10, overflow: "hidden",
 }
 const popupItem: React.CSSProperties = { background: "none", border: "none", textAlign: "left", padding: "9px 12px", fontSize: 13, cursor: "pointer", color: "var(--text)" }
