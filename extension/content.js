@@ -934,8 +934,10 @@ function ensureSide() {
 
 const WAIT_ID = "vcrm-wait"
 const WAIT_MIN_MINUTES = 1 // avisa assim que a cliente espera há 1 minuto
-const WAIT_MAX_HOURS = 12 // painel do dia: ignora quem espera há mais de 12 horas
+const WAIT_MAX_HOURS = 24 // ao abrir pelo ícone: quem espera há até 24 horas
+const WAIT_AUTO_MINUTES = 12 * 60 // o aviso automático só mostra quem espera há até 12 horas
 let waitSnoozeUntil = 0
+let waitManual = false // aberto pelo ícone da coluna (mostra até 24 h, mesmo vazio)
 let waitClosed = false // depois que ela fecha o aviso, ele não volta até recarregar o WhatsApp
 let waitList = []
 let waitHandled = {} // conversa -> hora da última mensagem que você marcou como "já resolvi"
@@ -955,7 +957,8 @@ const waitFmt = (mins) => (mins >= 1440 ? Math.floor(mins / 1440) + " d" : mins 
 
 function renderWaiting() {
   let el = document.getElementById(WAIT_ID)
-  const hide = !waitList.length || waitClosed || state.status === "no_config" || state.status === "bad_token" || modalOpen()
+  const list = waitManual ? waitList : waitList.filter((w) => w.mins <= WAIT_AUTO_MINUTES)
+  const hide = (!waitManual && (!list.length || waitClosed)) || state.status === "no_config" || state.status === "bad_token" || modalOpen()
   if (hide) { if (el) el.remove(); return }
   if (!el) {
     el = document.createElement("div")
@@ -980,16 +983,16 @@ function renderWaiting() {
       }
       const act = e.target.closest("[data-wait-act]")
       if (!act) return
-      if (act.getAttribute("data-wait-act") === "later") { waitClosed = true; renderWaiting() }
+      if (act.getAttribute("data-wait-act") === "later") { waitClosed = true; waitManual = false; renderWaiting() }
       if (act.getAttribute("data-wait-act") === "panel" && state.apiUrl) window.open(state.apiUrl + "/dashboard/painel", "_blank")
     })
     document.body.appendChild(el)
   }
-  const shown = waitList.slice(0, 8)
-  const more = waitList.length - shown.length
+  const shown = list.slice(0, 8)
+  const more = list.length - shown.length
   const html = `
-    <b>${waitList.length} ${waitList.length === 1 ? "cliente espera" : "clientes esperam"} sua resposta</b>
-    <p>Clique no nome para abrir a conversa.</p>
+    <b>${list.length ? `${list.length} ${list.length === 1 ? "cliente espera" : "clientes esperam"} sua resposta` : "Ninguém esperando resposta"}</b>
+    <p>${list.length ? "Clique no nome para abrir a conversa." : "Todo mundo das últimas 24 horas já foi respondido."}</p>
     ${shown.map((w) => `
       <div class="vw-line">
         <button class="vw-row" data-wait-open="${esc(w.key)}">
@@ -1552,7 +1555,7 @@ async function onClick(e) {
     try { await navigator.clipboard.writeText(text); toast("Diagnóstico copiado. Cole aqui no chat.") } catch { window.prompt("Copie este texto e cole no chat:", text) }
     return
   }
-  if (act === "wait-toggle") { if (!waitList.length) return toast("Ninguém esperando resposta agora."); waitClosed = !waitClosed; renderWaiting(); return }
+  if (act === "wait-toggle") { const showing = !!document.getElementById(WAIT_ID); if (showing) { waitClosed = true; waitManual = false } else { waitClosed = false; waitManual = true } renderWaiting(); return }
   if (act === "web") { if (state.apiUrl) window.open(state.apiUrl + "/dashboard/funil", "_blank"); return }
   if (act === "toggle-lists") { const m = document.getElementById("vc-listmenu"); if (m) m.hidden = !m.hidden; return }
   if (act === "add-contact") { await ensureContact(); return refresh(true) }
