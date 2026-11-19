@@ -972,6 +972,26 @@ function waBubbleColor() {
   return ""
 }
 
+/** Tem algo do WhatsApp por cima deste elemento (visualizador de foto/vídeo, menu)? Então a gente se esconde. */
+function overlaidByWhatsApp(el) {
+  try {
+    const r = el.getBoundingClientRect()
+    if (!r.width || !r.height) return false
+    const stack = document.elementsFromPoint(r.left + r.width / 2, r.top + r.height / 2)
+    for (const n of stack) {
+      if (n.closest && n.closest('[id^="vcrm-"]')) continue
+      return !n.closest("#main")
+    }
+  } catch {}
+  return false
+}
+
+function hideIfOverlaid(el) {
+  if (!el) return
+  el.style.visibility = "visible"
+  if (overlaidByWhatsApp(el)) el.style.visibility = "hidden"
+}
+
 function ensureSide() {
   const main = document.querySelector("#main")
   let el = document.getElementById(SIDE_ID)
@@ -1009,6 +1029,7 @@ function ensureSide() {
   const r = main.getBoundingClientRect()
   el.style.left = Math.round(r.left + 6) + "px"
   el.style.top = Math.round(r.top + r.height * 0.42) + "px"
+  hideIfOverlaid(el)
 }
 
 // ── Aviso: "N clientes esperam sua resposta" ─────────────────────────────────
@@ -1086,6 +1107,7 @@ function renderWaiting() {
     ${more > 0 ? `<p class="vw-more">e mais ${more}</p>` : ""}
     <div class="vw-foot"><button data-wait-act="panel">Abrir o Painel do Dia</button><button data-wait-act="later">Agora não</button></div>`
   if (el.dataset.sig !== html) { el.innerHTML = html; el.dataset.sig = html }
+  hideIfOverlaid(el)
 }
 
 /** Plano B da foto: pega a que o WhatsApp já mostra na lista de conversas, achando pelo nome. */
@@ -1177,6 +1199,7 @@ function ensureHeaderBar() {
   const left = Math.max(r.left + 120, Math.min(end == null ? r.left + 260 : end + 14, maxLeft))
   el.style.top = Math.round(r.top + (r.height - 36) / 2) + "px"
   el.style.left = Math.round(left) + "px"
+  hideIfOverlaid(el)
   el.style.right = "auto"
   if (hdrPop) renderHdrPop()
 }
