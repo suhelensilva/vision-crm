@@ -445,18 +445,13 @@
         }
         dbg.modsComOnda = achados
         dbg.trechos = []
-        for (const n of ["WAWebAudioMessageProtoUtils", "WAWebGenerateWebMessageInfo"]) {
-          try {
-            const f = mm[n].factory || mm[n].fn || mm[n]
-            const src = String(f)
-            let from = 0
-            for (let c = 0; c < 2; c++) {
-              const k = src.toLowerCase().indexOf("waveform", from)
-              if (k < 0) break
-              dbg.trechos.push(n.replace("WAWeb", "") + ": " + src.slice(Math.max(0, k - 110), k + 130).replace(/\s+/g, " "))
-              from = k + 8
-            }
-          } catch {}
+        for (const n of Object.keys(mm)) {
+          let src = ""
+          try { const f = mm[n].factory || mm[n].fn || mm[n]; src = typeof f === "function" ? String(f) : "" } catch {}
+          if (!src || !/waveform/i.test(src)) continue
+          const ms = src.match(/[\w$.]{0,24}waveform[\w$]*\s*[:=]\s*[\w$.()!?&|]{1,48}/gi) || []
+          if (ms.length) dbg.trechos.push(n.replace("WAWeb", "") + ": " + [...new Set(ms)].slice(0, 3).join(" ; "))
+          if (dbg.trechos.length >= 14) break
         }
       } catch (e) { dbg.erroBusca = String(e).slice(0, 60) }
       dbg.etapa = "prep"
