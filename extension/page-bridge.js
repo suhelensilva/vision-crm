@@ -780,6 +780,22 @@
       dbg.tiposDiferentes = tipos
       // por dentro dos módulos mais promissores: nomes de fluxo, funções e o começo do código delas
       dbg.detalhe = {}
+      // 2ª rodada: o formato exato do cartão de Pix e as funções de envio
+      dbg.pix2 = {}
+      const fonte = (m, k, n) => { try { return String(m[k]).slice(0, n).replace(/\s+/g, " ") } catch { return "" } }
+      for (const [mod, fns] of [["WAWebBrPaymentRequest", ["parsePaymentRequestButton", "getPaymentRequestInfoFor", "getPaymentRequestInfo"]], ["WAWebPaymentRequestForwarding", ["getForwardedPixPaymentRequestPayload", "isForwardedPixPaymentRequest"]], ["WAWebBrazilPixKeyFormattingUtils", []], ["WAWebNativeFlowValidation", []], ["WAWebBizFormatInteractiveMsg", []]]) {
+        try {
+          const m = req(mod)
+          if (!m) { dbg.pix2[mod] = "não carregou"; continue }
+          const o = { chaves: Object.keys(m).slice(0, 14) }
+          for (const k of fns) o[k] = fonte(m, k, 1100)
+          if (!fns.length) for (const k of o.chaves.slice(0, 5)) if (typeof m[k] === "function") o[k] = fonte(m, k, 450)
+          dbg.pix2[mod] = o
+        } catch (e) { dbg.pix2[mod] = "erro " + String(e).slice(0, 60) }
+      }
+      const envio = names.filter((n) => /AddAndSendMsgToChat|SendMsgChatAction|SendTextMsgChatAction|SendMsgToChat|SendMsgJob|SendInteractive|MsgDataFromMsg|SendRawMsg/i.test(n)).slice(0, 14)
+      dbg.pix2.envio = {}
+      for (const n of envio) { try { const m = req(n); if (m) dbg.pix2.envio[n] = Object.keys(m).slice(0, 10) } catch {} }
       for (const n of ["WAWebPaymentRequestMsgAction", "WAWebInteractiveMessagesNativeFlowName", "WAWebGenerateNativeFlowButtonsMessageProto", "WAWebBrazilPaymentStateKeys", "WAWebParseMsgPaymentInfo", "WAWebBrAddPixKeyMessageOffer"]) {
         try {
           const m = req(n)
