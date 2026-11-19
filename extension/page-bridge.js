@@ -586,6 +586,34 @@
     }
   }
 
+  // ── Enviar texto pra uma conversa específica, mesmo que ela não esteja aberta ──
+  async function sendText(arg) {
+    const dbg = { versao: "texto1" }
+    try {
+      const chat = chatByKey(arg.chat, dbg)
+      if (!chat) return { ok: false, erro: "Não achei a conversa.", dbg }
+      let names = []
+      try { const d = req("__debug"); if (d && d.modulesMap) names = Object.keys(d.modulesMap) } catch {}
+      const cand = names.filter((n) => /SendText|SendMsg|AddAndSend|SendMessage/i.test(n))
+      dbg.candidatos = cand.slice(0, 25)
+      let fn = null
+      for (const n of cand) {
+        const m = req(n)
+        if (!m) continue
+        for (const x of [m, m.default].filter(Boolean)) {
+          if (typeof x.sendTextMsgToChat === "function") { fn = x.sendTextMsgToChat; dbg.em = n; break }
+        }
+        if (fn) break
+      }
+      if (!fn) return { ok: false, erro: "Não achei o recurso de enviar texto neste WhatsApp.", dbg }
+      await fn(chat, String(arg.text || ""), {})
+      return { ok: true, dbg }
+    } catch (e) {
+      dbg.excecao = String(e && e.stack || e).slice(0, 200)
+      return { ok: false, erro: "O WhatsApp recusou o envio.", dbg }
+    }
+  }
+
   document.addEventListener("vcrm-req", (ev) => {
     let id = ev.detail
     let kind = "chat"
@@ -593,6 +621,7 @@
     try { const d = JSON.parse(ev.detail); if (d && typeof d === "object") { id = d.id; kind = d.kind || "chat"; arg = d.arg } } catch {}
     const reply = (out) => document.dispatchEvent(new CustomEvent("vcrm-res", { detail: JSON.stringify({ id, ...out }) }))
     if (kind === "sendptt") { sendPtt(arg || {}).then(reply); return }
+    if (kind === "sendtext") { sendText(arg || {}).then(reply); return }
     if (kind === "chatstate") { chatState(arg || {}).then(reply); return }
     const out =
       kind === "scan" ? scan()

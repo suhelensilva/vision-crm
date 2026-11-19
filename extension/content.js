@@ -857,19 +857,36 @@ function audioSeconds(file) {
   })
 }
 
+// Fila por conversa: várias respostas pra mesma cliente saem em ordem; clientes diferentes saem ao mesmo tempo.
+const sendQueues = new Map()
+function enqueueSend(key, job) {
+  const prev = sendQueues.get(key) || Promise.resolve()
+  const next = prev.catch(() => {}).then(job)
+  sendQueues.set(key, next)
+  next.finally(() => { if (sendQueues.get(key) === next) sendQueues.delete(key) }).catch(() => {})
+  return next
+}
+
 async function useReply(r) {
   if (r.type === "TEXT" || r.type === "CONTACT") {
     const text = r.type === "TEXT" ? renderVariables(r.text || "") : `${r.contactName || ""}: ${r.contactPhone || ""}`.trim()
-    // "Mensagem sai direto": igual ao Hotzapp, clicar na resposta já envia.
-    // Primeiro a cliente vê "digitando…" (com o campo ainda vazio), e só depois o texto entra e sai.
     const target = state.chatKey
-    if (prefs.sendDirect && prefs.simulate && r.type === "TEXT" && getComposer()) {
-      const ms = typingMsFor(text)
-      toast(`A cliente está vendo "digitando…" (${Math.round(ms / 1000)} s). Já já sai.`, ms)
-      await simulateState("typing", ms, target)
-      // se você trocou de conversa nesse meio tempo, NÃO manda (iria pra pessoa errada)
-      const now = await askBridge("chat", 1500)
-      if (target && now && now.key && now.key !== target) { toast("Você trocou de conversa. Não enviei, pra não ir pra pessoa errada. Volte nela e clique de novo."); return }
+    const who = state.name || "a cliente"
+    // Envio direto de texto: roda em segundo plano, pra cliente certa. Você já pode abrir outra conversa.
+    if (prefs.sendDirect && r.type === "TEXT" && target) {
+      api("POST", `/api/crm/quick-replies/${r.id}/use`)
+      toast(`Enviando para ${who}…`)
+      enqueueSend(target, async () => {
+        if (prefs.simulate) await simulateState("typing", typingMsFor(text), target)
+        const v = await askBridge("sendtext", 20000, { chat: target, text })
+        if (v && v.ok) return
+        // plano B: se a conversa ainda é a aberta, escreve no campo e envia
+        const now = await askBridge("chat", 1500)
+        if (now && now.key === target && insertIntoComposer(text)) { await new Promise((res) => setTimeout(res, 150)); await clickSend(1500); return }
+        try { await navigator.clipboard.writeText(JSON.stringify(v, null, 1)) } catch {}
+        toast(`Não consegui enviar para ${who} em segundo plano. Volte na conversa e clique de novo. [${(v && v.erro) || "sem resposta"}]`, 10000)
+      })
+      return
     }
     if (!insertIntoComposer(text)) return
     api("POST", `/api/crm/quick-replies/${r.id}/use`)
