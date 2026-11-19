@@ -11,7 +11,7 @@
   --soft: rgba(143, 163, 214, 0.18); /* borda discreta */
 
   --strong: #ffffff; /* títulos e números em destaque */
-  --on-accent: #ffffff; /* texto sobre fundo vinho */
+  --on-accent: #1a1330; /* texto sobre o lilás */
   --panel-1: #0c2150; /* janelas e painéis que flutuam */
   --panel-2: #081638;
   --popup: #0c2150;
@@ -22,10 +22,10 @@
   --muted: #8ea0c8;
   --faint: #6f82ad;
 
-  --accent: #e0245e; /* vinho fluorescente */
-  --accent-hover: #f23a72;
-  --accent-text: #ff8fb1; /* texto e links em vinho claro */
-  --accent-soft: rgba(224, 36, 94, 0.14);
+  --accent: #a78bfa; /* roxo lilás */
+  --accent-hover: #b9a1fb;
+  --accent-text: #cdbfff; /* texto e links em lilás claro */
+  --accent-soft: rgba(167, 139, 250, 0.16);
   --accent-line: rgba(165, 214, 255, 0.4);
   --glow: transparent;
   --vred: #d13a52; /* vermelho do Visão: títulos pequenos e ícones */
@@ -227,10 +227,10 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outlin
   cursor: pointer;
   border: none;
   border-radius: 8px;
-  background: var(--accent);
+  background: #e0245e;
   box-shadow: 0 0 18px rgba(224, 36, 94, 0.45);
 }
-.auth-btn:hover:not(:disabled) { background: var(--accent-hover); filter: none; }
+.auth-btn:hover:not(:disabled) { background: #f23a72; filter: none; }
 .auth-btn:disabled { opacity: 0.55; cursor: not-allowed; box-shadow: none; }
 
 /* Celular e janela estreita: cartão no centro, foto mais escura pra dar leitura */
