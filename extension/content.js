@@ -843,7 +843,12 @@ async function useReply(r) {
 
 function fileApi(path) {
   return new Promise((resolve) => {
-    try { chrome.runtime.sendMessage({ type: "file", path }, (r) => resolve(r || { ok: false, status: 0 })) } catch { resolve({ ok: false, status: 0 }) }
+    try {
+      chrome.runtime.sendMessage({ type: "file", path }, (r) => {
+        const err = chrome.runtime.lastError
+        resolve(r || { ok: false, status: 0, error: err ? err.message : "sem resposta" })
+      })
+    } catch (e) { resolve({ ok: false, status: 0, error: String(e), stale: true }) }
   })
 }
 
@@ -857,7 +862,7 @@ async function attachFile(r) {
   if (!box) { toast("Abra uma conversa pra usar esta resposta."); return }
   toast("Carregando o arquivo…")
   const res = await fileApi(`/api/crm/quick-replies/${r.id}/file`)
-  if (!res.ok || !res.base64) { toast("Não consegui baixar o arquivo. Confira a conexão."); return }
+  if (!res.ok || !res.base64) { toast(res.stale || /invalidated|context/i.test(res.error || "") ? "A extensão foi atualizada. Dê F5 no WhatsApp e tente de novo." : `Não consegui baixar o arquivo (${res.status || res.error || "sem resposta"}). Confira a conexão.`); return }
   let file
   try {
     const bin = atob(res.base64)
