@@ -384,7 +384,7 @@ function renderConversa() {
   const name = esc(c.name || state.name || "Cliente")
   const head = `
     <div class="vc-person">
-      <div class="vc-avatar">${esc((fullName(c.name || state.name) || "?").slice(0, 1).toUpperCase())}</div>
+      <div class="vc-avatar">${(() => { const ini = esc((fullName(c.name || state.name) || "?").slice(0, 1).toUpperCase()); const ph = headerPhoto(); return ph ? `<img src="${esc(ph)}" data-ini="${ini}" alt="" />` : ini })()}</div>
       <div><div class="vc-name">${name}</div><div class="vc-sub">${esc(state.phone)}</div></div>
     </div>`
 
@@ -1293,8 +1293,22 @@ function barReplies() {
   return list.slice(0, 80)
 }
 
+/** Foto da conversa aberta: a mesma que o WhatsApp mostra no cabeçalho dela. */
+function headerPhoto() {
+  try {
+    const img = document.querySelector('#main header img[src^="https:"], #main header img[src^="blob:"]')
+    return img ? img.getAttribute("src") || "" : ""
+  } catch { return "" }
+}
+
+/** O rodapé onde se escreve a mensagem (e não qualquer <footer> da conversa). */
+function composerFooter() {
+  const box = document.querySelector('#main footer [contenteditable="true"]')
+  return (box && box.closest("footer")) || document.querySelector("#main footer")
+}
+
 function ensureBar() {
-  const footer = document.querySelector("#main footer")
+  const footer = composerFooter()
   let bar = document.getElementById(BAR_ID)
   if (!footer || state.status === "no_config" || state.status === "bad_token" || modalOpen()) {
     if (bar) bar.style.display = "none"

@@ -408,3 +408,21 @@ html.vcrm-on body { padding-right: var(--vcrm-pad, 44px) !important; }
 #vcrm-wait .vw-time.t3 { color: #3a1a00; background: #ff9a3c; }
 #vcrm-wait .vw-time.t4 { color: #fff; background: #f0502f; }
 #vcrm-wait .vw-time.t5 { color: #fff; background: #e0132b; }
+
+.vc-avatar { overflow: hidden; }
+.vc-avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+/* Barra de respostas rápidas embaixo da conversa: fina, grafite, ícones cinza */
+#vcrm-bar { padding: 3px 10px 4px; gap: 6px; background: #141515; border-top: 1px solid rgba(154, 155, 155, 0.25); }
+#vcrm-bar .vb-filter { width: 26px; height: 26px; background: transparent; color: #9a9b9b; }
+#vcrm-bar .vb-filter svg { width: 15px; height: 15px; color: #9a9b9b; }
+#vcrm-bar .vb-filter.on { box-shadow: none; background: #3a3b3c; color: #fff; }
+#vcrm-bar .vb-filter.on svg { color: #fff; }
+#vcrm-bar .vb-min { width: 20px; height: 20px; color: #9a9b9b; border-color: rgba(154, 155, 155, 0.5); }
+#vcrm-bar .vb-chips { gap: 6px; padding-bottom: 0; }
+#vcrm-bar .vb-chip { height: 28px; padding: 0 11px 0 5px; gap: 6px; font-size: 13px; background: #1f2020; }
+#vcrm-bar .vb-chip:hover { background: #2a2b2b; }
+#vcrm-bar .vb-ic { width: 18px; height: 18px; background: rgba(154, 155, 155, 0.14); color: #9a9b9b; }
+#vcrm-bar .vb-ic svg, #vcrm-bar svg { color: #9a9b9b; }
+#vcrm-bar .t-AUDIO .vb-ic, #vcrm-bar .t-TEXT .vb-ic, #vcrm-bar .t-IMAGE .vb-ic, #vcrm-bar .t-VIDEO .vb-ic, #vcrm-bar .t-DOCUMENT .vb-ic, #vcrm-bar .t-CONTACT .vb-ic { color: #9a9b9b; background: rgba(154, 155, 155, 0.14); }
+#vcrm-bar .vb-next { height: 26px; color: #9a9b9b; }
