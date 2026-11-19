@@ -879,7 +879,7 @@ async function attachFile(r) {
     if (v && v.ok) { api("POST", `/api/crm/quick-replies/${r.id}/use`); toast("Enviado como mensagem de voz."); return }
     try { await navigator.clipboard.writeText(JSON.stringify(v, null, 1)) } catch {}
     const why = v && v.dbg ? "[" + (v.dbg.etapa || "") + "] " + String((v.dbg.tentativas || []).join(" | ") || v.dbg.excecao || (v.dbg.temMediaPrep === false ? "sem MediaPrep" : v.dbg.temOpaqueData === false ? "sem OpaqueData" : "")).slice(0, 220) : ""
-    toast((v && v.erro ? v.erro : "Não consegui enviar como mensagem de voz.") + " Mandei como arquivo. Detalhe: " + (why || "nenhum") , 15000)
+    toast((v && v.erro ? v.erro : "Não consegui enviar como mensagem de voz.") + " Mandei como arquivo. Detalhe: " + (why || "nenhum") + (v && v.dbg && v.dbg.fonteEnvio ? " FONTE: " + String(v.dbg.fonteEnvio).slice(0, 520) : ""), 25000)
   }
 
   box.focus()
