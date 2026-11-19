@@ -486,3 +486,5 @@ html.vcrm-on #app { width: calc(100vw - var(--vcrm-pad, 44px)) !important; max-w
 /* Raio ao lado do emoji de reagir: salva a mensagem como resposta rápida */
 #vcrm-msgbtn { background: #202222; color: #9a9b9b; border: 1px solid rgba(154, 155, 155, 0.5); box-shadow: none; }
 #vcrm-msgbtn:hover { background: #2a2b2b; color: #e9edef; }
+
+#vcrm-msgbtn svg { width: 14px; height: 14px; }

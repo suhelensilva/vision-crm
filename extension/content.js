@@ -1650,11 +1650,14 @@ function onMsgHoverInner(e) {
   let left, top
   if (rr && rr.width) {
     // o emoji fica do lado de fora do balão: à esquerda nas suas mensagens, à direita nas da cliente
-    left = out ? rr.left - 34 : rr.right + 6
-    top = rr.top + rr.height / 2 - 14
+    const sz = Math.max(20, Math.min(30, Math.round(Math.min(rr.width, rr.height) || 24)))
+    b.style.width = b.style.height = sz + "px"
+    left = out ? rr.left - sz - 6 : rr.right + 6
+    top = rr.top + rr.height / 2 - sz / 2
   } else {
-    left = out ? br.left - 38 : br.right + 10
-    top = br.top + Math.min(br.height / 2, 30) - 14
+    b.style.width = b.style.height = "24px"
+    left = out ? br.left - 34 : br.right + 10
+    top = br.top + Math.min(br.height / 2, 30) - 12
   }
   b.style.left = Math.max(8, Math.round(left)) + "px"
   b.style.top = Math.round(top) + "px"
