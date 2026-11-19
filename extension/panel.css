@@ -84,7 +84,7 @@ html.vcrm-on body { padding-right: var(--vcrm-pad, 56px) !important; background:
   width: 100%; padding: 9px 10px; font-size: 13px; color: var(--text);
   background: var(--field); border: 1px solid var(--soft); border-radius: 9px; outline: none; resize: vertical;
 }
-#vcrm-root input::placeholder, #vcrm-root textarea::placeholder { color: #6f82ad; }
+#vcrm-root input::placeholder, #vcrm-root textarea::placeholder { color: #c4c8ca; }
 #vcrm-root input:focus, #vcrm-root textarea:focus { border-color: var(--accent); box-shadow: none; }
 #vcrm-root input[type="date"] { color-scheme: dark; }
 
