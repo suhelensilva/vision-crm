@@ -433,7 +433,26 @@
       dbg.tipoAntes = media && media.type
       try { if (media) media.type = "ptt" } catch {}
       try { if (media) media.isPtt = true } catch {}
-      const wave = await makeWaveform(blob, dbg)
+      let wave = null
+      try {
+        const WU = req("WAWebWaveformUtils")
+        if (WU && typeof WU.computeWaveform === "function") {
+          dbg.fonteOnda = String(WU.computeWaveform).slice(0, 380)
+          const Ctx = window.AudioContext || window.webkitAudioContext
+          const ctx = new Ctx()
+          const ab = await blob.arrayBuffer()
+          const audioBuf = await ctx.decodeAudioData(ab.slice(0))
+          try { ctx.close() } catch {}
+          for (const [nome, arg] of [["audioBuffer", audioBuf], ["blob", blob], ["arrayBuffer", ab]]) {
+            try {
+              let r = WU.computeWaveform(arg)
+              if (r && typeof r.then === "function") r = await r
+              if (r && (r.length || r.byteLength)) { wave = r; dbg.ondaWA = nome + ":" + (r.length || r.byteLength); break }
+            } catch (e) { (dbg.errosOndaWA = dbg.errosOndaWA || []).push(nome + ": " + String(e && e.message || e).slice(0, 60)) }
+          }
+        }
+      } catch (e) { dbg.erroWU = String(e).slice(0, 80) }
+      if (!wave) wave = await makeWaveform(blob, dbg)
       if (wave) {
         for (const o of [media, prep && prep._mediaData]) {
           if (!o) continue
