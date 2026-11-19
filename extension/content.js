@@ -1764,7 +1764,8 @@ async function refresh(force) {
   if (!force && !changed) return
 
   const mine = ++seq
-  const cfg = await chrome.storage.local.get(["apiUrl", "token"]).catch(() => ({}))
+  let cfg
+  try { cfg = await chrome.storage.local.get(["apiUrl", "token"]) } catch { return } // extensão recarregada com a aba aberta: só dar F5
   state.apiUrl = (cfg.apiUrl || "").replace(/\/+$/, "")
   if (!cfg.apiUrl || !cfg.token) { state.status = "no_config"; return render() }
 
