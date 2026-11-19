@@ -876,7 +876,7 @@ async function attachFile(r) {
   if (r.type === "AUDIO" && r.asVoiceNote) {
     toast("Enviando como mensagem de voz…")
     const v = await askBridge("sendptt", 30000, { base64: res.base64, mime: r.mediaMime || res.mime || "audio/ogg" })
-    if (v && v.ok) { api("POST", `/api/crm/quick-replies/${r.id}/use`); const d = v.dbg || {}; toast("Enviado como mensagem de voz. [ondas: " + (d.ondas ? "geradas" : d.erroOndas || "não") + " | media: " + (d.chavesMedia || []).join(",") + " | prep: " + (d.fontePrep || "") + "]", 30000); return }
+    if (v && v.ok) { api("POST", `/api/crm/quick-replies/${r.id}/use`); const d = v.dbg || {}; toast("Enviado como mensagem de voz. [ondas: " + (d.ondas ? "geradas" : d.erroOndas || "não") + " | media: " + (d.chavesMedia || []).join(",") + " | módulos com onda: " + (d.modsComOnda ? d.modsComOnda.join(", ") : d.erroBusca || "nenhum") + "]", 30000); return }
     try { await navigator.clipboard.writeText(JSON.stringify(v, null, 1)) } catch {}
     const why = v && v.dbg ? "[" + (v.dbg.etapa || "") + "] " + String((v.dbg.tentativas || []).join(" | ") || v.dbg.excecao || (v.dbg.temMediaPrep === false ? "sem MediaPrep" : v.dbg.temOpaqueData === false ? "sem OpaqueData" : "")).slice(0, 220) : ""
     toast((v && v.erro ? v.erro : "Não consegui enviar como mensagem de voz.") + " Mandei como arquivo. Detalhe: " + (why || "nenhum") + (v && v.dbg && v.dbg.fonteEnvio ? " FONTE: " + String(v.dbg.fonteEnvio).slice(0, 520) : ""), 25000)

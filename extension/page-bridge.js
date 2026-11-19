@@ -433,6 +433,18 @@
         const k = src.search(/wave/i)
         dbg.fontePrep = k >= 0 ? "ACHEI wave: " + src.slice(Math.max(0, k - 160), k + 260) : "sem wave no prepRawMedia (" + src.length + " letras): " + src.slice(src.length - 260)
       } catch {}
+      try {
+        const d = req("__debug")
+        const mm = (d && d.modulesMap) || {}
+        const achados = []
+        for (const n of Object.keys(mm)) {
+          let src = ""
+          try { const f = mm[n].factory || mm[n].fn || mm[n]; src = typeof f === "function" ? String(f) : "" } catch {}
+          if (src && /waveform/i.test(src) && /ptt|audio|voice/i.test(src)) achados.push(n)
+          if (achados.length >= 14) break
+        }
+        dbg.modsComOnda = achados
+      } catch (e) { dbg.erroBusca = String(e).slice(0, 60) }
       dbg.etapa = "prep"
       const prep = mods.MediaPrep.prepRawMedia(od, wave ? { isPtt: true, waveform: wave } : { isPtt: true })
       dbg.etapa = "espera"
