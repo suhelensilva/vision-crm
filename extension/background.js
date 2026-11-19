@@ -50,18 +50,35 @@ async function fileFetch(path) {
   }
 }
 
+// Envia formulário com arquivo (resposta rápida de áudio, imagem, vídeo ou documento).
+async function uploadFetch(msg) {
+  const { apiUrl, token } = await getConfig()
+  if (!apiUrl || !token) return { ok: false, status: 0, error: "not_configured" }
+  try {
+    const form = new FormData()
+    for (const [k, v] of Object.entries(msg.fields || {})) form.set(k, v)
+    if (msg.file) {
+      const bin = atob(msg.file.base64)
+      const buf = new Uint8Array(bin.length)
+      for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i)
+      form.set("file", new Blob([buf], { type: msg.file.type || "application/octet-stream" }), msg.file.name)
+    }
+    const res = await fetch(apiUrl + msg.path, { method: msg.method || "POST", headers: { Authorization: "Bearer " + token }, body: form })
+    const data = await res.json().catch(() => null)
+    return { ok: res.ok, status: res.status, data }
+  } catch (e) {
+    return { ok: false, status: 0, error: String(e) }
+  }
+}
+
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   if (msg && msg.type === "api") {
     apiFetch(msg.method, msg.path, msg.body).then(sendResponse)
     return true // resposta assíncrona
   }
-  if (msg && msg.type === "editor") {
-    getConfig().then(({ apiUrl }) => {
-      if (!apiUrl) return
-      const w = 620, h = 780
-      chrome.windows.create({ url: apiUrl + "/embed/respostas" + (msg.query ? "?" + msg.query : ""), type: "popup", width: w, height: h, left: 120, top: 40, focused: true })
-    })
-    return false
+  if (msg && msg.type === "upload") {
+    uploadFetch(msg).then(sendResponse)
+    return true
   }
   if (msg && msg.type === "file") {
     fileFetch(msg.path).then(sendResponse)

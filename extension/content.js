@@ -648,12 +648,14 @@ async function loadReplies() {
 }
 
 function openReplyForm(init) {
-  // Criar/editar resposta: abre a janelinha do Vision (a mesma do painel) por cima do WhatsApp
-  const q = new URLSearchParams()
-  if (init && init.mode === "edit" && init.id) q.set("id", init.id)
-  else if (init && init.text) q.set("text", init.text)
-  chrome.runtime.sendMessage({ type: "editor", query: q.toString() })
-  return
+  // Criar/editar resposta: a mesma janela do painel, aqui mesmo no WhatsApp
+  const item = init && init.mode === "edit" ? state.replies.find((r) => r.id === init.id) : null
+  openReplyEditor({
+    item,
+    text: init && init.text ? init.text : "",
+    categories: [...new Set(state.replies.map((r) => r.category).filter(Boolean))],
+    onSaved: async () => { await loadReplies(); ensureBar(); render(); toast("Resposta salva.") },
+  })
 }
 
 function openReplyFormInline(init) {

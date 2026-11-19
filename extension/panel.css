@@ -426,3 +426,47 @@ html.vcrm-on body { padding-right: var(--vcrm-pad, 44px) !important; }
 #vcrm-bar .vb-ic svg, #vcrm-bar svg { color: #9a9b9b; }
 #vcrm-bar .t-AUDIO .vb-ic, #vcrm-bar .t-TEXT .vb-ic, #vcrm-bar .t-IMAGE .vb-ic, #vcrm-bar .t-VIDEO .vb-ic, #vcrm-bar .t-DOCUMENT .vb-ic, #vcrm-bar .t-CONTACT .vb-ic { color: #9a9b9b; background: rgba(154, 155, 155, 0.14); }
 #vcrm-bar .vb-next { height: 26px; color: #9a9b9b; }
+
+/* ── Janela de criar / editar resposta rápida (dentro do WhatsApp) ── */
+#vcrm-ed { position: fixed; inset: 0; z-index: 2147483200; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(0, 0, 0, 0.62); font-family: "Segoe UI", system-ui, sans-serif; }
+#vcrm-ed * { box-sizing: border-box; font-family: inherit; }
+#vcrm-ed .ed-box { width: 520px; max-width: 100%; max-height: 92vh; overflow-y: auto; padding: 22px; border-radius: 16px; background: #141515; color: #e9edef; border: 1px solid rgba(154, 155, 155, 0.5); }
+#vcrm-ed h2 { margin: 0 0 14px; font-size: 18px; color: #fff; text-align: center; }
+#vcrm-ed label { display: block; margin: 14px 0 5px; font-size: 13px; font-weight: 600; color: #e9edef; }
+#vcrm-ed label i, #vcrm-ed .ed-more i { font-style: normal; font-weight: 400; color: #9a9b9b; }
+#vcrm-ed .req { color: #ff6b8b; font-weight: 700; }
+#vcrm-ed input:not([type="checkbox"]):not([type="file"]), #vcrm-ed textarea { width: 100%; padding: 9px 11px; font-size: 14px; color: #e9edef; background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(154, 155, 155, 0.35); border-radius: 10px; outline: none; }
+#vcrm-ed textarea { resize: vertical; min-height: 90px; }
+#vcrm-ed input:focus, #vcrm-ed textarea:focus { border-color: #9a9b9b; }
+#vcrm-ed ::placeholder { color: #c4c8ca; opacity: 0.7; }
+#vcrm-ed .ed-tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+#vcrm-ed .ed-tiles button { display: flex; flex-direction: column; align-items: center; gap: 7px; padding: 16px 8px; border-radius: 12px; cursor: pointer; color: #e9edef; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(154, 155, 155, 0.3); font-size: 13px; font-weight: 600; }
+#vcrm-ed .ed-tiles button svg { color: #9a9b9b; }
+#vcrm-ed .ed-tiles button:hover { background: rgba(255, 255, 255, 0.1); }
+#vcrm-ed .ed-drop { padding: 20px 12px; text-align: center; cursor: pointer; border: 1.5px dashed rgba(154, 155, 155, 0.55); border-radius: 12px; font-size: 13px; color: #e9edef; }
+#vcrm-ed .ed-drop svg { color: #9a9b9b; }
+#vcrm-ed .ed-drop small { display: block; margin-top: 4px; font-size: 11px; color: #9a9b9b; }
+#vcrm-ed .ed-drop:hover { background: rgba(255, 255, 255, 0.04); }
+#vcrm-ed .ed-saved { display: flex; align-items: center; gap: 7px; margin-top: 8px; font-size: 13px; }
+#vcrm-ed .ed-saved svg { color: #9a9b9b; flex: none; }
+#vcrm-ed .ed-fn { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#vcrm-ed .ed-saved em { font-style: normal; color: #9a9b9b; font-size: 12px; }
+#vcrm-ed .ed-link { background: none; border: 0; cursor: pointer; color: #cfd3d5; text-decoration: underline; font-size: 12px; }
+#vcrm-ed .ed-sw { display: flex; align-items: center; gap: 9px; font-weight: 400; cursor: pointer; }
+#vcrm-ed .ed-sw input { accent-color: #9a9b9b; width: 16px; height: 16px; }
+#vcrm-ed .ed-vars { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+#vcrm-ed .ed-vars button { padding: 3px 11px; font-size: 12px; cursor: pointer; color: #e9edef; background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(154, 155, 155, 0.35); border-radius: 999px; }
+#vcrm-ed .ed-vars button:hover { background: rgba(255, 255, 255, 0.12); }
+#vcrm-ed .ed-help { margin: 6px 0 0; font-size: 12px; color: #9a9b9b; }
+#vcrm-ed .ed-prev { margin-top: 10px; padding: 8px 10px; border-radius: 10px; background: rgba(52, 211, 153, 0.1); border: 1px solid rgba(52, 211, 153, 0.3); }
+#vcrm-ed .ed-prev small { display: block; font-size: 11px; color: #9a9b9b; margin-bottom: 2px; }
+#vcrm-ed .ed-prev div { white-space: pre-wrap; font-size: 13px; }
+#vcrm-ed .ed-more { margin-top: 14px; padding: 0; display: inline-flex; align-items: center; gap: 4px; background: none; border: 0; cursor: pointer; font-size: 13px; font-weight: 600; color: #e9edef; }
+#vcrm-ed .ed-sc { display: flex; align-items: center; gap: 6px; }
+#vcrm-ed .ed-sc b { color: #9a9b9b; }
+#vcrm-ed .ed-warn { margin: 12px 0 0; font-size: 13px; color: #ffd24a; }
+#vcrm-ed .ed-err { margin: 10px 0 0; font-size: 13px; color: #ff8a8a; }
+#vcrm-ed .ed-row { display: flex; justify-content: center; gap: 10px; margin-top: 18px; }
+#vcrm-ed .ed-ghost { padding: 9px 16px; font-size: 13px; font-weight: 600; cursor: pointer; color: #e9edef; background: transparent; border: 1px solid rgba(154, 155, 155, 0.45); border-radius: 10px; }
+#vcrm-ed .ed-save { padding: 9px 22px; font-size: 13px; font-weight: 600; cursor: pointer; color: #fff; background: var(--vcrm-btn); border: 0; border-radius: 10px; }
+#vcrm-ed .ed-save:disabled { opacity: 0.45; cursor: not-allowed; }
