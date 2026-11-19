@@ -1644,6 +1644,8 @@ async function sendMyPix() {
   toast(intro ? `Enviando a mensagem e o Pix para ${who}…` : `Enviando seu Pix para ${who}…`)
   const v = await enqueueSend(target, async () => {
     if (introText) {
+      // como se você estivesse escrevendo: "digitando…" por 5 segundos, aí a mensagem sai
+      if (prefs.simulate) await simulateState("typing", 5000, target)
       const t = await askBridge("sendtext", 20000, { chat: target, text: introText })
       if (t && t.ok) api("POST", `/api/crm/quick-replies/${intro.id}/use`)
       else {
@@ -1653,6 +1655,7 @@ async function sendMyPix() {
         else return { ok: false, erro: "Não consegui mandar a mensagem antes do Pix. O Pix não foi enviado." }
       }
     }
+    if (introText) await new Promise((res) => setTimeout(res, 2000)) // uma pausinha antes do Pix
     return askBridge("sendpixkey", 25000, { chat: target })
   })
   if (v && v.ok) return toast(`Enviado para ${who}.`)
