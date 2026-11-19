@@ -815,6 +815,53 @@
     return { dbg }
   }
 
+  // ── Mandar um Pix "copia e cola" no cartão nativo do WhatsApp (com o botão de copiar) ──
+  async function sendPix(arg) {
+    const dbg = { versao: "sendpix1" }
+    try {
+      const chat = chatByKey(arg.chat, dbg)
+      if (!chat) return { ok: false, erro: "Não achei a conversa.", dbg }
+      const code = String(arg.code || "").trim()
+      if (!code) return { ok: false, erro: "Falta o código Pix.", dbg }
+      const SM = req("WAWebSendMsgChatAction")
+      const TX = req("WAWebSendTextMsgChatAction")
+      const NF = req("WAWebInteractiveMessagesNativeFlowName")
+      const IT = req("WAWebInteractiveMessageType")
+      const MT = req("WAWebMsgType")
+      const BR = req("WAWebBrPaymentRequest")
+      dbg.pecas = { SM: !!SM, TX: !!TX, NF: !!NF, IT: !!IT, MT: !!MT, BR: !!BR }
+      if (!SM || !TX || !NF || !IT || !MT) return { ok: false, erro: "Faltam peças do WhatsApp para o Pix.", dbg }
+      const flow = NF.PAYMENT_REQUEST !== undefined ? NF.PAYMENT_REQUEST : (NF.default && NF.default.PAYMENT_REQUEST)
+      const nativeFlow = IT.NATIVE_FLOW !== undefined ? IT.NATIVE_FLOW : (IT.default && IT.default.NATIVE_FLOW)
+      const msgTypes = MT.MSG_TYPE || MT.default || MT
+      const interactive = msgTypes.INTERACTIVE
+      const ctaType = BR && BR.PaymentRequestCtaType ? BR.PaymentRequestCtaType.PIX_DYNAMIC_CODE : "pix_dynamic_code"
+      dbg.valores = { flow: String(flow), nativeFlow: String(nativeFlow), interactive: String(interactive), ctaType: String(ctaType) }
+      const text = String(arg.text || "Segue o Pix").slice(0, 400)
+      dbg.etapa = "base"
+      let data = await TX.createTextMsgData(chat, text, {})
+      if (Array.isArray(data)) data = data[0]
+      dbg.chavesBase = Object.keys(data || {}).slice(0, 25)
+      const trace = (crypto.randomUUID && crypto.randomUUID()) || String(Date.now())
+      const params = { payment_setting: { type: ctaType, pix_dynamic_code: { code } }, payment_message_trace_id: trace, is_forwarded: false }
+      Object.assign(data, {
+        type: interactive,
+        interactiveType: nativeFlow,
+        nativeFlowName: flow,
+        caption: text,
+        body: "",
+        interactivePayload: { messageVersion: arg.messageVersion || 1, buttons: [{ name: flow, buttonParamsJson: JSON.stringify(params) }] },
+      })
+      dbg.etapa = "envio"
+      const r = await SM.addAndSendMsgToChat(chat, data, {})
+      try { dbg.retorno = Object.keys(r || {}).slice(0, 8) } catch {}
+      return { ok: true, dbg }
+    } catch (e) {
+      dbg.excecao = String(e && e.stack || e).slice(0, 400)
+      return { ok: false, erro: "O WhatsApp recusou o Pix.", dbg }
+    }
+  }
+
   document.addEventListener("vcrm-req", (ev) => {
     let id = ev.detail
     let kind = "chat"
@@ -824,6 +871,7 @@
     if (kind === "sendptt") { sendPtt(arg || {}).then(reply); return }
     if (kind === "qrlist") { reply(waQuickReplies()); return }
     if (kind === "pixscan") { reply(pixScan()); return }
+    if (kind === "sendpix") { sendPix(arg || {}).then(reply); return }
     if (kind === "msginfo") { reply(msgInfo(arg || {})); return }
     if (kind === "msgmedia") { msgMedia(arg || {}).then(reply); return }
     if (kind === "sendtext") { sendText(arg || {}).then(reply); return }
