@@ -836,7 +836,7 @@ async function simulateState(state, ms) {
   let failed = false
   while (Date.now() < end && !failed) {
     const r = await askBridge("chatstate", 4000, { state })
-    if (!r || !r.ok) { failed = true; break }
+    if (!r || !r.ok) { failed = true; toast((r && r.erro ? r.erro : "Não consegui mostrar o digitando.") + (r && r.dbg && (r.dbg.excecao || r.dbg.candidatosEstado) ? " [" + (r.dbg.excecao || (r.dbg.candidatosEstado || []).join(",")) + "]" : ""), 12000); break }
     await new Promise((res) => setTimeout(res, Math.min(4000, Math.max(0, end - Date.now()))))
   }
   await askBridge("chatstate", 3000, { state: "paused" })
