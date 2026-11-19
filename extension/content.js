@@ -747,6 +747,7 @@ function renderReplies() {
       <div class="vc-sec first">Preferências</div>
       <div class="rp-line"><span>Estilo dos chips</span><span class="rp-seg"><button type="button" data-rp-act="style-icon" class="${prefs.chipStyle === "icon" ? "on" : ""}">Ícone</button><button type="button" data-rp-act="style-color" class="${prefs.chipStyle === "color" ? "on" : ""}">Colorido</button></span></div>
       <label class="vc-check"><input type="checkbox" data-pref="sendDirect" ${prefs.sendDirect ? "checked" : ""}/> <span>Mensagem sai direto</span></label>
+      <div class="rp-line" style="margin-top:8px"><span>Mensagem antes do Pix</span><select data-pixintro class="vc-search" style="max-width:160px"><option value="">Nenhuma</option>${state.replies.filter((r) => r.type === "TEXT").map((r) => `<option value="${esc(r.id)}" ${prefs.pixIntroId === r.id ? "selected" : ""}>${esc(r.name)}</option>`).join("")}</select></div>
       <button class="vc-ghost" data-rp-act="pixdiag" style="margin-top:8px">Diagnóstico do Pix</button>
       <button class="vc-ghost" data-rp-act="pixtest" style="margin-top:8px">Testar meu Pix (chave salva) nesta conversa</button>
     </div>` : ""
@@ -1637,9 +1638,24 @@ async function sendMyPix() {
   const target = state.chatKey
   if (!target) return toast("Abra uma conversa pra mandar o Pix.")
   const who = state.name || "a cliente"
-  toast(`Enviando seu Pix para ${who}…`)
-  const v = await enqueueSend(target, () => askBridge("sendpixkey", 25000, { chat: target }))
-  if (v && v.ok) return toast(`Pix enviado para ${who}.`)
+  // a mensagem curta que vai ANTES do Pix (uma das suas respostas rápidas de texto), sem "digitando"
+  const intro = prefs.pixIntroId ? state.replies.find((r) => r.id === prefs.pixIntroId && r.type === "TEXT") : null
+  const introText = intro ? renderVariables(intro.text || "") : ""
+  toast(intro ? `Enviando a mensagem e o Pix para ${who}…` : `Enviando seu Pix para ${who}…`)
+  const v = await enqueueSend(target, async () => {
+    if (introText) {
+      const t = await askBridge("sendtext", 20000, { chat: target, text: introText })
+      if (t && t.ok) api("POST", `/api/crm/quick-replies/${intro.id}/use`)
+      else {
+        // plano B: se a conversa ainda é a aberta, escreve no campo e envia
+        const now = await askBridge("chat", 1500)
+        if (now && now.key === target && insertIntoComposer(introText)) { await new Promise((res) => setTimeout(res, 150)); await clickSend(1500) }
+        else return { ok: false, erro: "Não consegui mandar a mensagem antes do Pix. O Pix não foi enviado." }
+      }
+    }
+    return askBridge("sendpixkey", 25000, { chat: target })
+  })
+  if (v && v.ok) return toast(`Enviado para ${who}.`)
   try { await navigator.clipboard.writeText(JSON.stringify(v, null, 1)) } catch {}
   const dd = (v && v.dbg) || {}
   toast(((v && v.erro) || "Não consegui enviar o Pix.") + " [" + (dd.erros || []).join(" | ").slice(0, 200) + "]", 15000)
@@ -2005,6 +2021,7 @@ async function onSubmit(e) {
 }
 
 function onInput(e) {
+  if (e.target.matches("[data-pixintro]")) { prefs.pixIntroId = e.target.value || null; savePrefs(); return }
   if (e.target.matches("[data-pref]")) {
     prefs[e.target.getAttribute("data-pref")] = e.target.checked
     savePrefs()
