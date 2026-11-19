@@ -477,3 +477,8 @@ html.vcrm-on #app { width: calc(100vw - var(--vcrm-pad, 44px)) !important; max-w
 /* Barra de respostas rápidas: dentro do rodapé do WhatsApp, logo abaixo do campo de mensagem */
 #vcrm-bar { background: transparent; border-top: 0; padding: 2px 14px 8px; }
 #vcrm-pop { margin: 0 0 6px; }
+
+/* Passar o mouse na barra de respostas: fundo clarinho, o ícone continua visível */
+#vcrm-bar button:hover, #vcrm-bar .vb-next:hover, #vcrm-bar .vb-min:hover, #vcrm-bar .vb-filter:hover { background: rgba(255, 255, 255, 0.14); color: #e9edef; }
+#vcrm-bar button:hover svg { color: #e9edef; }
+#vcrm-bar .vb-chip:hover { background: #2a2b2b; }
