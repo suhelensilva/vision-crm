@@ -11,7 +11,7 @@
   --muted: #8ea0c8;
   --accent: #e0245e;
   --accent-text: #ff8fb1;
-  --glow: rgba(224, 36, 94, 0.45);
+  --glow: transparent;
   --vred: #d13a52;
   --gold: #e3b341;
   font-family: "Segoe UI", system-ui, sans-serif;
@@ -28,7 +28,7 @@ html.vcrm-on body { padding-right: var(--vcrm-pad, 56px) !important; background:
   display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 10px 0;
   background: linear-gradient(180deg, #0c2150, #060f2a);
   border-left: 1px solid var(--line);
-  box-shadow: -4px 0 24px rgba(224, 36, 94, 0.12);
+  box-shadow: none;
 }
 .vc-logo { width: 34px; height: 34px; border-radius: 11px; display: grid; place-items: center; background: var(--accent); color: #fff; box-shadow: 0 0 16px var(--glow); margin-bottom: 8px; }
 .vc-grow { flex: 1; }
@@ -85,7 +85,7 @@ html.vcrm-on body { padding-right: var(--vcrm-pad, 56px) !important; background:
   background: var(--field); border: 1px solid var(--soft); border-radius: 9px; outline: none; resize: vertical;
 }
 #vcrm-root input::placeholder, #vcrm-root textarea::placeholder { color: #6f82ad; }
-#vcrm-root input:focus, #vcrm-root textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(224, 36, 94, 0.22); }
+#vcrm-root input:focus, #vcrm-root textarea:focus { border-color: var(--accent); box-shadow: none; }
 #vcrm-root input[type="date"] { color-scheme: dark; }
 
 .vc-btn {
@@ -165,7 +165,7 @@ html.vcrm-on body { padding-right: var(--vcrm-pad, 56px) !important; background:
 #vcrm-side {
   position: fixed; z-index: 2147482990; display: flex; flex-direction: column; gap: 2px; padding: 4px;
   background: rgba(4, 10, 28, 0.94); border: 1px solid rgba(224, 36, 94, 0.4); border-radius: 14px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45), 0 0 18px rgba(224, 36, 94, 0.15);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
 }
 #vcrm-side button {
   position: relative; width: 44px; padding: 7px 0 4px; border: 0; border-radius: 10px; cursor: pointer;
@@ -181,7 +181,7 @@ html.vcrm-on body { padding-right: var(--vcrm-pad, 56px) !important; background:
 
 /* ── Importar ── */
 .vc-bar { height: 8px; border-radius: 999px; background: rgba(255, 255, 255, 0.1); overflow: hidden; }
-.vc-bar i { display: block; height: 100%; background: #e0245e; box-shadow: 0 0 12px rgba(224, 36, 94, 0.6); transition: width 0.3s; }
+.vc-bar i { display: block; height: 100%; background: #e0245e; box-shadow: none; transition: width 0.3s; }
 .vc-check { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #e8eefc; }
 #vcrm-root input[type="checkbox"] { width: auto; accent-color: #e0245e; }
 .vc-btn:disabled { opacity: 0.5; cursor: not-allowed; }
@@ -190,7 +190,7 @@ html.vcrm-on body { padding-right: var(--vcrm-pad, 56px) !important; background:
 #vcrm-wait {
   position: fixed; left: 76px; bottom: 28px; width: 340px; z-index: 2147482995; padding: 14px 16px 10px;
   background: #1f2c34; color: #e9edef; border-radius: 14px; border: 1px solid rgba(224, 36, 94, 0.45);
-  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.55), 0 0 22px rgba(224, 36, 94, 0.18); font-family: "Segoe UI", system-ui, sans-serif;
+  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.55); font-family: "Segoe UI", system-ui, sans-serif;
 }
 #vcrm-wait > b { font-size: 16px; color: #fff; }
 #vcrm-wait > p { margin: 4px 0 8px; font-size: 13px; color: #aebac1; }
