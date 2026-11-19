@@ -1612,12 +1612,12 @@ function onMsgHover(e) {
   const t = e.target
   if (t.closest && t.closest(`#${MSG_BTN_ID}, #${MSG_MENU_ID}`)) { clearTimeout(msgHideTimer); return }
   const main = document.querySelector("#main")
-  const holder = t.closest && t.closest("[data-id]")
-  const row = holder && main && main.contains(holder) ? holder : null
-  if (!row || !/^(true|false)_/.test(row.getAttribute("data-id") || "")) return hideMsgSoon()
-  const out = /^true_/.test(row.getAttribute("data-id") || "")
+  const bubbleEl = t.closest && t.closest('[class*="message-out"], [class*="message-in"]')
+  if (!bubbleEl || !main || !main.contains(bubbleEl)) return hideMsgSoon()
+  const row = bubbleEl.closest("[data-id]") || bubbleEl.querySelector("[data-id]") || bubbleEl
+  const out = /message-out/.test(bubbleEl.className || "")
   clearTimeout(msgHideTimer)
-  const bubble = row.querySelector('[class*="message-out"], [class*="message-in"]') || row
+  const bubble = bubbleEl
   const br = bubble.getBoundingClientRect()
   let b = document.getElementById(MSG_BTN_ID)
   if (!b) {
@@ -1629,7 +1629,7 @@ function onMsgHover(e) {
     b.addEventListener("click", onMsgButtonClick)
     document.body.appendChild(b)
   }
-  msgHover = { id: row.getAttribute("data-id"), text: messageText(row), row }
+  msgHover = { id: row.getAttribute ? row.getAttribute("data-id") || "" : "", text: messageText(bubbleEl), row }
   b.style.display = "grid"
   // do lado do emoji de reagir (que o WhatsApp mostra ao passar o mouse); sem ele, do lado do balão
   const react = findReactButton(row)

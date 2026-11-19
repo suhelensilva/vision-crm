@@ -622,7 +622,7 @@
       if (!M) return null
       let m = null
       try { m = M.get(id) } catch {}
-      return m || arr(M).find((x) => x && x.id && serial(x.id) === id) || null
+      return m || arr(M).find((x) => x && x.id && (serial(x.id) === id || x.id.id === id || String(serial(x.id)).endsWith("_" + id))) || null
     } catch { return null }
   }
 
