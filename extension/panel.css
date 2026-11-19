@@ -26,7 +26,7 @@ html.vcrm-on body { padding-right: var(--vcrm-pad, 56px) !important; background:
 .vc-rail {
   position: fixed; top: 0; right: 0; bottom: 0; width: 56px; z-index: 2147483000;
   display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 10px 0;
-  background: #141515;
+  background: #202222;
   border-left: 1px solid #9a9b9b;
   box-shadow: none;
 }
@@ -164,7 +164,7 @@ html.vcrm-on body { padding-right: var(--vcrm-pad, 56px) !important; background:
 /* ── Barrinha lateral ao lado da conversa ── */
 #vcrm-side {
   position: fixed; z-index: 2147482990; display: flex; flex-direction: column; gap: 2px; padding: 4px;
-  background: #202c33; border: 1px solid #9a9b9b; border-radius: 14px;
+  background: #202222; border: 1px solid #9a9b9b; border-radius: 14px;
   box-shadow: none;
 }
 #vcrm-side button {

@@ -1005,8 +1005,6 @@ function ensureSide() {
     (items.map((i) => `<button data-go="${i.go}" title="${i.label}">${icon(i.icon, 18)}${i.badge ? `<b>${i.badge}</b>` : ""}<span>${i.label}</span></button>`).join(""))
   if (el.dataset.sig !== html) { el.innerHTML = html; el.dataset.sig = html }
   // mesma cor do balão de mensagem recebida do WhatsApp (pra parecer parte dele)
-  const bg = waBubbleColor()
-  if (bg && el.dataset.bg !== bg) { el.style.background = bg; el.dataset.bg = bg }
   el.classList.toggle("vs-min", sideCollapsed)
   const r = main.getBoundingClientRect()
   el.style.left = Math.round(r.left + 6) + "px"
