@@ -360,21 +360,24 @@
   function findPttModules(dbg) {
     const found = { MediaPrep: null, OpaqueData: null }
     let names = []
-    try { const d = req("__debug"); if (d && d.modulesMap) names = Object.keys(d.modulesMap) } catch {}
-    const cand = names.filter((n) => /MediaPrep|OpaqueData|MediaOpaque/i.test(n))
-    dbg.candidatos = cand.slice(0, 20)
+    try { const d = req("__debug"); dbg.temDebug = !!d; if (d && d.modulesMap) names = Object.keys(d.modulesMap) } catch (e) { dbg.erroDebug = String(e).slice(0, 80) }
+    dbg.totalModulos = names.length
+    const cand = names.filter((n) => /Prep|Opaque|MediaData|SendMedia|SendAudio|Ptt|Waveform|MediaBlob/i.test(n))
+    dbg.candidatos = cand.slice(0, 60)
+    dbg.formas = {}
     for (const n of cand) {
-      const m = req(n)
+      let m = null
+      try { m = req(n) } catch {}
       if (!m) continue
-      for (const x of [m, m.default].filter(Boolean)) {
-        if (!found.MediaPrep && typeof x.prepRawMedia === "function") found.MediaPrep = x
-        if (!found.OpaqueData && typeof x.createFromData === "function") found.OpaqueData = x
-      }
-      for (const k of Object.keys(m)) {
-        const x = m[k]
-        if (x && typeof x === "function" || (x && typeof x === "object")) {
-          if (!found.OpaqueData && x && typeof x.createFromData === "function") found.OpaqueData = x
-        }
+      try { dbg.formas[n] = Object.keys(m).slice(0, 8) } catch {}
+      const pool = [m, m.default]
+      for (const k of Object.keys(m)) pool.push(m[k])
+      for (const x of pool) {
+        if (!x || (typeof x !== "function" && typeof x !== "object")) continue
+        try {
+          if (!found.MediaPrep && typeof x.prepRawMedia === "function") found.MediaPrep = x
+          if (!found.OpaqueData && typeof x.createFromData === "function") found.OpaqueData = x
+        } catch {}
       }
     }
     return found
