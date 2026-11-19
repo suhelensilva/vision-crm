@@ -748,8 +748,6 @@ function renderReplies() {
       <div class="rp-line"><span>Estilo dos chips</span><span class="rp-seg"><button type="button" data-rp-act="style-icon" class="${prefs.chipStyle === "icon" ? "on" : ""}">Ícone</button><button type="button" data-rp-act="style-color" class="${prefs.chipStyle === "color" ? "on" : ""}">Colorido</button></span></div>
       <label class="vc-check"><input type="checkbox" data-pref="sendDirect" ${prefs.sendDirect ? "checked" : ""}/> <span>Mensagem sai direto</span></label>
       <div class="rp-line" style="margin-top:8px"><span>Mensagem antes do Pix</span><select data-pixintro class="vc-search" style="max-width:160px"><option value="">Nenhuma</option>${state.replies.filter((r) => r.type === "TEXT").map((r) => `<option value="${esc(r.id)}" ${prefs.pixIntroId === r.id ? "selected" : ""}>${esc(r.name)}</option>`).join("")}</select></div>
-      <button class="vc-ghost" data-rp-act="pixdiag" style="margin-top:8px">Diagnóstico do Pix</button>
-      <button class="vc-ghost" data-rp-act="pixtest" style="margin-top:8px">Testar meu Pix (chave salva) nesta conversa</button>
     </div>` : ""
 
   return `<div class="rp-top">
