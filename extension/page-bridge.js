@@ -396,13 +396,29 @@
       dbg.temMediaPrep = !!mods.MediaPrep
       dbg.temOpaqueData = !!mods.OpaqueData
       if (!mods.MediaPrep || !mods.OpaqueData) return { ok: false, erro: "Não achei as peças de envio de áudio neste WhatsApp.", dbg }
+      dbg.etapa = "opaque"
       const od = await mods.OpaqueData.createFromData(blob, blob.type)
+      dbg.etapa = "prep"
       const prep = mods.MediaPrep.prepRawMedia(od, { isPtt: true })
+      dbg.etapa = "espera"
       const media = await prep.waitForPrep()
       dbg.tipoAntes = media && media.type
       try { if (media) media.type = "ptt" } catch {}
       try { if (media) media.isPtt = true } catch {}
-      await prep.sendToChat(chat, {})
+      dbg.etapa = "envio"
+      try { dbg.fonteEnvio = String(prep.sendToChat).slice(0, 700) } catch {}
+      const tries = [
+        {},
+        { caption: "", isCaptionByUser: false, quotedMsg: null, addEvenWhilePreparing: true },
+        { caption: "", isCaptionByUser: true, quotedMsg: undefined, productMsgOptions: undefined, footer: undefined },
+      ]
+      let lastErr = null
+      let sent = false
+      dbg.tentativas = []
+      for (const opt of tries) {
+        try { await prep.sendToChat(chat, opt); sent = true; break } catch (e) { lastErr = e; dbg.tentativas.push(String(e && e.message || e).slice(0, 90)) }
+      }
+      if (!sent) throw lastErr
       return { ok: true, dbg }
     } catch (e) {
       dbg.excecao = String(e && e.stack || e).slice(0, 300)
