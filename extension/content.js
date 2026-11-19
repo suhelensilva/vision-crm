@@ -310,6 +310,7 @@ function render() {
       <div class="vc-logo" title="Vision CRM">${icon("spark", 20)}</div>
       ${rail}
       <div class="vc-grow"></div>
+      <button class="vc-ico" data-act="wait-toggle" title="Painel do dia: clientes esperando resposta">${icon("list", 19)}</button>
       <button class="vc-ico" data-act="web" title="Abrir o painel web">${icon("ext", 19)}</button>
     </aside>
     ${state.open ? `
@@ -1551,6 +1552,7 @@ async function onClick(e) {
     try { await navigator.clipboard.writeText(text); toast("Diagnóstico copiado. Cole aqui no chat.") } catch { window.prompt("Copie este texto e cole no chat:", text) }
     return
   }
+  if (act === "wait-toggle") { waitClosed = !waitClosed; renderWaiting(); return }
   if (act === "web") { if (state.apiUrl) window.open(state.apiUrl + "/dashboard/funil", "_blank"); return }
   if (act === "toggle-lists") { const m = document.getElementById("vc-listmenu"); if (m) m.hidden = !m.hidden; return }
   if (act === "add-contact") { await ensureContact(); return refresh(true) }
