@@ -293,6 +293,7 @@ function render() {
   const rail = TABS.map(
     (t, i) =>
       `<button class="vc-ico ${state.open && state.tab === t.id ? "on" : ""}" data-tab="${t.id}" title="${t.label}">${icon(t.icon, 19)}${t.id === "lembretes" && openReminders ? `<b class="vc-badge-n">${openReminders}</b>` : ""}</button>` +
+      (i === 0 ? '<button class="vc-ico" data-act="wait-toggle" title="Painel do dia: clientes esperando resposta">${icon("list", 19)}</button>' : "") +
       (i === 3 ? '<div class="vc-sep"></div>' : "")
   ).join("")
 
@@ -310,7 +311,6 @@ function render() {
       <div class="vc-logo" title="Vision CRM">${icon("spark", 20)}</div>
       ${rail}
       <div class="vc-grow"></div>
-      <button class="vc-ico" data-act="wait-toggle" title="Painel do dia: clientes esperando resposta">${icon("list", 19)}</button>
       <button class="vc-ico" data-act="web" title="Abrir o painel web">${icon("ext", 19)}</button>
     </aside>
     ${state.open ? `
