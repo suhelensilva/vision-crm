@@ -653,6 +653,12 @@
     return null
   }
 
+  // objeto que aceita qualquer chamada e não faz nada (pra funções internas que exigem um "medidor")
+  const noopMeter = new Proxy(function () {}, {
+    get: (_t, k) => (k === "then" || k === Symbol.toPrimitive ? undefined : noopMeter),
+    apply: () => noopMeter,
+  })
+
   async function msgMedia(arg) {
     const dbg = { versao: "media1" }
     try {
@@ -684,6 +690,9 @@
               directPath: pick("directPath"), encFilehash: pick("encFilehash"), filehash: pick("filehash"),
               mediaKey: pick("mediaKey"), mediaKeyTimestamp: pick("mediaKeyTimestamp"), type: String(m.type || ""),
               signal: new AbortController().signal,
+              // o WhatsApp registra o tempo do download num "medidor" interno; um medidor que não faz nada resolve
+              downloadQpl: noopMeter, qpl: noopMeter, logger: noopMeter, perfLogger: noopMeter,
+              isUserInitiated: true, rmrReason: 1,
             })
             if (buf) blob = new Blob([buf], { type: String(m.mimetype || m.__x_mimetype || "application/octet-stream") })
           } catch (e) { dbg.erroGerente = String(e && e.message || e).slice(0, 100) }
