@@ -1597,12 +1597,17 @@ function hideMsgSoon() {
 }
 
 /** O botão de reagir (emoji) que o WhatsApp mostra ao passar o mouse numa mensagem, se existir. */
-function findReactButton(box) {
+function findReactButton(box, out) {
   try {
-    for (const sel of ['[aria-label*="eagir"]', '[aria-label*="eact"]', '[data-testid*="react"]', '[data-icon*="react"]', '[data-icon="emoji-react"]']) {
-      const el = box.querySelector(sel)
-      if (el) return el.closest("button, [role='button']") || el
+    const found = new Set()
+    for (const sel of ['[aria-label*="eagir"]', '[aria-label*="eact"]', '[data-testid*="react"]', '[data-icon*="react"]']) {
+      for (const el of box.querySelectorAll(sel)) found.add(el.closest("button, [role='button']") || el)
     }
+    const list = [...found].filter((el) => { const r = el.getBoundingClientRect(); return r.width > 0 && r.height > 0 })
+    if (!list.length) return null
+    // o emoji fica do lado de fora do balão: o mais à esquerda nas suas mensagens, o mais à direita nas da cliente
+    list.sort((a, b) => a.getBoundingClientRect().left - b.getBoundingClientRect().left)
+    return out ? list[0] : list[list.length - 1]
   } catch {}
   return null
 }
@@ -1645,7 +1650,7 @@ function onMsgHoverInner(e) {
   msgHover = { id: row.getAttribute ? row.getAttribute("data-id") || "" : "", text: messageText(bubbleEl), row }
   b.style.display = "grid"
   // do lado do emoji de reagir (que o WhatsApp mostra ao passar o mouse); sem ele, do lado do balão
-  const react = findReactButton(row)
+  const react = findReactButton(bubbleEl, out)
   const rr = react ? react.getBoundingClientRect() : null
   let left, top
   if (rr && rr.width) {
@@ -1680,7 +1685,8 @@ async function onMsgButtonClick() {
   const med = await askBridge("msgmedia", 40000, { id })
   if (!med || !med.ok) {
     try { await navigator.clipboard.writeText(JSON.stringify(med, null, 1)) } catch {}
-    return toast((med && med.erro) || "Não consegui pegar o arquivo.", 8000)
+    const dd = med && med.dbg ? med.dbg : {}
+    return toast(((med && med.erro) || "Não consegui pegar o arquivo.") + " [" + ["jaCarregada=" + dd.jaCarregada, dd.erroDownload, "gerente=" + dd.temGerenteDownload, dd.erroGerente, "props=" + JSON.stringify(dd.props || {}), dd.excecao].filter(Boolean).join(" | ") + "]", 20000)
   }
   try {
     const bin = atob(med.base64)

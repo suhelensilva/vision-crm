@@ -488,3 +488,6 @@ html.vcrm-on #app { width: calc(100vw - var(--vcrm-pad, 44px)) !important; max-w
 #vcrm-msgbtn:hover { background: #2a2b2b; color: #e9edef; }
 
 #vcrm-msgbtn svg { width: 14px; height: 14px; }
+
+#vcrm-msgbtn { color: var(--vcrm-btn); }
+#vcrm-msgbtn:hover { color: var(--vcrm-btn); background: #2a2b2b; }

@@ -668,6 +668,10 @@
         const DM = req("WAWebDownloadManager")
         const mgr = DM && (DM.downloadManager || DM.default || DM)
         dbg.temGerenteDownload = !!(mgr && typeof mgr.downloadAndMaybeDecrypt === "function")
+        const pk = (k) => (m[k] !== undefined ? m[k] : m["__x_" + k])
+        dbg.props = {}
+        for (const k of ["directPath", "encFilehash", "filehash", "mediaKey", "mediaKeyTimestamp", "clientUrl", "deprecatedMms3Url"]) dbg.props[k] = pk(k) ? 1 : 0
+        dbg.tipoMsg = String(m.type || "")
         if (mgr && typeof mgr.downloadAndMaybeDecrypt === "function") {
           try {
             const pick = (k) => (m[k] !== undefined ? m[k] : m["__x_" + k])
