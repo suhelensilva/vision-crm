@@ -36,6 +36,7 @@ const state = {
 
 // ── Utilidades ───────────────────────────────────────────────────────────────
 
+let seq = 0 // numera as leituras da conversa (fica no topo: nada pode usar antes de existir)
 const esc = (s) =>
   String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]))
 const brl = (n) => (n || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
@@ -1750,7 +1751,6 @@ async function loadShared() {
   if (me.ok && me.data) state.myName = me.data.name || ""
 }
 
-let seq = 0
 async function refresh(force) {
   const hasChat = !!document.querySelector("#main")
   const found = hasChat ? await resolveChat() : { phone: null, name: null }
