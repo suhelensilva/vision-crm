@@ -426,54 +426,30 @@
       if (!mods.MediaPrep || !mods.OpaqueData) return { ok: false, erro: "Não achei as peças de envio de áudio neste WhatsApp.", dbg }
       dbg.etapa = "opaque"
       const od = await mods.OpaqueData.createFromData(blob, blob.type)
+      const wave = await makeWaveform(blob, dbg)
+      dbg.ondas = !!wave
+      try { dbg.fontePrep = String(mods.MediaPrep.prepRawMedia).slice(0, 420) } catch {}
       dbg.etapa = "prep"
-      const prep = mods.MediaPrep.prepRawMedia(od, { isPtt: true })
+      const prep = mods.MediaPrep.prepRawMedia(od, wave ? { isPtt: true, waveform: wave } : { isPtt: true })
       dbg.etapa = "espera"
       const media = await prep.waitForPrep()
       dbg.tipoAntes = media && media.type
       try { if (media) media.type = "ptt" } catch {}
       try { if (media) media.isPtt = true } catch {}
-      let wave = null
-      try {
-        const WU = req("WAWebWaveformUtils")
-        if (WU && typeof WU.computeWaveform === "function") {
-          dbg.fonteOnda = String(WU.computeWaveform).slice(0, 380)
-          const Ctx = window.AudioContext || window.webkitAudioContext
-          const ctx = new Ctx()
-          const ab = await blob.arrayBuffer()
-          const audioBuf = await ctx.decodeAudioData(ab.slice(0))
-          try { ctx.close() } catch {}
-          for (const [nome, arg] of [["audioBuffer", audioBuf], ["blob", blob], ["arrayBuffer", ab]]) {
-            try {
-              let r = WU.computeWaveform(arg)
-              if (r && typeof r.then === "function") r = await r
-              if (r && (r.length || r.byteLength)) { wave = r; dbg.ondaWA = nome + ":" + (r.length || r.byteLength); break }
-            } catch (e) { (dbg.errosOndaWA = dbg.errosOndaWA || []).push(nome + ": " + String(e && e.message || e).slice(0, 60)) }
-          }
-        }
-      } catch (e) { dbg.erroWU = String(e).slice(0, 80) }
-      if (!wave) wave = await makeWaveform(blob, dbg)
       if (wave) {
         for (const o of [media, prep && prep._mediaData]) {
           if (!o) continue
           for (const k of ["waveform", "__x_waveform"]) { try { o[k] = wave } catch {} }
           try { if (typeof o.set === "function") o.set({ waveform: wave }) } catch {}
         }
-        dbg.ondas = true
       }
-      try {
-        const rx = /wave|ondas|bars|sidecar/i
-        dbg.chavesMedia = Object.keys(media || {}).filter((k) => rx.test(k)).slice(0, 25)
-        dbg.chavesPrep = Object.keys(prep || {}).slice(0, 25)
-        dbg.chavesMediaDados = Object.keys((prep && prep._mediaData) || {}).filter((k) => rx.test(k)).slice(0, 25)
-        dbg.waveAntes = media && media.waveform ? "ja-tinha" : "vazio"
-      } catch {}
       dbg.etapa = "envio"
       try { dbg.fonteEnvio = String(prep.sendToChat).slice(0, 700) } catch {}
+      const wopt = wave ? { waveform: wave } : {}
       const tries = [
-        { chat, options: {} },
-        { chat, options: {}, earlyUpload: null },
-        { chat, options: { caption: "", isCaptionByUser: false }, earlyUpload: false },
+        { chat, options: { ...wopt } },
+        { chat, options: { ...wopt }, earlyUpload: null },
+        { chat, options: { ...wopt, caption: "", isCaptionByUser: false }, earlyUpload: false },
       ]
       let lastErr = null
       let sent = false
