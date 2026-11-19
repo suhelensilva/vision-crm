@@ -426,8 +426,29 @@
       if (!mods.MediaPrep || !mods.OpaqueData) return { ok: false, erro: "Não achei as peças de envio de áudio neste WhatsApp.", dbg }
       dbg.etapa = "opaque"
       const od = await mods.OpaqueData.createFromData(blob, blob.type)
-      const wave = await makeWaveform(blob, dbg)
+      let wave = await makeWaveform(blob, dbg)
       dbg.ondas = !!wave
+      // o que a função de ondas do próprio WhatsApp devolve (só pra eu entender o formato)
+      try {
+        const WU = req("WAWebWaveformUtils")
+        if (WU && typeof WU.computeWaveform === "function") {
+          const Ctx = window.AudioContext || window.webkitAudioContext
+          const ctx = new Ctx()
+          const ab = await blob.arrayBuffer()
+          const audioBuf = await ctx.decodeAudioData(ab.slice(0))
+          try { ctx.close() } catch {}
+          dbg.ondaWA = []
+          for (const [nome, a1] of [["audioBuffer", audioBuf], ["arrayBuffer", ab], ["blob", blob], ["float32", audioBuf.getChannelData(0)]]) {
+            try {
+              let r = WU.computeWaveform(a1)
+              if (r && typeof r.then === "function") r = await r
+              const ks = r && typeof r === "object" ? Object.keys(r).slice(0, 6).join("/") : ""
+              dbg.ondaWA.push(nome + "=" + typeof r + (r && r.constructor ? "(" + r.constructor.name + ")" : "") + (r && (r.length || r.byteLength) ? "[" + (r.length || r.byteLength) + "]" : "") + (ks ? "{" + ks + "}" : ""))
+              if (r && (r.length >= 64 || r.byteLength >= 64) && r.length <= 192) { wave = new Uint8Array(r); dbg.usouOndaWA = nome; break }
+            } catch (e) { dbg.ondaWA.push(nome + "!" + String(e && e.message || e).slice(0, 40)) }
+          }
+        }
+      } catch (e) { dbg.erroWU = String(e).slice(0, 60) }
       try {
         const src = String(mods.MediaPrep.prepRawMedia)
         const k = src.search(/wave/i)
