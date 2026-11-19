@@ -958,6 +958,20 @@ function modalOpen() {
   } catch { return false }
 }
 
+function waBubbleColor() {
+  try {
+    const bubbles = document.querySelectorAll("#main .message-in")
+    for (const b of [...bubbles].slice(-4)) {
+      for (const n of [b, ...b.querySelectorAll("div")].slice(0, 12)) {
+        const col = getComputedStyle(n).backgroundColor
+        const m = /rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/.exec(col)
+        if (m && (m[4] === undefined || Number(m[4]) > 0.9)) return col
+      }
+    }
+  } catch {}
+  return ""
+}
+
 function ensureSide() {
   const main = document.querySelector("#main")
   let el = document.getElementById(SIDE_ID)
@@ -990,6 +1004,9 @@ function ensureSide() {
   const html = `<button class="vs-top" data-collapse="1" title="${sideCollapsed ? "Expandir" : "Recolher"}">${icon("chevron", 12)}</button>` +
     (items.map((i) => `<button data-go="${i.go}" title="${i.label}">${icon(i.icon, 18)}${i.badge ? `<b>${i.badge}</b>` : ""}<span>${i.label}</span></button>`).join(""))
   if (el.dataset.sig !== html) { el.innerHTML = html; el.dataset.sig = html }
+  // mesma cor do balão de mensagem recebida do WhatsApp (pra parecer parte dele)
+  const bg = waBubbleColor()
+  if (bg && el.dataset.bg !== bg) { el.style.background = bg; el.dataset.bg = bg }
   el.classList.toggle("vs-min", sideCollapsed)
   const r = main.getBoundingClientRect()
   el.style.left = Math.round(r.left + 6) + "px"

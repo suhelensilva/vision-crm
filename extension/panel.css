@@ -164,7 +164,7 @@ html.vcrm-on body { padding-right: var(--vcrm-pad, 56px) !important; background:
 /* ── Barrinha lateral ao lado da conversa ── */
 #vcrm-side {
   position: fixed; z-index: 2147482990; display: flex; flex-direction: column; gap: 2px; padding: 4px;
-  background: #141515; border: 1px solid #9a9b9b; border-radius: 14px;
+  background: #202c33; border: 1px solid #9a9b9b; border-radius: 14px;
   box-shadow: none;
 }
 #vcrm-side button {
@@ -237,10 +237,10 @@ html.vcrm-on body { padding-right: var(--vcrm-pad, 56px) !important; background:
 .vc-quick { display: flex; gap: 6px; }
 
 /* O aviso fica à direita, ao lado do painel do Hotzapp (não cobre a lista de conversas) */
-#vcrm-wait { left: auto; right: calc(var(--vcrm-pad, 56px) + 372px); }
 
 /* Mesmo lugar do aviso do Hotzapp: encostado na coluna de ícones, acima do campo de mensagem */
-#vcrm-wait { left: auto; right: calc(var(--vcrm-pad, 56px) + 4px); bottom: 130px; max-height: calc(100vh - 170px); overflow-y: auto; }
+/* Fica do lado da coluna de ícones do WhatsApp (esquerda), longe do campo de mensagem */
+#vcrm-wait { left: 76px; right: auto; bottom: 20px; top: auto; max-height: calc(100vh - 60px); overflow-y: auto; }
 
 /* ── Botões no cabeçalho do chat: agendar, encerrar, funil ── */
 #vcrm-hdr { position: fixed; z-index: 2147482990; display: flex; align-items: center; gap: 8px; height: 34px; font-family: "Segoe UI", system-ui, sans-serif; }
