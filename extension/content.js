@@ -1616,10 +1616,19 @@ function onMsgHoverInner(e) {
   const t = e.target
   if (t.closest && t.closest(`#${MSG_BTN_ID}, #${MSG_MENU_ID}`)) { clearTimeout(msgHideTimer); return }
   const main = document.querySelector("#main")
-  const bubbleEl = t.closest && t.closest('[class*="message-out"], [class*="message-in"]')
-  if (!bubbleEl || !main || !main.contains(bubbleEl)) return hideMsgSoon()
+  // o WhatsApp muda os nomes das classes de tempos em tempos: tenta pela classe, depois pelo data-id, depois pela linha
+  const bubbleEl = t.closest && (t.closest('[class*="message-out"], [class*="message-in"]') || t.closest("[data-id]") || t.closest('[role="row"]'))
+  if (!bubbleEl || !main || !main.contains(bubbleEl) || bubbleEl.closest("header, footer, #pane-side")) return hideMsgSoon()
+  if (!messageText(bubbleEl) && !bubbleEl.querySelector("img, video, audio, canvas, [data-icon]")) return hideMsgSoon() // linha vazia / separador de dia
   const row = bubbleEl.closest("[data-id]") || bubbleEl.querySelector("[data-id]") || bubbleEl
-  const out = /message-out/.test(bubbleEl.className || "")
+  const dataId = (row.getAttribute && row.getAttribute("data-id")) || ""
+  const mr = main.getBoundingClientRect()
+  const cls = String(bubbleEl.className || "")
+  const out = /message-out/.test(cls) ? true : /message-in/.test(cls) ? false : /^true_/.test(dataId) ? true : /^false_/.test(dataId) ? false : (() => {
+    const inner = bubbleEl.querySelector(TEXT_SEL) || bubbleEl
+    const ir = inner.getBoundingClientRect()
+    return ir.left + ir.width / 2 > mr.left + mr.width / 2
+  })()
   clearTimeout(msgHideTimer)
   const bubble = bubbleEl
   const br = bubble.getBoundingClientRect()
