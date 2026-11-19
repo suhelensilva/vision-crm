@@ -1413,7 +1413,7 @@ function onComposerInput(e) {
     for (let i = 0; i < q.length + 1; i++) document.execCommand("delete") // apaga ";atalho"
     useReply(r)
   })
-  const footer = document.querySelector("#main footer")
+  const footer = composerFooter()
   ;(footer ? footer.parentNode : document.body).insertBefore(pop, footer || null)
 }
 
