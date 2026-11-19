@@ -240,7 +240,7 @@ html.vcrm-on body { padding-right: var(--vcrm-pad, 56px) !important; background:
 
 /* Mesmo lugar do aviso do Hotzapp: encostado na coluna de ícones, acima do campo de mensagem */
 /* Fica do lado da coluna de ícones do WhatsApp (esquerda), longe do campo de mensagem */
-#vcrm-wait { left: 76px; right: auto; top: 16px; bottom: auto; max-height: calc(100vh - 40px); overflow-y: auto; }
+#vcrm-wait { left: auto; right: calc(var(--vcrm-pad, 44px) + 12px); top: 76px; bottom: auto; max-height: calc(100vh - 110px); overflow-y: auto; }
 
 /* ── Botões no cabeçalho do chat: agendar, encerrar, funil ── */
 #vcrm-hdr { position: fixed; z-index: 2147482990; display: flex; align-items: center; gap: 8px; height: 34px; font-family: "Segoe UI", system-ui, sans-serif; }
@@ -470,3 +470,6 @@ html.vcrm-on body { padding-right: var(--vcrm-pad, 44px) !important; }
 #vcrm-ed .ed-ghost { padding: 9px 16px; font-size: 13px; font-weight: 600; cursor: pointer; color: #e9edef; background: transparent; border: 1px solid rgba(154, 155, 155, 0.45); border-radius: 10px; }
 #vcrm-ed .ed-save { padding: 9px 22px; font-size: 13px; font-weight: 600; cursor: pointer; color: #fff; background: var(--vcrm-btn); border: 0; border-radius: 10px; }
 #vcrm-ed .ed-save:disabled { opacity: 0.45; cursor: not-allowed; }
+
+/* O WhatsApp encolhe pra caber ao lado da nossa coluna: nada dele fica escondido (botão de enviar, gravar áudio) */
+html.vcrm-on #app { width: calc(100vw - var(--vcrm-pad, 44px)) !important; max-width: calc(100vw - var(--vcrm-pad, 44px)) !important; }
