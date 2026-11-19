@@ -25,7 +25,7 @@ html.vcrm-on body { padding-right: var(--vcrm-pad, 56px) !important; background:
 /* ── Coluna de ícones ── */
 .vc-rail {
   position: fixed; top: 0; right: 0; bottom: 0; width: 56px; z-index: 2147483000;
-  display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 10px 0;
+  background: #141515;
   background: linear-gradient(180deg, #0c2150, #060f2a);
   border-left: 1px solid var(--line);
   box-shadow: none;
