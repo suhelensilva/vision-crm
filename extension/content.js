@@ -770,7 +770,7 @@ async function onReplyAction(act, id, btn) {
   }
   if (act.startsWith("type-")) { syncReplyForm(); rp.form.type = act.slice(5); return render() }
   if (!r) return
-  if (act === "send") return useReply(r)
+  if (act === "send") { state.open = false; render(); return useReply(r) } // fecha o painel pra você ver o que o WhatsApp está fazendo
   if (act === "fav") {
     r.favorite = !r.favorite
     render()
