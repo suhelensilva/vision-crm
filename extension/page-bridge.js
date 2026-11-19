@@ -383,6 +383,31 @@
     return found
   }
 
+  // As "ondinhas" da mensagem de voz: 64 barras entre 0 e 100, tiradas do próprio áudio
+  async function makeWaveform(blob, dbg) {
+    try {
+      const Ctx = window.AudioContext || window.webkitAudioContext
+      const ctx = new Ctx()
+      const buf = await ctx.decodeAudioData(await blob.arrayBuffer())
+      try { ctx.close() } catch {}
+      const data = buf.getChannelData(0)
+      const bars = 64
+      const size = Math.max(1, Math.floor(data.length / bars))
+      const raw = new Array(bars).fill(0)
+      for (let i = 0; i < bars; i++) {
+        let sum = 0
+        const start = i * size
+        for (let j = 0; j < size; j++) sum += Math.abs(data[start + j] || 0)
+        raw[i] = sum / size
+      }
+      const max = Math.max(...raw) || 1
+      const out = new Uint8Array(bars)
+      for (let i = 0; i < bars; i++) out[i] = Math.max(2, Math.min(100, Math.round((raw[i] / max) * 100)))
+      dbg.segundos = Math.round(buf.duration)
+      return out
+    } catch (e) { dbg.erroOndas = String(e).slice(0, 80); return null }
+  }
+
   async function sendPtt(arg) {
     const dbg = { versao: "ptt1" }
     try {
@@ -405,6 +430,11 @@
       dbg.tipoAntes = media && media.type
       try { if (media) media.type = "ptt" } catch {}
       try { if (media) media.isPtt = true } catch {}
+      const wave = await makeWaveform(blob, dbg)
+      if (wave) {
+        for (const o of [media, prep && prep._mediaData]) { try { if (o) o.waveform = wave } catch {} }
+        dbg.ondas = true
+      }
       dbg.etapa = "envio"
       try { dbg.fonteEnvio = String(prep.sendToChat).slice(0, 700) } catch {}
       const tries = [
