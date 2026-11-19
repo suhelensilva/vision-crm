@@ -780,28 +780,40 @@
       dbg.tiposDiferentes = tipos
       // por dentro dos módulos mais promissores: nomes de fluxo, funções e o começo do código delas
       dbg.detalhe = {}
-      // 4ª rodada: o Pix por CHAVE (e-mail, CPF, CNPJ, telefone): constantes e montagem do pedido
-      dbg.pix4 = {}
-      const dumpAll = (v) => {
+      // 5ª rodada: como montar o pedido com a chave Pix
+      dbg.pix5 = {}
+      const dump2 = (v, depth) => {
         try {
           const o = {}
-          for (const k of Object.getOwnPropertyNames(v).slice(0, 60)) { const x = v[k]; o[k] = typeof x === "function" ? "fn" : (x && typeof x === "object") ? JSON.stringify(x).slice(0, 160) : String(x).slice(0, 80) }
+          for (const k of Object.getOwnPropertyNames(v).slice(0, 40)) {
+            const x = v[k]
+            o[k] = typeof x === "function" ? "fn" : (x && typeof x === "object" && depth > 0) ? dump2(x, depth - 1) : String(x).slice(0, 60)
+          }
           return o
-        } catch { return String(v).slice(0, 100) }
+        } catch { return String(v).slice(0, 80) }
       }
-      const src = (m, k, n) => { try { return String(m[k]).slice(0, n).replace(/\s+/g, " ") } catch { return "" } }
-      for (const n of ["WAWebUprConstants"]) { try { const m = req(n); dbg.pix4[n] = m ? dumpAll(m) : "não carregou" } catch (e) { dbg.pix4[n] = "erro" } }
-      try { const m = req("WAWebUserPrefsTypes"); const t = m && (m.PixKeyType || (m.default && m.default.PixKeyType)); dbg.pix4.PixKeyType = t ? dumpAll(t) : "sem PixKeyType" } catch {}
-      for (const n of ["WAWebUprPaymentRequestParams", "WAWebUserPrefsPaymentInfo"]) {
-        try {
-          const m = req(n)
-          if (!m) { dbg.pix4[n] = "não carregou"; continue }
-          const o = { chaves: Object.keys(m).slice(0, 16) }
-          for (const k of o.chaves.slice(0, 8)) if (typeof m[k] === "function") o[k] = src(m, k, 700)
-          dbg.pix4[n] = o
-        } catch (e) { dbg.pix4[n] = "erro " + String(e).slice(0, 60) }
+      const srcOf = (m, k, n) => { try { return String(m[k]).slice(0, n).replace(/\s+/g, " ") } catch { return "" } }
+      try { const m = req("WAWebUprConstants"); dbg.pix5.constantes = {}; for (const k of ["UprPaymentSettingType", "UprPaymentAccountType", "UprIdentifierType", "UprWireFields"]) dbg.pix5.constantes[k] = m && m[k] ? dump2(m[k], 1) : "sem " + k } catch (e) { dbg.pix5.constantes = "erro" }
+      try {
+        const B = req("WAWebUprPaymentRequestParams")
+        const tent = {}
+        const formas = [
+          ["a", { identifierType: "EMAIL", identifierValue: "teste@exemplo.com" }],
+          ["b", { accountType: "PIX", identifierType: "EMAIL", identifierValue: "teste@exemplo.com" }],
+          ["c", { type: "EMAIL", value: "teste@exemplo.com" }],
+          ["d", { pixKeyType: "EMAIL", pixKey: "teste@exemplo.com", merchantName: "Teste" }],
+        ]
+        for (const [nome, chave] of formas) {
+          try { tent[nome] = JSON.stringify(B.buildUprPaymentRequestParams({ amount: null, currency: "BRL", offset: 100, paymentKeys: [chave], referenceId: "ref1" })).slice(0, 420) } catch (e) { tent[nome] = "erro: " + String(e && e.message || e).slice(0, 80) }
+        }
+        dbg.pix5.tentativas = tent
+      } catch (e) { dbg.pix5.tentativas = "erro " + String(e).slice(0, 60) }
+      const chaveMods = names.filter((n) => /PaymentKey|PixKey|SavedPix|PaymentAccount|OrderDetails|SendOrder|CreateOrder/i.test(n)).slice(0, 40)
+      dbg.pix5.modulos = chaveMods
+      dbg.pix5.formas = {}
+      for (const n of chaveMods.slice(0, 22)) {
+        try { const m = req(n); if (m) { const o = { chaves: Object.keys(m).slice(0, 10) }; for (const k of o.chaves.slice(0, 3)) if (typeof m[k] === "function") o[k] = srcOf(m, k, 260); dbg.pix5.formas[n] = o } } catch {}
       }
-      dbg.pix4.modulosUpr = names.filter((n) => /Upr|PaymentAccount|OrderDetails|PixKey/i.test(n)).slice(0, 40)
     } catch (e) { dbg.erro = String(e).slice(0, 100) }
     return { dbg }
   }
