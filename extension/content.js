@@ -1597,6 +1597,20 @@ function hideMsgSoon() {
 }
 
 /** O botão de reagir (emoji) que o WhatsApp mostra ao passar o mouse numa mensagem, se existir. */
+/** O retângulo do balão colorido da mensagem (e não da linha inteira, que ocupa a largura toda). */
+function visibleBubbleRect(el) {
+  try {
+    for (const n of [el, ...el.querySelectorAll("div")].slice(0, 40)) {
+      const cs = getComputedStyle(n)
+      const m = /rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/.exec(cs.backgroundColor)
+      if (!m || (m[4] !== undefined && Number(m[4]) < 0.9)) continue
+      const r = n.getBoundingClientRect()
+      if (r.width > 40 && r.height > 20) return r
+    }
+  } catch {}
+  return null
+}
+
 function findReactButton(box, out) {
   try {
     const found = new Set()
@@ -1649,20 +1663,22 @@ function onMsgHoverInner(e) {
   }
   msgHover = { id: row.getAttribute ? row.getAttribute("data-id") || "" : "", text: messageText(bubbleEl), row }
   b.style.display = "grid"
-  // do lado do emoji de reagir (que o WhatsApp mostra ao passar o mouse); sem ele, do lado do balão
+  // do lado do emoji de reagir (que o WhatsApp mostra ao passar o mouse). O emoji fica FORA do balão:
+  // se o que achei está dentro do balão, não é ele, e a gente calcula o lugar pelo balão mesmo.
+  const bub = visibleBubbleRect(bubbleEl) || br
   const react = findReactButton(bubbleEl, out)
-  const rr = react ? react.getBoundingClientRect() : null
+  let rr = react ? react.getBoundingClientRect() : null
+  if (rr && (!rr.width || (out ? rr.right > bub.left + 4 : rr.left < bub.right - 4))) rr = null
+  const sz = rr ? Math.max(20, Math.min(30, Math.round(Math.min(rr.width, rr.height) || 24))) : 24
+  b.style.width = b.style.height = sz + "px"
   let left, top
-  if (rr && rr.width) {
-    // o emoji fica do lado de fora do balão: à esquerda nas suas mensagens, à direita nas da cliente
-    const sz = Math.max(20, Math.min(30, Math.round(Math.min(rr.width, rr.height) || 24)))
-    b.style.width = b.style.height = sz + "px"
+  if (rr) {
     left = out ? rr.left - sz - 6 : rr.right + 6
     top = rr.top + rr.height / 2 - sz / 2
   } else {
-    b.style.width = b.style.height = "24px"
-    left = out ? br.left - 34 : br.right + 10
-    top = br.top + Math.min(br.height / 2, 30) - 12
+    // emoji do WhatsApp: ~28 px de largura mais um espacinho
+    left = out ? bub.left - 6 - 28 - 6 - sz : bub.right + 6 + 28 + 6
+    top = bub.top + Math.min(bub.height / 2, 24) - sz / 2
   }
   b.style.left = Math.max(8, Math.round(left)) + "px"
   b.style.top = Math.round(top) + "px"
