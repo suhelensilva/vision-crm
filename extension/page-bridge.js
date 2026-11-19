@@ -428,7 +428,11 @@
       const od = await mods.OpaqueData.createFromData(blob, blob.type)
       const wave = await makeWaveform(blob, dbg)
       dbg.ondas = !!wave
-      try { dbg.fontePrep = String(mods.MediaPrep.prepRawMedia).slice(0, 420) } catch {}
+      try {
+        const src = String(mods.MediaPrep.prepRawMedia)
+        const k = src.search(/wave/i)
+        dbg.fontePrep = k >= 0 ? "ACHEI wave: " + src.slice(Math.max(0, k - 160), k + 260) : "sem wave no prepRawMedia (" + src.length + " letras): " + src.slice(src.length - 260)
+      } catch {}
       dbg.etapa = "prep"
       const prep = mods.MediaPrep.prepRawMedia(od, wave ? { isPtt: true, waveform: wave } : { isPtt: true })
       dbg.etapa = "espera"
