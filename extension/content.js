@@ -826,6 +826,37 @@ function replyPreview(r) {
 }
 
 /** Usa uma resposta: texto vai pro campo; anexos ainda são feitos pelo painel web. */
+/**
+ * Mostra pra cliente "digitando…" ou "gravando áudio…" durante `ms` milissegundos
+ * (o WhatsApp esquece o aviso depois de uns segundos, então a gente repete).
+ */
+async function simulateState(state, ms) {
+  if (!prefs.simulate || ms <= 0) return
+  const end = Date.now() + ms
+  let failed = false
+  while (Date.now() < end && !failed) {
+    const r = await askBridge("chatstate", 4000, { state })
+    if (!r || !r.ok) { failed = true; break }
+    await new Promise((res) => setTimeout(res, Math.min(4000, Math.max(0, end - Date.now()))))
+  }
+  await askBridge("chatstate", 3000, { state: "paused" })
+}
+
+const typingMsFor = (text) => Math.max(5000, Math.min(10000, String(text || "").length * 70))
+
+function audioSeconds(file) {
+  return new Promise((resolve) => {
+    try {
+      const url = URL.createObjectURL(file)
+      const a = new Audio()
+      a.preload = "metadata"
+      a.onloadedmetadata = () => { URL.revokeObjectURL(url); resolve(isFinite(a.duration) ? a.duration : 0) }
+      a.onerror = () => { URL.revokeObjectURL(url); resolve(0) }
+      a.src = url
+    } catch { resolve(0) }
+  })
+}
+
 async function useReply(r) {
   if (r.type === "TEXT" || r.type === "CONTACT") {
     const text = r.type === "TEXT" ? renderVariables(r.text || "") : `${r.contactName || ""}: ${r.contactPhone || ""}`.trim()
@@ -833,6 +864,7 @@ async function useReply(r) {
     api("POST", `/api/crm/quick-replies/${r.id}/use`)
     // "Mensagem sai direto": igual ao Hotzapp, clicar na resposta já envia
     if (prefs.sendDirect) {
+      await simulateState("typing", typingMsFor(text))
       await new Promise((res) => setTimeout(res, 150))
       await clickSend(1500)
     }
@@ -874,6 +906,9 @@ async function attachFile(r) {
 
   // Áudio "como gravado na hora": manda como mensagem de voz, direto pelo WhatsApp
   if (r.type === "AUDIO" && r.asVoiceNote) {
+    // a cliente vê "gravando áudio…" pelo tempo do áudio (no máximo 30 segundos)
+    const secs = await audioSeconds(file)
+    await simulateState("recording", Math.min(30, Math.round(secs)) * 1000)
     toast("Enviando como mensagem de voz…")
     const v = await askBridge("sendptt", 30000, { base64: res.base64, mime: r.mediaMime || res.mime || "audio/ogg" })
     if (v && v.ok) { api("POST", `/api/crm/quick-replies/${r.id}/use`); toast("Enviado como mensagem de voz."); return }
@@ -1277,7 +1312,7 @@ function endConversation() {
 const BAR_ICON = { TEXT: "text", CONTACT: "user", AUDIO: "mic", IMAGE: "image", VIDEO: "film", DOCUMENT: "file" }
 
 // ── Preferências da barra (como a engrenagem do Hotzapp) ──
-const prefs = { sendDirect: true, chipStyle: "icon", barMin: false, barCat: null, compact: false, collapsed: {} }
+const prefs = { simulate: true, sendDirect: true, chipStyle: "icon", barMin: false, barCat: null, compact: false, collapsed: {} }
 
 function savePrefs() {
   try { chrome.storage.local.set({ vcrmPrefs: prefs }).catch(() => {}) } catch {}
@@ -1381,6 +1416,7 @@ function openBarMenu(anchor) {
     ${cats.map((c) => `<button data-cat="${esc(c)}" class="${prefs.barCat === c ? "on" : ""}"><i style="background:hsl(${catHue(c)} 60% 55%)"></i>${esc(c)}</button>`).join("")}
     <div class="vm-sep"></div>
     <label class="vm-toggle"><input type="checkbox" data-pref="sendDirect" ${prefs.sendDirect ? "checked" : ""}/> <span>Mensagem sai direto</span></label>
+    <label class="vm-toggle"><input type="checkbox" data-pref="simulate" ${prefs.simulate ? "checked" : ""}/> <span>Mostrar "digitando…" e "gravando…"</span></label>
     <div class="vm-seg"><button data-style="icon" class="${prefs.chipStyle === "icon" ? "on" : ""}">Ícone</button><button data-style="color" class="${prefs.chipStyle === "color" ? "on" : ""}">Colorido</button></div>`
   m.addEventListener("mousedown", (e) => { if (e.target.tagName !== "INPUT") e.preventDefault() })
   m.addEventListener("click", (e) => {
@@ -1390,6 +1426,7 @@ function openBarMenu(anchor) {
   })
   m.addEventListener("change", (e) => {
     if (e.target.matches("[data-pref='sendDirect']")) { prefs.sendDirect = e.target.checked; savePrefs() }
+    if (e.target.matches("[data-pref='simulate']")) { prefs.simulate = e.target.checked; savePrefs() }
   })
   document.body.appendChild(m)
   const r = anchor.getBoundingClientRect()

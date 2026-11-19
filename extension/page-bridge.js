@@ -542,6 +542,41 @@
     }
   }
 
+  // ── "digitando…" / "gravando áudio…" que a outra pessoa vê ──
+  function chatStateFns(dbg) {
+    let names = []
+    try { const d = req("__debug"); if (d && d.modulesMap) names = Object.keys(d.modulesMap) } catch {}
+    const cand = names.filter((n) => /ChatState|Presence/i.test(n))
+    dbg.candidatosEstado = cand.slice(0, 20)
+    const fns = {}
+    for (const n of cand) {
+      const m = req(n)
+      if (!m) continue
+      for (const x of [m, m.default].filter(Boolean)) {
+        for (const k of ["sendChatStateComposing", "sendChatStateRecording", "sendChatStatePaused"]) {
+          if (!fns[k] && typeof x[k] === "function") { fns[k] = x[k]; dbg["em_" + k] = n }
+        }
+      }
+    }
+    return fns
+  }
+
+  async function chatState(arg) {
+    const dbg = { versao: "estado1" }
+    try {
+      const chat = findActiveChat(dbg)
+      if (!chat) return { ok: false, erro: "Abra uma conversa primeiro.", dbg }
+      const fns = chatStateFns(dbg)
+      const fn = arg.state === "recording" ? fns.sendChatStateRecording : arg.state === "paused" ? fns.sendChatStatePaused : fns.sendChatStateComposing
+      if (!fn) { dbg.temFuncoes = Object.keys(fns); return { ok: false, erro: "Não achei o recurso de digitando/gravando neste WhatsApp.", dbg } }
+      await fn(chat.id)
+      return { ok: true, dbg }
+    } catch (e) {
+      dbg.excecao = String(e && e.message || e).slice(0, 160)
+      return { ok: false, erro: "O WhatsApp recusou.", dbg }
+    }
+  }
+
   document.addEventListener("vcrm-req", (ev) => {
     let id = ev.detail
     let kind = "chat"
@@ -549,6 +584,7 @@
     try { const d = JSON.parse(ev.detail); if (d && typeof d === "object") { id = d.id; kind = d.kind || "chat"; arg = d.arg } } catch {}
     const reply = (out) => document.dispatchEvent(new CustomEvent("vcrm-res", { detail: JSON.stringify({ id, ...out }) }))
     if (kind === "sendptt") { sendPtt(arg || {}).then(reply); return }
+    if (kind === "chatstate") { chatState(arg || {}).then(reply); return }
     const out =
       kind === "scan" ? scan()
       : kind === "waiting" ? waiting((arg && arg.minMinutes) || 60, (arg && arg.maxHours) || 72)
