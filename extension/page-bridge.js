@@ -221,8 +221,13 @@
         const mins = Math.floor((now - t) / 60000)
         if (mins < minMinutes || mins > maxHours * 60) continue
         const type = String(last.type || "chat")
+        // só conta mensagem de verdade da cliente: avisos do sistema, criptografia, chamadas e mensagens vazias ficam de fora
+        if (last.isNotification || last.isSystemMessage || /^(e2e_notification|notification|notification_template|gp2|protocol|ciphertext|call_log|revoked|broadcast_notification|oversized|unknown)$/.test(type)) continue
         let preview = TYPE_LABEL[type] || ""
-        if (!preview) preview = String(last.body || last.caption || "Mensagem").replace(/\s+/g, " ").slice(0, 50)
+        if (!preview) {
+          preview = String(last.body || last.caption || "").replace(/\s+/g, " ").slice(0, 50)
+          if (!preview) continue
+        }
         const pic = picOf(chat, C)
         out.push({
           key: serial(id),
