@@ -1082,7 +1082,7 @@ async function attachFile(r) {
 // ── Barrinha lateral ao lado da conversa (atalhos pras abas) ──────────────────
 
 const SIDE_ID = "vcrm-side"
-let sideCollapsed = false
+// a barrinha começa fechada (só o necessário); a escolha de abrir/fechar fica salva em prefs.sideOpen
 
 /** Tem uma janela (modal) aberta no WhatsApp ou em outra extensão? Então a gente não cobre ela. */
 function modalOpen() {
@@ -1137,7 +1137,7 @@ function ensureSide() {
     el.addEventListener("click", (e) => {
       const b = e.target.closest("button")
       if (!b) return
-      if (b.dataset.collapse) { sideCollapsed = !sideCollapsed; return ensureSide() }
+      if (b.dataset.collapse) { prefs.sideOpen = !prefs.sideOpen; savePrefs(); return ensureSide() }
       if (b.dataset.go === "__pix") return sendMyPix()
       if (b.dataset.go === "__sched" || b.dataset.go === "__funnel") return toggleHdrPop(b.dataset.go === "__sched" ? "sched" : "funnel")
       state.open = true
@@ -1156,11 +1156,11 @@ function ensureSide() {
     { go: "cobrancas", icon: "wallet", label: "Cobrar" },
     { go: "__pix", icon: "pix", label: "Pix" },
   ]
-  const html = `<button class="vs-top" data-collapse="1" title="${sideCollapsed ? "Expandir" : "Recolher"}">${icon("chevron", 12)}</button>` +
+  const html = `<button class="vs-top" data-collapse="1" title="${!prefs.sideOpen ? "Expandir" : "Recolher"}">${icon("chevron", 12)}</button>` +
     (items.map((i) => `<button data-go="${i.go}" title="${i.label}">${icon(i.icon, 18)}${i.badge ? `<b>${i.badge}</b>` : ""}<span>${i.label}</span></button>`).join(""))
   if (el.dataset.sig !== html) { el.innerHTML = html; el.dataset.sig = html }
   // mesma cor do balão de mensagem recebida do WhatsApp (pra parecer parte dele)
-  el.classList.toggle("vs-min", sideCollapsed)
+  el.classList.toggle("vs-min", !prefs.sideOpen)
   const r = main.getBoundingClientRect()
   el.style.left = Math.round(r.left + 6) + "px"
   el.style.top = Math.round(r.top + r.height * 0.42) + "px"
@@ -1490,7 +1490,7 @@ function endConversation() {
 const BAR_ICON = { TEXT: "text", CONTACT: "user", AUDIO: "mic", IMAGE: "image", VIDEO: "film", DOCUMENT: "file" }
 
 // ── Preferências da barra (como a engrenagem do Hotzapp) ──
-const prefs = { extraCats: [], simulate: true, sendDirect: true, chipStyle: "icon", barMin: false, barCat: null, compact: false, collapsed: {} }
+const prefs = { sideOpen: false, extraCats: [], simulate: true, sendDirect: true, chipStyle: "icon", barMin: false, barCat: null, compact: false, collapsed: {} }
 
 function savePrefs() {
   try { chrome.storage.local.set({ vcrmPrefs: prefs }).catch(() => {}) } catch {}
