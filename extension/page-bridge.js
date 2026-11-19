@@ -780,37 +780,28 @@
       dbg.tiposDiferentes = tipos
       // por dentro dos módulos mais promissores: nomes de fluxo, funções e o começo do código delas
       dbg.detalhe = {}
-      // 3ª rodada: nomes das constantes e os campos de um Pix "encaminhável"
-      dbg.pix3 = {}
-      const full = (m, k, n) => { try { return String(m[k]).slice(0, n).replace(/\s+/g, " ") } catch { return "" } }
-      const dump = (v) => { try { return JSON.stringify(v, (kk, vv) => (typeof vv === "function" ? "fn" : vv)).slice(0, 700) } catch { return String(v).slice(0, 200) } }
-      for (const n of ["WAWebInteractiveMessagesNativeFlowName", "WAWebInteractiveMessageType", "WAWebMsgType"]) {
-        try { const m = req(n); dbg.pix3[n] = m ? dump(m.default || m.MSG_TYPE || m) : "não carregou" } catch (e) { dbg.pix3[n] = "erro" }
-      }
-      try { const m = req("WAWebMsgType"); dbg.pix3.MSG_TYPE = dump(m && (m.MSG_TYPE || m.default)) } catch {}
-      for (const [mod, fns] of [["WAWebPaymentRequestForwardingParams", ["getForwardablePixParams"]], ["WAWebSendTextMsgChatAction", ["createTextMsgData", "addAndSendTextMsg"]], ["WAWebSendMsgChatAction", ["addAndSendMsgToChat"]], ["WAWebUprPaymentRequest", ["parseUprPaymentInfo"]], ["WAWebBizAiPaymentRequestWamLogger", ["hasBizAiPixPaymentRequestMarkers", "isBizAiPixPaymentRequest"]]]) {
+      // 4ª rodada: o Pix por CHAVE (e-mail, CPF, CNPJ, telefone): constantes e montagem do pedido
+      dbg.pix4 = {}
+      const dumpAll = (v) => {
         try {
-          const m = req(mod)
-          if (!m) { dbg.pix3[mod] = "não carregou"; continue }
-          const o = { chaves: Object.keys(m).slice(0, 12) }
-          for (const k of fns) o[k] = full(m, k, 1500)
-          dbg.pix3[mod] = o
-        } catch (e) { dbg.pix3[mod] = "erro " + String(e).slice(0, 60) }
+          const o = {}
+          for (const k of Object.getOwnPropertyNames(v).slice(0, 60)) { const x = v[k]; o[k] = typeof x === "function" ? "fn" : (x && typeof x === "object") ? JSON.stringify(x).slice(0, 160) : String(x).slice(0, 80) }
+          return o
+        } catch { return String(v).slice(0, 100) }
       }
-      for (const n of ["WAWebPaymentRequestMsgAction", "WAWebInteractiveMessagesNativeFlowName", "WAWebGenerateNativeFlowButtonsMessageProto", "WAWebBrazilPaymentStateKeys", "WAWebParseMsgPaymentInfo", "WAWebBrAddPixKeyMessageOffer"]) {
+      const src = (m, k, n) => { try { return String(m[k]).slice(0, n).replace(/\s+/g, " ") } catch { return "" } }
+      for (const n of ["WAWebUprConstants"]) { try { const m = req(n); dbg.pix4[n] = m ? dumpAll(m) : "não carregou" } catch (e) { dbg.pix4[n] = "erro" } }
+      try { const m = req("WAWebUserPrefsTypes"); const t = m && (m.PixKeyType || (m.default && m.default.PixKeyType)); dbg.pix4.PixKeyType = t ? dumpAll(t) : "sem PixKeyType" } catch {}
+      for (const n of ["WAWebUprPaymentRequestParams", "WAWebUserPrefsPaymentInfo"]) {
         try {
           const m = req(n)
-          if (!m) { dbg.detalhe[n] = "não carregou"; continue }
-          const o = {}
-          for (const k of Object.keys(m).slice(0, 10)) {
-            const v = m[k]
-            if (typeof v === "function") o[k] = "fn: " + String(v).slice(0, 320).replace(/\s+/g, " ")
-            else if (v && typeof v === "object") o[k] = JSON.stringify(v).slice(0, 320)
-            else o[k] = String(v).slice(0, 120)
-          }
-          dbg.detalhe[n] = o
-        } catch (e) { dbg.detalhe[n] = "erro " + String(e).slice(0, 60) }
+          if (!m) { dbg.pix4[n] = "não carregou"; continue }
+          const o = { chaves: Object.keys(m).slice(0, 16) }
+          for (const k of o.chaves.slice(0, 8)) if (typeof m[k] === "function") o[k] = src(m, k, 700)
+          dbg.pix4[n] = o
+        } catch (e) { dbg.pix4[n] = "erro " + String(e).slice(0, 60) }
       }
+      dbg.pix4.modulosUpr = names.filter((n) => /Upr|PaymentAccount|OrderDetails|PixKey/i.test(n)).slice(0, 40)
     } catch (e) { dbg.erro = String(e).slice(0, 100) }
     return { dbg }
   }
