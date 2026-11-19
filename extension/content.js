@@ -860,11 +860,16 @@ function audioSeconds(file) {
 async function useReply(r) {
   if (r.type === "TEXT" || r.type === "CONTACT") {
     const text = r.type === "TEXT" ? renderVariables(r.text || "") : `${r.contactName || ""}: ${r.contactPhone || ""}`.trim()
+    // "Mensagem sai direto": igual ao Hotzapp, clicar na resposta já envia.
+    // Primeiro a cliente vê "digitando…" (com o campo ainda vazio), e só depois o texto entra e sai.
+    if (prefs.sendDirect && prefs.simulate && r.type === "TEXT" && getComposer()) {
+      const ms = typingMsFor(text)
+      toast(`A cliente está vendo "digitando…" (${Math.round(ms / 1000)} s). Já já sai.`, ms)
+      await simulateState("typing", ms)
+    }
     if (!insertIntoComposer(text)) return
     api("POST", `/api/crm/quick-replies/${r.id}/use`)
-    // "Mensagem sai direto": igual ao Hotzapp, clicar na resposta já envia
     if (prefs.sendDirect) {
-      await simulateState("typing", typingMsFor(text))
       await new Promise((res) => setTimeout(res, 150))
       await clickSend(1500)
     }
