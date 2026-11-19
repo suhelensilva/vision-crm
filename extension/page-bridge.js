@@ -780,22 +780,23 @@
       dbg.tiposDiferentes = tipos
       // por dentro dos módulos mais promissores: nomes de fluxo, funções e o começo do código delas
       dbg.detalhe = {}
-      // 2ª rodada: o formato exato do cartão de Pix e as funções de envio
-      dbg.pix2 = {}
-      const fonte = (m, k, n) => { try { return String(m[k]).slice(0, n).replace(/\s+/g, " ") } catch { return "" } }
-      for (const [mod, fns] of [["WAWebBrPaymentRequest", ["parsePaymentRequestButton", "getPaymentRequestInfoFor", "getPaymentRequestInfo"]], ["WAWebPaymentRequestForwarding", ["getForwardedPixPaymentRequestPayload", "isForwardedPixPaymentRequest"]], ["WAWebBrazilPixKeyFormattingUtils", []], ["WAWebNativeFlowValidation", []], ["WAWebBizFormatInteractiveMsg", []]]) {
+      // 3ª rodada: nomes das constantes e os campos de um Pix "encaminhável"
+      dbg.pix3 = {}
+      const full = (m, k, n) => { try { return String(m[k]).slice(0, n).replace(/\s+/g, " ") } catch { return "" } }
+      const dump = (v) => { try { return JSON.stringify(v, (kk, vv) => (typeof vv === "function" ? "fn" : vv)).slice(0, 700) } catch { return String(v).slice(0, 200) } }
+      for (const n of ["WAWebInteractiveMessagesNativeFlowName", "WAWebInteractiveMessageType", "WAWebMsgType"]) {
+        try { const m = req(n); dbg.pix3[n] = m ? dump(m.default || m.MSG_TYPE || m) : "não carregou" } catch (e) { dbg.pix3[n] = "erro" }
+      }
+      try { const m = req("WAWebMsgType"); dbg.pix3.MSG_TYPE = dump(m && (m.MSG_TYPE || m.default)) } catch {}
+      for (const [mod, fns] of [["WAWebPaymentRequestForwardingParams", ["getForwardablePixParams"]], ["WAWebSendTextMsgChatAction", ["createTextMsgData", "addAndSendTextMsg"]], ["WAWebSendMsgChatAction", ["addAndSendMsgToChat"]], ["WAWebUprPaymentRequest", ["parseUprPaymentInfo"]], ["WAWebBizAiPaymentRequestWamLogger", ["hasBizAiPixPaymentRequestMarkers", "isBizAiPixPaymentRequest"]]]) {
         try {
           const m = req(mod)
-          if (!m) { dbg.pix2[mod] = "não carregou"; continue }
-          const o = { chaves: Object.keys(m).slice(0, 14) }
-          for (const k of fns) o[k] = fonte(m, k, 1100)
-          if (!fns.length) for (const k of o.chaves.slice(0, 5)) if (typeof m[k] === "function") o[k] = fonte(m, k, 450)
-          dbg.pix2[mod] = o
-        } catch (e) { dbg.pix2[mod] = "erro " + String(e).slice(0, 60) }
+          if (!m) { dbg.pix3[mod] = "não carregou"; continue }
+          const o = { chaves: Object.keys(m).slice(0, 12) }
+          for (const k of fns) o[k] = full(m, k, 1500)
+          dbg.pix3[mod] = o
+        } catch (e) { dbg.pix3[mod] = "erro " + String(e).slice(0, 60) }
       }
-      const envio = names.filter((n) => /AddAndSendMsgToChat|SendMsgChatAction|SendTextMsgChatAction|SendMsgToChat|SendMsgJob|SendInteractive|MsgDataFromMsg|SendRawMsg/i.test(n)).slice(0, 14)
-      dbg.pix2.envio = {}
-      for (const n of envio) { try { const m = req(n); if (m) dbg.pix2.envio[n] = Object.keys(m).slice(0, 10) } catch {} }
       for (const n of ["WAWebPaymentRequestMsgAction", "WAWebInteractiveMessagesNativeFlowName", "WAWebGenerateNativeFlowButtonsMessageProto", "WAWebBrazilPaymentStateKeys", "WAWebParseMsgPaymentInfo", "WAWebBrAddPixKeyMessageOffer"]) {
         try {
           const m = req(n)
