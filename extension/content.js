@@ -648,6 +648,15 @@ async function loadReplies() {
 }
 
 function openReplyForm(init) {
+  // Criar/editar resposta: abre a janelinha do Vision (a mesma do painel) por cima do WhatsApp
+  const q = new URLSearchParams()
+  if (init && init.mode === "edit" && init.id) q.set("id", init.id)
+  else if (init && init.text) q.set("text", init.text)
+  chrome.runtime.sendMessage({ type: "editor", query: q.toString() })
+  return
+}
+
+function openReplyFormInline(init) {
   state.open = true
   state.tab = "respostas"
   rp.form = { mode: "new", type: "TEXT", id: null, name: "", category: "", shortcut: "", text: "", contactName: "", contactPhone: "", ...init }
@@ -774,7 +783,6 @@ async function onReplyAction(act, id, btn) {
     return toast("Duplicada.")
   }
   if (act === "edit") {
-    if (r.type !== "TEXT" && r.type !== "CONTACT") return toast("Pra editar áudio, imagem, vídeo ou documento, use o painel web.")
     return openReplyForm({ mode: "edit", id: r.id, type: r.type, name: r.name, category: r.category || "", shortcut: r.shortcut || "", text: r.text || "", contactName: r.contactName || "", contactPhone: r.contactPhone || "" })
   }
   if (act === "del") {
@@ -1498,7 +1506,6 @@ function onMsgButtonClick() {
     const text = msgHover.text
     hideMsgUi()
     openReplyForm({ text })
-    setTimeout(() => { const i = document.querySelector("#vcrm-root input[name='name']"); if (i) i.focus() }, 80)
   })
   document.body.appendChild(m)
   const r = b.getBoundingClientRect()
@@ -1810,6 +1817,7 @@ function init() {
     if (c.vcrmPrefs) Object.assign(prefs, c.vcrmPrefs)
     ensureHeaderBar(); ensureSide(); ensureBar()
   }).catch(() => {})
+  window.addEventListener("focus", () => { loadReplies().then(() => { ensureBar(); render() }).catch(() => {}) })
   setTimeout(checkWaiting, 4000)
   setInterval(checkWaiting, 5000) // lê só a memória do WhatsApp: é leve, e mantém a lista em tempo real
 }

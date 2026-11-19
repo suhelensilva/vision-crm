@@ -17,7 +17,7 @@ const NO_CATEGORY = "SEM CATEGORIA"
 const SAMPLE = { contactName: "Maria da Silva", contactPhone: "5511999998888", myName: "Seu nome" }
 
 type Filter = "todas" | "favoritas" | QuickReplyKind
-type Editor = { mode: "new"; kind: QuickReplyKind | null } | { mode: "edit"; item: QuickReplyView } | null
+export type Editor = { mode: "new"; kind: QuickReplyKind | null; text?: string } | { mode: "edit"; item: QuickReplyView } | null
 
 async function call(method: string, url: string, body?: unknown) {
   const res = await fetch(url, {
@@ -253,7 +253,7 @@ export function QuickRepliesBoard() {
 
 /* ───────────── Janela de criar / editar ───────────── */
 
-function EditorModal({
+export function EditorModal({
   editor, categories, onClose, onSaved,
 }: {
   editor: NonNullable<Editor>
@@ -266,7 +266,7 @@ function EditorModal({
   const [name, setName] = useState(editing?.name ?? "")
   const [category, setCategory] = useState(editing?.category ?? "")
   const [shortcut, setShortcut] = useState(editing?.shortcut ?? "")
-  const [text, setText] = useState(editing?.text ?? "")
+  const [text, setText] = useState(editing?.text ?? (editor.mode === "new" ? editor.text ?? "" : ""))
   const [contactName, setContactName] = useState(editing?.contactName ?? "")
   const [contactPhone, setContactPhone] = useState(editing?.contactPhone ?? "")
   const [moreOpen, setMoreOpen] = useState(Boolean(editing?.shortcut))

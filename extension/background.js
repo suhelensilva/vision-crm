@@ -55,6 +55,14 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     apiFetch(msg.method, msg.path, msg.body).then(sendResponse)
     return true // resposta assíncrona
   }
+  if (msg && msg.type === "editor") {
+    getConfig().then(({ apiUrl }) => {
+      if (!apiUrl) return
+      const w = 620, h = 780
+      chrome.windows.create({ url: apiUrl + "/embed/respostas" + (msg.query ? "?" + msg.query : ""), type: "popup", width: w, height: h, left: 120, top: 40, focused: true })
+    })
+    return false
+  }
   if (msg && msg.type === "file") {
     fileFetch(msg.path).then(sendResponse)
     return true
