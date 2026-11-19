@@ -1549,7 +1549,7 @@ function composerFooter() {
 function ensureBar() {
   const footer = composerFooter()
   let bar = document.getElementById(BAR_ID)
-  if (!footer || state.status === "no_config" || state.status === "bad_token" || modalOpen()) {
+  if (!footer || state.status === "no_config" || state.status === "bad_token") {
     if (bar) bar.style.display = "none"
     return
   }
@@ -1583,6 +1583,10 @@ function ensureBar() {
   // se a barra ficasse fora dele, apareceria lá em cima)
   if (bar.parentNode !== footer) footer.appendChild(bar)
   else if (footer.lastElementChild !== bar) footer.appendChild(bar)
+  // Só some (sem mexer no layout) quando um visualizador de foto/vídeo cobre a barra.
+  // Menus, reações e janelinhas do WhatsApp NÃO escondem mais: era isso que fazia ela piscar.
+  bar.style.visibility = "visible"
+  if (!document.querySelector("#main") || overlaidByWhatsApp(bar)) bar.style.visibility = "hidden"
 }
 
 function closeBarMenu() { const m = document.getElementById("vcrm-barmenu"); if (m) m.remove() }
