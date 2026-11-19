@@ -22,6 +22,7 @@
 /* Empurra o WhatsApp pra esquerda: nada fica escondido atrás da coluna */
 html.vcrm-on body { padding-right: var(--vcrm-pad, 56px) !important; background: #0b141a; }
 
+.vc-rail {
 /* ── Coluna de ícones ── */
   position: fixed; top: 0; right: 0; bottom: 0; width: 56px; z-index: 2147483000;
   display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 10px 0;
