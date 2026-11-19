@@ -994,7 +994,7 @@ function renderWaiting() {
         <button class="vw-row" data-wait-open="${esc(w.key)}">
           ${w.pic ? `<img class="vw-av" src="${esc(w.pic)}" data-ini="${esc((w.name || "?").trim().slice(0, 1).toUpperCase())}" alt="" />` : `<span class="vw-av">${esc((w.name || "?").trim().slice(0, 1).toUpperCase())}</span>`}
           <span class="vw-tx"><b>${esc(w.name)}</b><small>${esc(w.preview)}</small></span>
-          <span class="vw-time ${w.mins >= 180 ? "late" : w.mins < 60 ? "ok" : ""}">${waitFmt(w.mins)}</span>
+          <span class="vw-time ${w.mins < 60 ? "t1" : w.mins < 180 ? "t2" : w.mins < 720 ? "t3" : w.mins < 1440 ? "t4" : "t5"}">${waitFmt(w.mins)}</span>
         </button>
         <button class="vw-done" data-wait-done="${esc(w.key)}" title="Já resolvi (volta a avisar se ela mandar outra mensagem)">${icon("check", 14)}</button>
       </div>`).join("")}

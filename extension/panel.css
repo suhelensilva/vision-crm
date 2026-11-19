@@ -401,3 +401,10 @@ html.vcrm-on body { padding-right: var(--vcrm-pad, 44px) !important; }
 .vc-ad-row span { color: var(--muted); flex: none; }
 .vc-ad-row b { color: #fff; font-weight: 600; text-align: right; word-break: break-all; }
 .vc-tiny { font-size: 11px !important; color: var(--faint) !important; margin-top: 8px; align-self: flex-start; }
+
+/* Tempo de espera: do azul (recente) ao vermelho forte (muito tempo) */
+#vcrm-wait .vw-time.t1 { color: #9fd3ff; background: rgba(96, 165, 250, 0.22); }
+#vcrm-wait .vw-time.t2 { color: #ffe08a; background: rgba(250, 204, 21, 0.22); }
+#vcrm-wait .vw-time.t3 { color: #ffc085; background: rgba(251, 146, 60, 0.28); }
+#vcrm-wait .vw-time.t4 { color: #ffb0a0; background: rgba(239, 68, 68, 0.3); }
+#vcrm-wait .vw-time.t5 { color: #fff; background: #e5253b; }
