@@ -234,7 +234,7 @@
           lastT: t,
           pic,
           name: String(chat.formattedTitle || chat.name || (chat.contact && (chat.contact.name || chat.contact.pushname)) || "").trim() || "Contato",
-          preview,
+          preview: preview + " · [" + type + "] " + new Date(t).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }), // TEMPORÁRIO: diagnóstico
           mins,
         })
       }
