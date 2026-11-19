@@ -240,7 +240,7 @@ html.vcrm-on body { padding-right: var(--vcrm-pad, 56px) !important; background:
 
 /* Mesmo lugar do aviso do Hotzapp: encostado na coluna de ícones, acima do campo de mensagem */
 /* Fica do lado da coluna de ícones do WhatsApp (esquerda), longe do campo de mensagem */
-#vcrm-wait { left: 76px; right: auto; bottom: 20px; top: auto; max-height: calc(100vh - 60px); overflow-y: auto; }
+#vcrm-wait { left: 76px; right: auto; top: 16px; bottom: auto; max-height: calc(100vh - 40px); overflow-y: auto; }
 
 /* ── Botões no cabeçalho do chat: agendar, encerrar, funil ── */
 #vcrm-hdr { position: fixed; z-index: 2147482990; display: flex; align-items: center; gap: 8px; height: 34px; font-family: "Segoe UI", system-ui, sans-serif; }
