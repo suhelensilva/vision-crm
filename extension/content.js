@@ -276,11 +276,11 @@ function applyLayout() {
   document.documentElement.style.setProperty("--vcrm-pad", `${RAIL_W + (state.open ? PANEL_W : 0)}px`)
 }
 
-function toast(msg) {
+function toast(msg, ms = 3200) {
   state.toast = msg
   render()
   clearTimeout(toast.t)
-  toast.t = setTimeout(() => { state.toast = ""; render() }, 3200)
+  toast.t = setTimeout(() => { state.toast = ""; render() }, ms)
 }
 
 function render() {
@@ -877,7 +877,8 @@ async function attachFile(r) {
     const v = await askBridge("sendptt", 30000, { base64: res.base64, mime: r.mediaMime || res.mime || "audio/ogg" })
     if (v && v.ok) { api("POST", `/api/crm/quick-replies/${r.id}/use`); toast("Enviado como mensagem de voz."); return }
     try { await navigator.clipboard.writeText(JSON.stringify(v, null, 1)) } catch {}
-    toast((v && v.erro ? v.erro : "Não consegui enviar como mensagem de voz.") + " Mandei como arquivo; copiei o diagnóstico.")
+    const why = v && v.dbg ? String(v.dbg.excecao || (v.dbg.temMediaPrep === false ? "sem MediaPrep" : v.dbg.temOpaqueData === false ? "sem OpaqueData" : "")).slice(0, 220) : ""
+    toast((v && v.erro ? v.erro : "Não consegui enviar como mensagem de voz.") + " Mandei como arquivo. Detalhe: " + (why || "nenhum") , 15000)
   }
 
   box.focus()
