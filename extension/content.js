@@ -933,7 +933,7 @@ function ensureSide() {
 
 const WAIT_ID = "vcrm-wait"
 const WAIT_MIN_MINUTES = 1 // avisa assim que a cliente espera há 1 minuto
-const WAIT_MAX_HOURS = 72 // e ignora o que é mais velho que 3 dias
+const WAIT_MAX_HOURS = 12 // painel do dia: ignora quem espera há mais de 12 horas
 let waitSnoozeUntil = 0
 let waitClosed = false // depois que ela fecha o aviso, ele não volta até recarregar o WhatsApp
 let waitList = []
@@ -994,7 +994,7 @@ function renderWaiting() {
         <button class="vw-row" data-wait-open="${esc(w.key)}">
           ${w.pic ? `<img class="vw-av" src="${esc(w.pic)}" data-ini="${esc((w.name || "?").trim().slice(0, 1).toUpperCase())}" alt="" />` : `<span class="vw-av">${esc((w.name || "?").trim().slice(0, 1).toUpperCase())}</span>`}
           <span class="vw-tx"><b>${esc(w.name)}</b><small>${esc(w.preview)}</small></span>
-          <span class="vw-time ${w.mins < 60 ? "t1" : w.mins < 180 ? "t2" : w.mins < 720 ? "t3" : w.mins < 1440 ? "t4" : "t5"}">${waitFmt(w.mins)}</span>
+          <span class="vw-time ${w.mins < 60 ? "t1" : w.mins < 180 ? "t2" : w.mins < 360 ? "t3" : w.mins < 540 ? "t4" : "t5"}">${waitFmt(w.mins)}</span>
         </button>
         <button class="vw-done" data-wait-done="${esc(w.key)}" title="Já resolvi (volta a avisar se ela mandar outra mensagem)">${icon("check", 14)}</button>
       </div>`).join("")}
