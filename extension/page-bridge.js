@@ -432,11 +432,15 @@
       try { if (media) media.isPtt = true } catch {}
       const wave = await makeWaveform(blob, dbg)
       if (wave) {
-        for (const o of [media, prep && prep._mediaData]) { try { if (o) o.waveform = wave } catch {} }
+        for (const o of [media, prep && prep._mediaData]) {
+          if (!o) continue
+          for (const k of ["waveform", "__x_waveform"]) { try { o[k] = wave } catch {} }
+          try { if (typeof o.set === "function") o.set({ waveform: wave }) } catch {}
+        }
         dbg.ondas = true
       }
       try {
-        const rx = /wave|dur|second|ptt|audio|mime|type|ondas/i
+        const rx = /wave|ondas|bars|sidecar/i
         dbg.chavesMedia = Object.keys(media || {}).filter((k) => rx.test(k)).slice(0, 25)
         dbg.chavesPrep = Object.keys(prep || {}).slice(0, 25)
         dbg.chavesMediaDados = Object.keys((prep && prep._mediaData) || {}).filter((k) => rx.test(k)).slice(0, 25)
