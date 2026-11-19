@@ -503,6 +503,17 @@
         try { await prep.sendToChat(opt); sent = true; break } catch (e) { lastErr = e; dbg.tentativas.push(String(e && e.message || e).slice(0, 90)) }
       }
       if (!sent) throw lastErr
+      try {
+        await new Promise((r) => setTimeout(r, 900))
+        const m = lastMessageOf(chat)
+        if (m) {
+          const w = m.waveform !== undefined ? m.waveform : m.__x_waveform
+          dbg.msgTipo = String(m.type)
+          dbg.msgMime = String(m.mimetype || m.__x_mimetype || "")
+          dbg.msgOnda = w ? (w.constructor && w.constructor.name) + ":" + (w.length || w.byteLength) : "sem onda na mensagem enviada"
+          dbg.msgSeg = String(m.duration || m.__x_duration || "")
+        }
+      } catch (e) { dbg.erroMsg = String(e).slice(0, 60) }
       return { ok: true, dbg }
     } catch (e) {
       dbg.excecao = String(e && e.stack || e).slice(0, 300)
