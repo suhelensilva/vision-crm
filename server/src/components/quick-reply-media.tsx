@@ -149,17 +149,16 @@ export function FileDrop({
         onClick={() => input.current?.click()}
         onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && input.current?.click()}
         onDragOver={(e) => { e.preventDefault(); setOver(true) }}
-        onDragLeave={() => setOver(false)}
+        onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setOver(false) }}
         onDrop={(e) => { e.preventDefault(); setOver(false); pick(e.dataTransfer.files?.[0]) }}
         style={{
           ...dropBox,
           background: over ? "var(--accent-soft)" : "var(--inner)",
-          borderColor: over ? "var(--accent)" : "var(--accent-line)",
-          boxShadow: over ? "0 0 18px var(--glow)" : "none",
+          borderColor: over ? "var(--accent)" : "var(--line)",
         }}
       >
         <Upload size={22} style={{ color: "var(--vred)" }} />
-        <div style={{ fontSize: 13, color: "var(--accent-text)", marginTop: 6 }}>
+        <div style={{ fontSize: 13, color: "var(--text)", marginTop: 6 }}>
           {optional ? "Clique aqui ou arraste um arquivo pra trocar." : "Clique aqui ou arraste o arquivo."}
         </div>
         <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 4 }}>
@@ -183,7 +182,7 @@ export function Toggle({ checked, onChange, label }: { checked: boolean; onChang
         onClick={() => onChange(!checked)}
         style={{
           width: 40, height: 22, borderRadius: 999, border: "none", cursor: "pointer", position: "relative", padding: 0, flexShrink: 0,
-          background: checked ? "var(--accent)" : "rgba(143, 163, 214, 0.28)",
+          background: checked ? "var(--accent)" : "rgba(154, 155, 155, 0.35)",
           boxShadow: checked ? "0 0 12px var(--glow)" : "none",
         }}
       >

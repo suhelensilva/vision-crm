@@ -126,7 +126,7 @@ export function FunnelBoard() {
     <>
       <PageHeader
         title="Funil"
-        subtitle="Arraste as clientes entre as etapas. O vinho mostra o que precisa de você."
+        subtitle="Arraste as clientes entre as etapas. A borda laranja mostra quem está parada há 3 dias ou mais."
         actions={
           <>
             <button onClick={() => setShowNewList((v) => !v)} style={ghost}>+ Lista</button>
@@ -475,7 +475,7 @@ function CardView({
         ...inner,
         padding: "11px 12px",
         cursor: "grab",
-        borderLeft: `4px solid ${idle ? "var(--late)" : "rgba(143, 163, 214, 0.35)"}`,
+        borderLeft: `4px solid ${idle ? "var(--late)" : "rgba(154, 155, 155, 0.35)"}`,
       }}
     >
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>

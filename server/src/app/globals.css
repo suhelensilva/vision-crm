@@ -2,34 +2,37 @@
    Todas as cores do sistema vêm daqui. Pra mudar o visual (ou criar o tema
    claro), é só trocar os valores destas variáveis. */
 :root {
-  --bg: #131417;
-  --card-top: rgba(12, 33, 80, 0.8);
-  --card-bottom: rgba(8, 22, 56, 0.8);
-  --inner: rgba(5, 14, 38, 0.72); /* cartões dentro de cartões */
+  /* As MESMAS cores da extensão do WhatsApp (extension/panel.css). */
+  --bg: #141515;                 /* fundo da página */
+  --card-top: #202222;           /* cartões e menu lateral (a cor das barras da extensão) */
+  --card-bottom: #202222;
+  --inner: #141515;              /* cartões dentro de cartões */
   --field: rgba(255, 255, 255, 0.06);
-  --line: rgba(165, 214, 255, 0.34); /* borda azul celeste */
-  --soft: rgba(143, 163, 214, 0.18); /* borda discreta */
+  --line: rgba(154, 155, 155, 0.45); /* borda cinza dos cartões */
+  --soft: rgba(154, 155, 155, 0.2);  /* borda discreta e divisórias */
 
-  --strong: #ffffff; /* títulos e números em destaque */
-  --on-accent: #1a1330; /* texto sobre o lilás */
-  --panel-1: #0c2150; /* janelas e painéis que flutuam */
-  --panel-2: #081638;
-  --popup: #0c2150;
+  --strong: #ffffff;             /* títulos e números em destaque */
+  --on-accent: #ffffff;          /* texto branco em cima do rosa */
+  --panel-1: #202222;            /* janelas e painéis que flutuam */
+  --panel-2: #141515;
+  --popup: #202222;
+  --hover: #2a2b2b;
+  --selected: #3a3b3c;           /* item escolhido no menu (cinza com letra branca) */
 
-  --text: #e8eefc;
-  --text-2: #c9d5f2;
-  --nav: #b9c6e6; /* texto do menu lateral */
-  --muted: #8ea0c8;
-  --faint: #6f82ad;
+  --text: #e9edef;
+  --text-2: #c9cccd;
+  --nav: #c9cccd;                /* texto do menu lateral */
+  --muted: #9a9b9b;              /* ícones e textos apagados */
+  --faint: #6f7171;
 
-  --accent: #a78bfa; /* roxo lilás */
-  --accent-hover: #b9a1fb;
-  --accent-text: #cdbfff; /* texto e links em lilás claro */
-  --accent-soft: rgba(167, 139, 250, 0.16);
-  --accent-line: rgba(165, 214, 255, 0.4);
+  --accent: #ff02a6;             /* rosa dos botões */
+  --accent-hover: #ff33b8;
+  --accent-text: #ff5cc4;        /* links */
+  --accent-soft: rgba(255, 2, 166, 0.12);
+  --accent-line: rgba(255, 2, 166, 0.4);
   --glow: transparent;
-  --vred: #a78bfa; /* lilás: títulos pequenos e ícones */
-  --gold: #e3b341; /* dourado do Visão: favoritos */
+  --vred: #9a9b9b;               /* títulos pequenos e ícones */
+  --gold: #e3b341;               /* favoritas */
 
   --ok: #34d399;
   --ok-text: #7ef0c0;
@@ -43,17 +46,17 @@
   --wait-text: #ffd48a;
   --wait-bg: rgba(245, 184, 74, 0.14);
   --wait-line: rgba(245, 184, 74, 0.3);
-  --vio-text: #cdbfff;
-  --vio-bg: rgba(167, 139, 250, 0.14);
-  --vio-line: rgba(167, 139, 250, 0.3);
+  --vio-text: #c9cccd;           /* selo neutro (cinza) */
+  --vio-bg: rgba(154, 155, 155, 0.14);
+  --vio-line: rgba(154, 155, 155, 0.35);
   --danger: #ff7a8a;
 
-  --overlay: rgba(2, 6, 18, 0.68);
+  --overlay: rgba(0, 0, 0, 0.62);
   --card-shadow: none;
   color-scheme: dark;
 }
 
-* { box-sizing: border-box; scrollbar-color: rgba(143, 163, 214, 0.35) transparent; }
+* { box-sizing: border-box; scrollbar-color: rgba(154, 155, 155, 0.35) transparent; }
 html, body {
   margin: 0;
   padding: 0;
@@ -64,7 +67,7 @@ html, body {
 }
 a { color: var(--accent-text); }
 code { background: var(--field); padding: 1px 6px; border-radius: 6px; font-size: 0.92em; }
-::selection { background: rgba(167, 139, 250, 0.45); color: #fff; }
+::selection { background: rgba(255, 2, 166, 0.35); color: #fff; }
 
 /* Campos: escuros por padrão em todo o sistema */
 input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]),
@@ -79,10 +82,10 @@ textarea {
 input::placeholder, textarea::placeholder { color: var(--faint); }
 input:focus, select:focus, textarea:focus {
   outline: none;
-  border-color: var(--accent);
+  border-color: var(--muted);
   box-shadow: none;
 }
-select option { background: #0a1a40; color: var(--text); }
+select option { background: var(--popup); color: var(--text); }
 input[type="checkbox"] { accent-color: var(--accent); }
 button { font-family: inherit; }
 button:hover:not(:disabled) { filter: none; opacity: 0.88; }
@@ -117,7 +120,7 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outlin
 .v-main { min-width: 0; display: flex; flex-direction: column; gap: 16px; }
 .v-brand { display: flex; align-items: center; gap: 10px; padding: 4px 10px 14px; font-size: 20px; font-weight: 700; color: var(--strong); text-decoration: none; }
 .v-brand b { color: var(--accent); }
-.v-mark { width: 30px; height: 30px; border-radius: 10px; display: grid; place-items: center; background: var(--accent); box-shadow: 0 0 18px var(--glow); color: var(--on-accent); }
+.v-mark { width: 30px; height: 30px; flex: none; border-radius: 10px; display: grid; place-items: center; background: var(--muted); color: var(--bg); }
 .v-grp { font-size: 11px; letter-spacing: 1.2px; color: var(--vred); font-weight: 700; padding: 14px 10px 6px; }
 .v-nav {
   display: flex; align-items: center; gap: 11px; width: 100%;
@@ -126,22 +129,27 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outlin
 }
 .v-nav svg { color: var(--vred); flex: none; }
 .v-nav:hover { background: rgba(255, 255, 255, 0.05); }
-.v-nav.on { background: var(--accent); color: var(--on-accent); box-shadow: 0 0 22px var(--glow); }
-.v-nav.on svg { color: var(--on-accent); }
+.v-nav.on { background: var(--selected); color: #fff; }
+.v-nav.on svg { color: #fff; }
 .v-nav.off { cursor: default; color: var(--faint); }
 .v-nav.off:hover { background: transparent; filter: none; }
 .v-nav.off svg { color: var(--faint); opacity: 0.7; }
 .v-soon { margin-left: auto; white-space: nowrap; flex: none; font-size: 10px; font-weight: 700; color: var(--faint); border: 1px solid var(--soft); border-radius: 999px; padding: 1px 7px; }
 .v-me { margin-top: auto; display: flex; align-items: center; gap: 10px; padding: 12px 8px 4px; border-top: 1px solid var(--soft); }
-.v-av { width: 34px; height: 34px; flex: none; border-radius: 50%; display: grid; place-items: center; font-size: 12px; font-weight: 700; color: var(--on-accent); background: var(--accent); }
+.v-av { width: 34px; height: 34px; flex: none; border-radius: 50%; display: grid; place-items: center; font-size: 12px; font-weight: 700; color: var(--bg); background: var(--muted); }
 .v-me small { display: block; color: var(--muted); font-size: 11px; }
 .v-me .who { min-width: 0; flex: 1; font-size: 13px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.v-out { background: transparent; border: 1px solid var(--soft); color: var(--muted); border-radius: 10px; padding: 6px 8px; cursor: pointer; display: grid; place-items: center; }
+.v-out { flex: none; background: transparent; border: 1px solid var(--soft); color: var(--muted); border-radius: 10px; padding: 6px 8px; cursor: pointer; display: grid; place-items: center; }
+
+/* Botões que aparecem ao passar o mouse num cartão: sempre estão lá, só ficam invisíveis (nada pula nem pisca) */
+.v-hover-acts { opacity: 0; transition: opacity 0.12s ease; }
+.v-hover-card:hover .v-hover-acts, .v-hover-card:focus-within .v-hover-acts { opacity: 1; }
 
 /* Cabeçalho de página e números em destaque */
 .v-title { margin: 0; font-size: 26px; font-weight: 700; color: var(--strong); }
 .v-sub { margin: 2px 0 0; font-size: 13px; color: var(--muted); }
 .v-kpis { display: grid; grid-template-columns: repeat(4, 1fr); padding: 18px 6px; }
+.v-kpis.k3 { grid-template-columns: repeat(3, 1fr); }
 .v-kpi { padding: 2px 22px; border-right: 1px solid var(--soft); }
 .v-kpi:last-child { border-right: 0; }
 .v-kpi .l { font-size: 13px; color: var(--muted); }
@@ -160,7 +168,7 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outlin
   .v-nav { width: auto; padding: 8px 11px; font-size: 13px; }
   .v-me { margin: 0 0 0 auto; border: 0; padding: 0; }
   .v-me .who { display: none; }
-  .v-kpis { grid-template-columns: 1fr 1fr; row-gap: 14px; }
+  .v-kpis, .v-kpis.k3 { grid-template-columns: 1fr 1fr; row-gap: 14px; }
   .v-kpi { padding: 2px 14px; }
   .v-kpi:nth-child(2) { border-right: 0; }
 }
@@ -174,9 +182,9 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outlin
   align-items: center;
   justify-content: flex-end;
   padding: 24px clamp(16px, 4vw, 80px);
-  background-color: #040a1c;
+  background-color: #141515;
   background-image:
-    linear-gradient(90deg, rgba(4, 10, 28, 0) 35%, rgba(4, 10, 28, 0.55) 100%),
+    linear-gradient(90deg, rgba(20, 21, 21, 0) 35%, rgba(20, 21, 21, 0.6) 100%),
     url("/login-bg.jpg");
   background-size: cover;
   background-position: center;
@@ -190,32 +198,32 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outlin
   flex-direction: column;
   border-radius: 18px;
   color: var(--text);
-  background: rgba(7, 18, 48, 0.74);
+  background: rgba(20, 21, 21, 0.82);
   -webkit-backdrop-filter: blur(14px);
   backdrop-filter: blur(14px);
-  border: 1px solid rgba(224, 36, 94, 0.38);
-  box-shadow: 0 0 40px rgba(224, 36, 94, 0.16), 0 20px 50px rgba(0, 0, 0, 0.45);
+  border: 1px solid var(--line);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.45);
 }
-.auth-card a { color: #ff5c8a; }
+.auth-card a { color: var(--accent-text); }
 
 .auth-title { margin: 0; font-size: 22px; font-weight: 700; color: #ffffff; }
-.auth-sub { margin: 4px 0 18px; font-size: 14px; color: #9fb0d6; }
+.auth-sub { margin: 4px 0 18px; font-size: 14px; color: var(--muted); }
 .auth-label { margin: 10px 0 4px; font-size: 13px; font-weight: 600; color: var(--text-2); }
 .auth-error { margin: 10px 0 0; font-size: 13px; color: #ff8a8a; }
-.auth-foot { margin: 14px 0 0; font-size: 13px; text-align: center; color: #9fb0d6; }
+.auth-foot { margin: 14px 0 0; font-size: 13px; text-align: center; color: var(--muted); }
 
 .auth-input {
   width: 100%;
   padding: 10px 12px;
   font-size: 14px;
 }
-.auth-input::placeholder { color: #6f82ad; }
+.auth-input::placeholder { color: var(--faint); }
 /* O Chrome pinta campos preenchidos de branco: mantém escuro */
 .auth-input:-webkit-autofill,
 .auth-input:-webkit-autofill:focus {
   -webkit-text-fill-color: var(--text);
   caret-color: var(--text);
-  box-shadow: 0 0 0 1000px #0b1a40 inset;
+  box-shadow: 0 0 0 1000px #1b1c1c inset;
 }
 
 .auth-btn {
@@ -226,11 +234,10 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outlin
   color: #ffffff;
   cursor: pointer;
   border: none;
-  border-radius: 8px;
-  background: #e0245e;
-  box-shadow: 0 0 18px rgba(224, 36, 94, 0.45);
+  border-radius: 10px;
+  background: var(--accent);
 }
-.auth-btn:hover:not(:disabled) { background: #f23a72; filter: none; }
+.auth-btn:hover:not(:disabled) { background: var(--accent-hover); filter: none; opacity: 1; }
 .auth-btn:disabled { opacity: 0.55; cursor: not-allowed; box-shadow: none; }
 
 /* Celular e janela estreita: cartão no centro, foto mais escura pra dar leitura */
@@ -238,7 +245,7 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outlin
   .auth-bg {
     justify-content: center;
     background-image:
-      linear-gradient(rgba(4, 10, 28, 0.55), rgba(4, 10, 28, 0.72)),
+      linear-gradient(rgba(20, 21, 21, 0.55), rgba(20, 21, 21, 0.75)),
       url("/login-bg.jpg");
     background-position: 42% center;
   }

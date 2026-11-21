@@ -31,12 +31,13 @@ const state = {
   myName: "",
   apiUrl: "",
   status: "idle", // idle | loading | ok | no_config | bad_token | offline
-  toast: "",
 }
 
 // ── Utilidades ───────────────────────────────────────────────────────────────
 
 let seq = 0 // numera as leituras da conversa (fica no topo: nada pode usar antes de existir)
+let dragActive = false // arrastando uma resposta: o painel não se redesenha no meio (era isso que piscava)
+let renderLater = false
 const esc = (s) =>
   String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]))
 const brl = (n) => (n || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
@@ -269,38 +270,77 @@ function ensureRoot() {
   root.addEventListener("click", onClick)
   // Arrastar uma resposta pra outra categoria (como no Kanban)
   let dragId = null
-  const clearOver = () => root.querySelectorAll(".rp-over").forEach((n) => n.classList.remove("rp-over"))
+  const groupAt = (e) => {
+    const direct = e.target.closest && e.target.closest("[data-rp-drop]")
+    if (direct) return direct
+    // nos espaços entre as categorias vale a mais perto do mouse (assim o destaque não fica pulando)
+    let best = null
+    let dist = Infinity
+    for (const g of root.querySelectorAll("[data-rp-drop]")) {
+      const r = g.getBoundingClientRect()
+      const d = e.clientY < r.top ? r.top - e.clientY : e.clientY > r.bottom ? e.clientY - r.bottom : 0
+      if (d < dist) { dist = d; best = g }
+    }
+    return dist <= 40 ? best : null
+  }
+  const setOver = (g) => {
+    for (const n of root.querySelectorAll(".rp-over")) if (n !== g) n.classList.remove("rp-over")
+    if (g && !g.classList.contains("rp-over")) g.classList.add("rp-over")
+  }
+  const endDrag = () => {
+    dragId = null
+    dragActive = false
+    setOver(null)
+    root.querySelectorAll(".rp-dragging").forEach((n) => n.classList.remove("rp-dragging"))
+    if (renderLater) { renderLater = false; render() }
+  }
   root.addEventListener("dragstart", (e) => {
     const card = e.target.closest && e.target.closest("[data-rp-drag]")
     if (!card) return
+    e.stopPropagation()
     dragId = card.getAttribute("data-rp-drag")
+    dragActive = true
     try { e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", "vcrm:" + dragId) } catch {}
     card.classList.add("rp-dragging")
   })
-  root.addEventListener("dragend", () => { dragId = null; clearOver(); root.querySelectorAll(".rp-dragging").forEach((n) => n.classList.remove("rp-dragging")) })
-  root.addEventListener("dragover", (e) => {
-    const g = dragId && e.target.closest && e.target.closest("[data-rp-drop]")
-    if (!g) return
-    e.preventDefault()
-    if (!g.classList.contains("rp-over")) { clearOver(); g.classList.add("rp-over") }
-  })
+  root.addEventListener("dragend", (e) => { if (dragId || dragActive) { e.stopPropagation(); endDrag() } })
+  for (const type of ["dragenter", "dragover"]) {
+    root.addEventListener(type, (e) => {
+      if (!dragId) return
+      e.stopPropagation() // o WhatsApp não precisa saber do arraste (senão ele mostra a área de "soltar arquivo")
+      const g = groupAt(e)
+      if (!g) return setOver(null)
+      e.preventDefault()
+      try { e.dataTransfer.dropEffect = "move" } catch {}
+      setOver(g)
+    })
+  }
+  root.addEventListener("dragleave", (e) => { if (dragId) e.stopPropagation() })
   root.addEventListener("drop", async (e) => {
-    const g = dragId && e.target.closest && e.target.closest("[data-rp-drop]")
-    if (!g) return
-    e.preventDefault()
+    if (!dragId) return
+    e.stopPropagation()
+    const g = groupAt(e)
     const id = dragId
-    dragId = null
-    clearOver()
+    if (!g) return endDrag()
+    e.preventDefault()
+    endDrag()
     const cat = g.getAttribute("data-rp-drop")
     const r = state.replies.find((x) => x.id === id)
     if (!r) return
     const to = cat === "Sem categoria" ? null : cat
-    if ((r.category || null) === to) return
-    const res = await api("PATCH", `/api/crm/quick-replies/${id}`, { category: to })
-    if (!res.ok) return toast((res.data && res.data.error) || "Não consegui mover a resposta.")
-    await loadReplies()
-    ensureBar()
+    const before = r.category || null
+    if (before === to) return
+    // muda na hora (sem esperar o servidor) e confirma depois
+    r.category = to
     render()
+    ensureBar()
+    const res = await api("PATCH", `/api/crm/quick-replies/${id}`, { category: to })
+    if (!res.ok) {
+      r.category = before
+      render()
+      ensureBar()
+      return toast((res.data && res.data.error) || "Não consegui mover a resposta.")
+    }
     toast(`Movida pra ${to || "Sem categoria"}.`)
   })
   root.addEventListener("submit", onSubmit)
@@ -315,10 +355,14 @@ function applyLayout() {
 }
 
 function toast(msg, ms = 3200) {
-  state.toast = msg
-  render()
+  // o aviso tem o lugar dele: aparecer e sumir não redesenha o painel (nada pisca, a lista não volta pro topo)
+  const root = ensureRoot()
+  let el = root.querySelector(":scope > .vc-toast")
   clearTimeout(toast.t)
-  toast.t = setTimeout(() => { state.toast = ""; render() }, ms)
+  if (!msg) { if (el) el.remove(); return }
+  if (!el) { el = document.createElement("div"); el.className = "vc-toast"; root.appendChild(el) }
+  if (el.textContent !== msg) el.textContent = msg
+  toast.t = setTimeout(() => { const e = root.querySelector(":scope > .vc-toast"); if (e) e.remove() }, ms)
 }
 
 function render() {
@@ -326,45 +370,79 @@ function render() {
   applyLayout()
   ensureSide()
   ensureHeaderBar()
-  // Coluna fina, só ícones (como a do Hotzapp), com uma linha separando o grupo da conversa do resto
+  if (dragActive) { renderLater = true; return } // no meio de um arraste: redesenha quando soltar
+  renderRail(root)
+  renderPanel(root)
+}
+
+/** Coluna fina, só ícones (como a do Hotzapp), com uma linha separando o grupo da conversa do resto. */
+function renderRail(root) {
+  let rail = root.querySelector(":scope > .vc-rail")
+  if (!rail) { rail = document.createElement("aside"); rail.className = "vc-rail"; root.prepend(rail) }
   const openReminders = state.reminders.filter((r) => r.state !== "feito").length
-  const rail = TABS.map(
+  const items = TABS.map(
     (t, i) =>
       `<button class="vc-ico ${state.open && state.tab === t.id ? "on" : ""}" data-tab="${t.id}" title="${t.label}">${icon(t.icon, 19)}${t.id === "lembretes" && openReminders ? `<b class="vc-badge-n">${openReminders}</b>` : ""}</button>` +
       (i === 0 ? `<button class="vc-ico" data-act="wait-toggle" title="Painel do dia: clientes esperando resposta">${icon("list", 19)}</button>` : "") +
       (i === 3 ? '<div class="vc-sep"></div>' : "")
   ).join("")
+  const html = `<div class="vc-logo" title="Vision CRM">${icon("spark", 20)}</div>${items}<div class="vc-grow"></div><button class="vc-ico" data-act="web" title="Abrir o painel web">${icon("ext", 19)}</button>`
+  if (rail.dataset.sig !== html) { rail.innerHTML = html; rail.dataset.sig = html }
+}
 
+function renderPanel(root) {
+  let panel = root.querySelector(":scope > .vc-panel")
+  if (!state.open) { if (panel) panel.remove(); return }
+  if (!panel) {
+    panel = document.createElement("section")
+    panel.className = "vc-panel"
+    panel.innerHTML = `<header class="vc-head"><div class="vc-title"></div><button class="vc-x" data-act="close" title="Fechar">${icon("x", 18)}</button></header><div class="vc-body"></div>`
+    root.insertBefore(panel, root.querySelector(":scope > .vc-toast"))
+  }
   const active = TABS.find((t) => t.id === state.tab)
-  // Se o formulário de resposta está aberto, guarda o que foi digitado e onde estava o cursor,
-  // porque a tela se redesenha sozinha de vez em quando (nada do que você digita pode sumir).
-  let keep = null
-  if (rp.form) {
-    syncReplyForm()
-    const a = document.activeElement
-    if (a && root.contains(a) && a.name) keep = { name: a.name, s: a.selectionStart, e: a.selectionEnd }
+  const title = panel.querySelector(".vc-title")
+  const label = active ? active.label : ""
+  if (title.textContent !== label) title.textContent = label
+  const body = panel.querySelector(".vc-body")
+  if (rp.form) syncReplyForm()
+  const html = renderBody()
+  const sameTab = body.dataset.tab === state.tab
+  if (sameTab && body.dataset.sig === html) return // nada mudou: não mexe (nada pisca, nada perde o foco)
+  // a tela se redesenha sozinha de vez em quando: guarda onde você estava e o que estava digitando
+  const top = sameTab ? body.scrollTop : 0
+  const typed = sameTab ? keepTyped(body) : null
+  body.innerHTML = html
+  body.dataset.sig = html
+  body.dataset.tab = state.tab
+  if (typed) restoreTyped(body, typed)
+  body.scrollTop = top
+}
+
+/** Nome estável de um campo do painel (pra devolver o que foi digitado depois de redesenhar). */
+function fieldKey(el) {
+  if (!el || !el.closest) return ""
+  const id = el.name || (el.hasAttribute("data-search") ? "search" : el.hasAttribute("data-newcat") ? "newcat" : "")
+  if (!id) return ""
+  const form = el.closest("form[data-form]")
+  return (form ? form.dataset.form : "") + ":" + id
+}
+
+function keepTyped(body) {
+  const fields = []
+  const a = document.activeElement
+  for (const el of body.querySelectorAll("input, textarea")) {
+    if (el.type === "checkbox" || el.type === "radio" || el.type === "file") continue
+    const key = fieldKey(el)
+    if (key && (el.value !== el.defaultValue || el === a)) fields.push({ key, value: el.value })
   }
-  root.innerHTML = `
-    <aside class="vc-rail">
-      <div class="vc-logo" title="Vision CRM">${icon("spark", 20)}</div>
-      ${rail}
-      <div class="vc-grow"></div>
-      <button class="vc-ico" data-act="web" title="Abrir o painel web">${icon("ext", 19)}</button>
-    </aside>
-    ${state.open ? `
-    <section class="vc-panel">
-      <header class="vc-head">
-        <div class="vc-title">${esc(active ? active.label : "")}</div>
-        <button class="vc-x" data-act="close" title="Fechar">${icon("x", 18)}</button>
-      </header>
-      <div class="vc-body">${renderBody()}</div>
-    </section>` : ""}
-    ${state.toast ? `<div class="vc-toast">${esc(state.toast)}</div>` : ""}
-  `
-  if (keep) {
-    const el = root.querySelector(`[name="${keep.name}"]`)
-    if (el) { el.focus(); try { el.setSelectionRange(keep.s, keep.e) } catch {} }
-  }
+  const focus = a && body.contains(a) && fieldKey(a) ? { key: fieldKey(a), s: a.selectionStart, e: a.selectionEnd } : null
+  return { fields, focus }
+}
+
+function restoreTyped(body, t) {
+  const find = (key) => [...body.querySelectorAll("input, textarea")].find((el) => fieldKey(el) === key)
+  for (const f of t.fields) { const el = find(f.key); if (el && el.value !== f.value) el.value = f.value }
+  if (t.focus) { const el = find(t.focus.key); if (el) { el.focus(); try { el.setSelectionRange(t.focus.s, t.focus.e) } catch {} } }
 }
 
 function renderBody() {
@@ -764,7 +842,7 @@ function renderReplies() {
       const closed = !!(prefs.collapsed && prefs.collapsed[c])
       const items = groups.get(c)
       const canDel = !items.length && (prefs.extraCats || []).includes(c)
-      return `<div class="rp-group" data-rp-drop="${esc(c)}"><div class="rp-cat-head" data-rp-act="toggle" data-rp-cat="${esc(c)}"><i style="background:hsl(${catHue(c)} 60% 55%)"></i><b>${esc(c.toUpperCase())}</b><span>(${items.length})</span>${canDel ? `<button class="rp-catdel" data-rp-act="delcat" data-rp-cat="${esc(c)}" title="Apagar categoria vazia">${icon("x", 12)}</button>` : ""}<em>${icon(closed ? "chevronright" : "chevrondown", 14)}</em></div>${closed ? "" : items.length ? items.map(rpCard).join("") : '<div class="rp-empty">Arraste uma resposta pra cá</div>'}</div>`
+      return `<div class="rp-group" data-rp-drop="${esc(c)}"><div class="rp-cat-head" data-rp-act="toggle" data-rp-cat="${esc(c)}"><i style="background:${c === "Sem categoria" ? "var(--faint)" : `hsl(${catHue(c)} 60% 55%)`}"></i><b>${esc(c.toUpperCase())}</b><span>(${items.length})</span>${canDel ? `<button class="rp-catdel" data-rp-act="delcat" data-rp-cat="${esc(c)}" title="Apagar categoria vazia">${icon("x", 12)}</button>` : ""}<em>${icon(closed ? "chevronright" : "chevrondown", 14)}</em></div>${closed ? "" : items.length ? items.map(rpCard).join("") : '<div class="rp-empty">Arraste uma resposta pra cá</div>'}</div>`
     }).join("") : `<p class="vc-muted">${state.replies.length ? "Nenhuma resposta encontrada." : "Você ainda não tem respostas rápidas. Clique em + Nova pra criar a primeira."}</p>`}`
 }
 
@@ -1084,52 +1162,72 @@ async function attachFile(r) {
 const SIDE_ID = "vcrm-side"
 // a barrinha começa fechada (só o necessário); a escolha de abrir/fechar fica salva em prefs.sideOpen
 
-/** Tem uma janela (modal) aberta no WhatsApp ou em outra extensão? Então a gente não cobre ela. */
-function modalOpen() {
+/**
+ * O WhatsApp abriu algo que cobre a tela toda (foto ou vídeo aberto, janela de confirmação)?
+ * Só nesse caso os nossos botões se escondem. Menus, a fileira de reações e balõezinhos NÃO contam:
+ * esconder por causa deles era o que fazia tudo piscar.
+ */
+let overlayMemo = { t: 0, v: false }
+function waOverlay() {
+  const now = Date.now()
+  if (now - overlayMemo.t < 120) return overlayMemo.v
+  let v = false
   try {
-    return !!document.querySelector('[role="dialog"], [aria-modal="true"], [data-animate-modal-popup="true"], [data-animate-modal-body="true"]')
-  } catch { return false }
-}
-
-function waBubbleColor() {
-  try {
-    const bubbles = document.querySelectorAll("#main .message-in")
-    for (const b of [...bubbles].slice(-4)) {
-      for (const n of [b, ...b.querySelectorAll("div")].slice(0, 12)) {
-        const col = getComputedStyle(n).backgroundColor
-        const m = /rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/.exec(col)
-        if (m && (m[4] === undefined || Number(m[4]) > 0.9)) return col
+    const main = document.querySelector("#main")
+    if (main) {
+      // só a parte da conversa que aparece na tela
+      const m = main.getBoundingClientRect()
+      const r = { left: Math.max(0, m.left), top: Math.max(0, m.top), right: Math.min(window.innerWidth, m.right), bottom: Math.min(window.innerHeight, m.bottom) }
+      if (r.right - r.left > 80 && r.bottom - r.top > 80) {
+        const pts = [[(r.left + r.right) / 2, (r.top + r.bottom) / 2], [r.left + 30, r.top + 30], [r.right - 30, r.bottom - 30]]
+        v = pts.every(([x, y]) => topIsOutside(x, y, main))
       }
     }
   } catch {}
-  return ""
+  overlayMemo = { t: now, v }
+  return v
 }
 
-/** Tem algo do WhatsApp por cima deste elemento (visualizador de foto/vídeo, menu)? Então a gente se esconde. */
-function overlaidByWhatsApp(el) {
+/** No ponto (x, y), o que está por cima (fora os nossos botões) é algo de fora da conversa? */
+function topIsOutside(x, y, main) {
+  for (const n of document.elementsFromPoint(x, y)) {
+    if (n.closest && n.closest('[id^="vcrm-"]')) continue
+    return !main.contains(n)
+  }
+  return false
+}
+
+/** Um menu do WhatsApp (ex.: a fileira de reações) está embaixo deste botão nosso? */
+function popupUnder(el) {
+  const main = document.querySelector("#main")
+  if (!main) return false
   try {
     const r = el.getBoundingClientRect()
-    if (!r.width || !r.height) return false
-    const stack = document.elementsFromPoint(r.left + r.width / 2, r.top + r.height / 2)
-    for (const n of stack) {
-      if (n.closest && n.closest('[id^="vcrm-"]')) continue
-      return !n.closest("#main")
-    }
+    if (r.width < 8 || r.height < 8) return false
+    const xs = r.width > 60 ? [r.left + 6, r.left + r.width / 2, r.right - 6] : [r.left + r.width / 2]
+    const ys = r.height > 60 ? [r.top + 6, r.top + r.height / 2, r.bottom - 6] : [r.top + r.height / 2]
+    for (const x of xs) for (const y of ys) if (topIsOutside(x, y, main)) return true
   } catch {}
   return false
 }
 
-function hideIfOverlaid(el) {
+/**
+ * Nossos botões que flutuam por cima do WhatsApp: com a tela toda coberta, somem; com um menu do
+ * WhatsApp embaixo deles, ficam transparentes e deixam o clique passar (dá pra reagir, apagar,
+ * salvar a foto). Sem mudar de tamanho nem de lugar: nada pisca.
+ */
+function guardFloating(el, watchPopups) {
   if (!el) return
-  el.style.visibility = "visible"
-  if (overlaidByWhatsApp(el)) el.style.visibility = "hidden"
+  const full = waOverlay()
+  const vis = full ? "hidden" : ""
+  if (el.style.visibility !== vis) el.style.visibility = vis
+  const under = !full && watchPopups && popupUnder(el)
+  if (el.classList.contains("vcrm-under") !== under) el.classList.toggle("vcrm-under", under)
 }
 
 function ensureSide() {
   const main = document.querySelector("#main")
   let el = document.getElementById(SIDE_ID)
-  if (modalOpen()) { if (el) el.style.display = "none"; return }
-  if (el) el.style.display = ""
   if (!main || state.status === "no_config" || state.status === "bad_token") { if (el) el.remove(); return }
   if (!el) {
     el = document.createElement("div")
@@ -1159,12 +1257,11 @@ function ensureSide() {
   const html = `<button class="vs-top" data-collapse="1" title="${!prefs.sideOpen ? "Expandir" : "Recolher"}">${icon("chevron", 12)}</button>` +
     (items.map((i) => `<button data-go="${i.go}" title="${i.label}">${icon(i.icon, 18)}${i.badge ? `<b>${i.badge}</b>` : ""}<span>${i.label}</span></button>`).join(""))
   if (el.dataset.sig !== html) { el.innerHTML = html; el.dataset.sig = html }
-  // mesma cor do balão de mensagem recebida do WhatsApp (pra parecer parte dele)
   el.classList.toggle("vs-min", !prefs.sideOpen)
   const r = main.getBoundingClientRect()
   el.style.left = Math.round(r.left + 6) + "px"
   el.style.top = Math.round(r.top + r.height * 0.42) + "px"
-  hideIfOverlaid(el)
+  guardFloating(el, true)
 }
 
 // ── Aviso: "N clientes esperam sua resposta" ─────────────────────────────────
@@ -1195,7 +1292,7 @@ const waitFmt = (mins) => (mins >= 1440 ? Math.floor(mins / 1440) + " d" : mins 
 function renderWaiting() {
   let el = document.getElementById(WAIT_ID)
   const list = waitManual ? waitList : waitList.filter((w) => w.mins <= WAIT_AUTO_MINUTES)
-  const hide = (!waitManual && (!list.length || waitClosed)) || state.status === "no_config" || state.status === "bad_token" || modalOpen()
+  const hide = (!waitManual && (!list.length || waitClosed)) || state.status === "no_config" || state.status === "bad_token"
   if (hide) { if (el) el.remove(); return }
   if (!el) {
     el = document.createElement("div")
@@ -1242,7 +1339,7 @@ function renderWaiting() {
     ${more > 0 ? `<p class="vw-more">e mais ${more}</p>` : ""}
     <div class="vw-foot"><button data-wait-act="panel">Abrir o Painel do Dia</button><button data-wait-act="later">Agora não</button></div>`
   if (el.dataset.sig !== html) { el.innerHTML = html; el.dataset.sig = html }
-  hideIfOverlaid(el)
+  guardFloating(el, false)
 }
 
 /** Plano B da foto: pega a que o WhatsApp já mostra na lista de conversas, achando pelo nome. */
@@ -1298,7 +1395,7 @@ function titleEnd(header) {
 function ensureHeaderBar() {
   const header = document.querySelector("#main header")
   let el = document.getElementById(HDR_ID)
-  const off = !header || !state.phone || state.status === "no_config" || state.status === "bad_token" || modalOpen() || hdrHidden
+  const off = !header || !state.phone || state.status === "no_config" || state.status === "bad_token" || hdrHidden
   if (off) {
     if (el) el.style.display = "none"
     if (hdrPop && (!hdrHidden || !document.getElementById(SIDE_ID))) { hdrPop = null; renderHdrPop() }
@@ -1334,8 +1431,8 @@ function ensureHeaderBar() {
   const left = Math.max(r.left + 120, Math.min(end == null ? r.left + 260 : end + 14, maxLeft))
   el.style.top = Math.round(r.top + (r.height - 36) / 2) + "px"
   el.style.left = Math.round(left) + "px"
-  hideIfOverlaid(el)
   el.style.right = "auto"
+  guardFloating(el, true)
   if (hdrPop) renderHdrPop()
 }
 
@@ -1559,6 +1656,13 @@ function ensureBar() {
     bar.id = BAR_ID
     bar.addEventListener("mousedown", (e) => e.preventDefault()) // não tira o foco do campo
     bar.addEventListener("click", onBarClick)
+    // rodinha do mouse em cima das respostas: anda pros lados
+    bar.addEventListener("wheel", (e) => {
+      const chips = e.target.closest && e.target.closest(".vb-chips")
+      if (!chips || Math.abs(e.deltaX) > Math.abs(e.deltaY) || chips.scrollWidth <= chips.clientWidth) return
+      chips.scrollLeft += e.deltaY
+      e.preventDefault()
+    }, { passive: false })
   }
   bar.style.display = ""
   const list = barReplies()
@@ -1569,7 +1673,7 @@ function ensureBar() {
   }).join("")
   const html =
     `<button class="vb-filter${prefs.barCat ? " on" : ""}" data-bar="filter" title="Filtrar por categoria">${icon("filter", 15)}</button>` +
-    `<button class="vb-chip vb-pix" data-bar="pix" title="Enviar a sua chave Pix (cartão com botão de copiar)"><i class="vb-ic">${icon("wallet", 14)}</i>Pix</button>` +
+    `<button class="vb-chip vb-pix" data-bar="pix" title="Enviar a sua chave Pix (cartão com botão de copiar)"><i class="vb-ic">${icon("pix", 12)}</i><span>Pix</span></button>` +
     `<button class="vb-min" data-bar="min" title="${prefs.barMin ? "Mostrar respostas" : "Recolher"}">${prefs.barMin ? icon("plus", 13) : "−"}</button>` +
     (prefs.barMin ? "" : `<div class="vb-chips">${chips || '<span class="vb-none">Nenhuma resposta nesta categoria.</span>'}</div><button class="vb-next" data-bar="next" title="Mais">${icon("chevronright", 14)}</button>`)
   if (bar.dataset.sig !== html) {
@@ -1583,10 +1687,49 @@ function ensureBar() {
   // se a barra ficasse fora dele, apareceria lá em cima)
   if (bar.parentNode !== footer) footer.appendChild(bar)
   else if (footer.lastElementChild !== bar) footer.appendChild(bar)
-  // Só some (sem mexer no layout) quando um visualizador de foto/vídeo cobre a barra.
-  // Menus, reações e janelinhas do WhatsApp NÃO escondem mais: era isso que fazia ela piscar.
-  bar.style.visibility = "visible"
-  if (!document.querySelector("#main") || overlaidByWhatsApp(bar)) bar.style.visibility = "hidden"
+  alignBar(bar, footer)
+}
+
+/** A caixa arredondada do campo de mensagem do WhatsApp (pra barra ficar alinhada com ela). */
+let barBox = null
+function composerBox(footer) {
+  if (barBox && barBox.isConnected && footer.contains(barBox)) return barBox
+  barBox = null
+  const ed = footer.querySelector('[contenteditable="true"]')
+  for (let n = ed && ed.parentElement; n && n !== footer; n = n.parentElement) {
+    const cs = getComputedStyle(n)
+    const m = /rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/.exec(cs.backgroundColor)
+    const opaque = m && (m[4] === undefined || Number(m[4]) > 0.5)
+    if (opaque && (parseFloat(cs.borderTopLeftRadius) || 0) >= 10) barBox = n
+  }
+  return barBox
+}
+
+const BAR_GAP = 8 // espaço igual em cima e embaixo da barra
+function alignBar(bar, footer) {
+  const box = composerBox(footer)
+  let padL = 14
+  let padR = 14
+  let mt = 0
+  if (box) {
+    const b = box.getBoundingClientRect()
+    const r = bar.getBoundingClientRect()
+    const f = footer.getBoundingClientRect()
+    if (b.width > 100 && r.width > 100) {
+      // começa e termina junto com a caixa do campo de mensagem
+      padL = Math.round(Math.max(0, Math.min(48, b.left - r.left)))
+      padR = Math.round(Math.max(0, Math.min(48, r.right - b.right)))
+      // centralizada na altura: o mesmo espaço entre o campo e a barra e entre a barra e o fim da tela
+      const cur = parseFloat(bar.style.marginTop) || 0
+      const natural = r.top - cur - b.bottom
+      const below = BAR_GAP + Math.max(0, f.bottom - r.bottom)
+      mt = Math.round(Math.max(-natural, Math.min(16, below - natural)))
+    }
+  }
+  const pl = padL + "px", pr = padR + "px", m = mt + "px"
+  if (bar.style.paddingLeft !== pl) bar.style.paddingLeft = pl
+  if (bar.style.paddingRight !== pr) bar.style.paddingRight = pr
+  if (bar.style.marginTop !== m) bar.style.marginTop = m
 }
 
 function closeBarMenu() { const m = document.getElementById("vcrm-barmenu"); if (m) m.remove() }
@@ -1772,7 +1915,7 @@ function onMsgHover(e) {
 }
 
 function onMsgHoverInner(e) {
-  if (state.status === "no_config" || state.status === "bad_token" || modalOpen()) return
+  if (state.status === "no_config" || state.status === "bad_token" || waOverlay()) return
   const t = e.target
   if (t.closest && t.closest(`#${MSG_BTN_ID}, #${MSG_MENU_ID}`)) { clearTimeout(msgHideTimer); return }
   const main = document.querySelector("#main")
@@ -1988,7 +2131,7 @@ async function onSubmit(e) {
       productName: String(f.get("product") || "") || undefined,
       source: "whatsapp",
     })
-    if (res.ok) return refresh(true)
+    if (res.ok) { form.reset(); return refresh(true) }
     return msg((res.data && res.data.error) || "Erro ao registrar. Confira a conexão.")
   }
 
@@ -1999,7 +2142,7 @@ async function onSubmit(e) {
     const text = String(f.get("text") || "").trim()
     if (!text) return msg("Escreva a nota.")
     const res = await api("POST", `/api/crm/contacts/${id}/notes`, { text })
-    if (res.ok) return refresh(true)
+    if (res.ok) { form.reset(); return refresh(true) }
     return msg((res.data && res.data.error) || "Erro ao salvar a nota.")
   }
 
@@ -2009,7 +2152,7 @@ async function onSubmit(e) {
     if (!text) return msg("Escreva o lembrete.")
     if (Number.isNaN(at.getTime())) return msg("Informe data e hora.")
     const res = await api("POST", "/api/crm/reminders", { contactId: id, text, dueAt: at.toISOString() })
-    if (res.ok) return refresh(true)
+    if (res.ok) { form.reset(); return refresh(true) }
     return msg((res.data && res.data.error) || "Erro ao criar o lembrete.")
   }
 
@@ -2023,7 +2166,7 @@ async function onSubmit(e) {
       description: String(f.get("desc") || "") || undefined,
       paymentLink: String(f.get("link") || "") || undefined,
     })
-    if (res.ok) return refresh(true)
+    if (res.ok) { form.reset(); return refresh(true) }
     return msg((res.data && res.data.error) || "Erro ao criar a cobrança.")
   }
 }
@@ -2132,25 +2275,41 @@ async function refresh(force) {
 function startObserver() {
   const root = document.querySelector("#app") || document.body
   let timer = null
+  // botões que flutuam (barrinha, cabeçalho, aviso, barra de respostas): confere no máximo a cada 180 ms
+  let uiTimer = null
+  let uiLast = 0
+  const uiCheck = () => {
+    uiTimer = null
+    uiLast = Date.now()
+    ensureBar(); ensureSide(); ensureHeaderBar(); renderWaiting()
+    if (waOverlay()) hideMsgUi()
+  }
+  const scheduleUi = () => { if (!uiTimer) uiTimer = setTimeout(uiCheck, Math.max(0, 180 - (Date.now() - uiLast))) }
   const obs = new MutationObserver((muts) => {
     if (muts.every((m) => m.target.closest && m.target.closest(`#${ROOT_ID}, #${BAR_ID}, #${POP_ID}`))) return
+    scheduleUi()
     clearTimeout(timer)
-    timer = setTimeout(() => { refresh(false); ensureBar(); ensureSide(); ensureHeaderBar() }, 400)
+    timer = setTimeout(() => refresh(false), 400)
   })
   obs.observe(root, { childList: true, subtree: true })
-  // janelas (modais) às vezes entram direto no <body>: esconde a barrinha e o aviso na hora
-  let bodyTimer = null
+  // janelas e menus às vezes entram direto no <body>
   new MutationObserver((muts) => {
-    if (muts.every((m) => [...m.addedNodes, ...m.removedNodes].every((n) => n.id === ROOT_ID || n.id === BAR_ID || n.id === POP_ID || n.id === SIDE_ID || n.id === WAIT_ID))) return
-    clearTimeout(bodyTimer)
-    bodyTimer = setTimeout(() => { ensureSide(); ensureHeaderBar(); renderWaiting() }, 150)
+    if (muts.every((m) => [...m.addedNodes, ...m.removedNodes].every((n) => n.id && String(n.id).startsWith("vcrm-")))) return
+    scheduleUi()
   }).observe(document.body, { childList: true })
-  window.addEventListener("resize", () => { ensureSide(); ensureHeaderBar() })
+  window.addEventListener("resize", scheduleUi)
+  // clicou em qualquer coisa (ex.: no emoji de reagir): o raio sai da frente na hora
+  document.addEventListener("mousedown", (e) => { if (!(e.target.closest && e.target.closest(`#${MSG_BTN_ID}`))) hideMsgUi() }, true)
   document.addEventListener("mouseover", onMsgHover, true)
   document.addEventListener("input", onComposerInput, true)
   document.addEventListener("keydown", (e) => { if (e.key === "Escape") closePop() }, true)
-  // token/URL mudaram no popup: recarrega
-  chrome.storage.onChanged.addListener(() => { state.replies = []; state.lists = []; refresh(true) })
+  // token/URL mudaram no popup: recarrega. (Salvar preferências, "já resolvi" etc. NÃO recarrega: antes a
+  // barra de respostas sumia e voltava toda vez que algo era salvo.)
+  chrome.storage.onChanged.addListener((changes, area) => {
+    if (area && area !== "local") return
+    if (!changes || !(changes.apiUrl || changes.token)) return
+    state.replies = []; state.lists = []; refresh(true)
+  })
 }
 
 function init() {

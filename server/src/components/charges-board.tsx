@@ -89,7 +89,7 @@ export function ChargesBoard() {
         actions={<button onClick={() => setShowForm((v) => !v)} style={btn}><Plus size={15} style={{ verticalAlign: -2, marginRight: 4 }} />Cobrança</button>}
       />
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))", gap: 14 }}>
+      <div className="v-card v-kpis k3">
         <SummaryCard label="A receber" tone="wait" value={summary?.aReceber} />
         <SummaryCard label="Vencidas" tone="late" value={summary?.vencidas} />
         <SummaryCard label="Recebidas" tone="ok" value={summary?.pagas} />
@@ -184,13 +184,12 @@ function SummaryCard({
   tone: "wait" | "late" | "ok"
   value?: { count: number; total: number }
 }) {
-  const color = tone === "wait" ? "var(--wait-text)" : tone === "late" ? "var(--late-text)" : "var(--ok-text)"
   return (
-    <div className="v-card" style={{ padding: "16px 18px" }}>
-      <div style={{ fontSize: 13, color: "var(--muted)" }}>{label}</div>
-      <div style={{ fontSize: 28, fontWeight: 700, color: "var(--strong)", margin: "4px 0" }}>{value ? brl(value.total) : "..."}</div>
-      <span style={{ ...chip(tone), color }}>
-        {value ? `${value.count} ${value.count === 1 ? "cobrança" : "cobranças"}` : ""}
+    <div className="v-kpi">
+      <div className="l">{label}</div>
+      <div className="n">{value ? brl(value.total) : "…"}</div>
+      <span className={`v-pill ${tone}`}>
+        {value ? `${value.count} ${value.count === 1 ? "cobrança" : "cobranças"}` : "…"}
       </span>
     </div>
   )

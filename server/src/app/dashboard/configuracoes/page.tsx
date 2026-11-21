@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import { Copy, Puzzle, RefreshCw } from "lucide-react"
 import { MetaCard } from "@/components/meta-card"
 import { PageHeader } from "@/components/page-header"
-import { btn, card, field, label } from "@/lib/ui"
+import { btn, card, field, ghost, label } from "@/lib/ui"
 
 export default function ConfiguracoesPage() {
   const [token, setToken] = useState<string | null>(null)
@@ -65,7 +65,7 @@ export default function ConfiguracoesPage() {
           Guarde em segredo. Quem tiver este token acessa seus dados.
         </p>
 
-        <button onClick={generate} disabled={loading} style={{ ...btn, marginTop: 10, opacity: loading ? 0.6 : 1 }}>
+        <button onClick={generate} disabled={loading} style={{ ...(token ? ghost : btn), marginTop: 10, alignSelf: "flex-start", opacity: loading ? 0.6 : 1 }}>
           <RefreshCw size={14} style={{ verticalAlign: -2, marginRight: 6 }} />
           {loading ? "Gerando..." : token ? "Gerar novo token" : "Gerar token"}
         </button>

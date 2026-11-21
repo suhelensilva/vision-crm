@@ -31,11 +31,10 @@ export const btn: CSSProperties = {
   fontSize: 13,
   fontWeight: 600,
   cursor: "pointer",
-  boxShadow: "0 0 16px var(--glow)",
 }
 export const ghost: CSSProperties = {
   background: "transparent",
-  color: "var(--accent-text)",
+  color: "var(--text)",
   border: "1px solid var(--line)",
   borderRadius: 10,
   padding: "9px 16px",
@@ -43,7 +42,7 @@ export const ghost: CSSProperties = {
   fontWeight: 600,
   cursor: "pointer",
 }
-export const btnSm: CSSProperties = { ...btn, padding: "5px 11px", fontSize: 12, boxShadow: "0 0 12px var(--glow)" }
+export const btnSm: CSSProperties = { ...btn, padding: "5px 11px", fontSize: 12 }
 export const ghostSm: CSSProperties = { ...ghost, padding: "5px 11px", fontSize: 12 }
 
 /** Texto clicável (sem caixa). */
@@ -71,7 +70,7 @@ export const iconBtn: CSSProperties = {
 }
 
 export const label: CSSProperties = { display: "block", fontSize: 12, fontWeight: 600, margin: "12px 0 4px", color: "var(--text-2)" }
-export const req: CSSProperties = { color: "var(--accent-text)" }
+export const req: CSSProperties = { color: "var(--accent)" }
 export const opt: CSSProperties = { color: "var(--faint)", fontWeight: 400 }
 export const helper: CSSProperties = { fontSize: 12, color: "var(--muted)", margin: "6px 0 0" }
 export const errorText: CSSProperties = { fontSize: 13, color: "var(--danger)", margin: "8px 0 0" }
@@ -105,7 +104,7 @@ export const chipTone = {
   late: { color: "var(--late-text)", background: "var(--late-bg)", border: "1px solid var(--late-line)" },
   wait: { color: "var(--wait-text)", background: "var(--wait-bg)", border: "1px solid var(--wait-line)" },
   vio: { color: "var(--vio-text)", background: "var(--vio-bg)", border: "1px solid var(--vio-line)" },
-  wine: { color: "var(--accent-text)", background: "var(--accent-soft)", border: "1px solid var(--accent-line)" },
+  wine: { color: "var(--vio-text)", background: "var(--vio-bg)", border: "1px solid var(--vio-line)" },
   mute: { color: "var(--muted)", background: "var(--field)", border: "1px solid var(--soft)" },
 } satisfies Record<string, CSSProperties>
 

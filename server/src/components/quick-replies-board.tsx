@@ -14,6 +14,14 @@ import { TypeIcon } from "@/components/type-icon"
 import { btn, card, empty, errorText, field, ghost, helper, iconBtn, inner, label, modal, modalTitle, opt, overlay, req } from "@/lib/ui"
 
 const NO_CATEGORY = "SEM CATEGORIA"
+
+/** A mesma cor por categoria que a extensão usa no WhatsApp (a cor sai do nome). */
+function catColor(name: string) {
+  if (name === NO_CATEGORY) return "var(--faint)"
+  let h = 0
+  for (const ch of name) h = (h * 31 + ch.charCodeAt(0)) % 360
+  return `hsl(${h} 60% 55%)`
+}
 const SAMPLE = { contactName: "Maria da Silva", contactPhone: "5511999998888", myName: "Seu nome" }
 
 type Filter = "todas" | "favoritas" | QuickReplyKind
@@ -58,7 +66,6 @@ export function QuickRepliesBoard() {
   const [filter, setFilter] = useState<Filter>("todas")
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
   const [editor, setEditor] = useState<Editor>(null)
-  const [hover, setHover] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     try {
@@ -144,7 +151,7 @@ export function QuickRepliesBoard() {
         title="Respostas rápidas"
         subtitle={
           <>
-            Mensagens prontas. Usar dentro da conversa (digitando <code>;</code> + atalho) vem com a extensão, em breve.
+            Mensagens prontas. No WhatsApp, use a barra embaixo do campo de mensagem ou digite <code>;</code> e o atalho.
             {usedBytes > 0 && (
               <span style={{ marginLeft: 8, color: usedBytes > MAX_ACCOUNT_BYTES * 0.8 ? "var(--wait)" : "var(--faint)" }}>
                 Arquivos: {formatBytes(usedBytes)} de {formatBytes(MAX_ACCOUNT_BYTES)}
@@ -187,7 +194,7 @@ export function QuickRepliesBoard() {
           return (
             <div key={key}>
               <button onClick={() => toggleGroup(key)} style={groupHeader}>
-                <span style={{ width: 8, height: 8, borderRadius: "50%", background: key === NO_CATEGORY ? "var(--faint)" : "var(--accent)", boxShadow: key === NO_CATEGORY ? "none" : "0 0 8px var(--glow)" }} />
+                <span style={{ width: 8, height: 8, flex: "none", borderRadius: "50%", background: catColor(key) }} />
                 <span style={{ fontWeight: 700, fontSize: 12, letterSpacing: 1, color: "var(--vred)" }}>{key}</span>
                 <span style={{ fontSize: 12, color: "var(--faint)" }}>({list.length})</span>
                 <span style={{ marginLeft: "auto", color: "var(--faint)", display: "grid" }}>
@@ -197,12 +204,12 @@ export function QuickRepliesBoard() {
               {!closed && (
                 <div style={{ display: "flex", flexDirection: "column", gap: 9, marginTop: 8 }}>
                   {list.map((i) => (
-                    <div key={i.id} onMouseEnter={() => setHover(i.id)} onMouseLeave={() => setHover(null)} style={{ ...card, padding: "12px 14px" }}>
+                    <div key={i.id} className="v-hover-card" style={{ ...card, padding: "12px 14px" }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                         <span title={TYPE_INFO[i.type].label} style={typeIcon}><TypeIcon kind={i.type} size={16} /></span>
                         <strong style={{ flex: 1, fontSize: 14, color: "var(--strong)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{i.name}</strong>
-                        {hover === i.id && (
-                          <span style={{ display: "flex", gap: 2 }}>
+                        {(
+                          <span className="v-hover-acts" style={{ display: "flex", gap: 2 }}>
                             <button title="Duplicar" aria-label="Duplicar" onClick={() => duplicate(i)} style={iconBtn}><Copy size={16} /></button>
                             <button title="Editar" aria-label="Editar" onClick={() => setEditor({ mode: "edit", item: i })} style={iconBtn}><Pencil size={16} /></button>
                             <button title="Excluir" aria-label="Excluir" onClick={() => remove(i)} style={{ ...iconBtn, color: "var(--danger)" }}><Trash2 size={16} /></button>
@@ -499,10 +506,10 @@ const searchBox: React.CSSProperties = {
 /** Campo sem moldura própria (a moldura é do contêiner). */
 const bare: React.CSSProperties = { flex: 1, background: "transparent", border: "none", boxShadow: "none", padding: 0, fontSize: 13, outline: "none", color: "var(--text)", width: "100%" }
 const groupHeader: React.CSSProperties = { display: "flex", alignItems: "center", gap: 8, width: "100%", background: "none", border: "none", cursor: "pointer", padding: "4px 2px" }
-const typeIcon: React.CSSProperties = { width: 30, height: 30, borderRadius: 9, background: "var(--accent-soft)", border: "1px solid var(--accent-line)", color: "var(--accent-text)", display: "grid", placeItems: "center", flexShrink: 0 }
+const typeIcon: React.CSSProperties = { width: 30, height: 30, borderRadius: 9, background: "var(--vio-bg)", border: "1px solid var(--soft)", color: "var(--muted)", display: "grid", placeItems: "center", flexShrink: 0 }
 const preview: React.CSSProperties = { fontSize: 13, color: "var(--text-2)", margin: "8px 0 0", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", whiteSpace: "pre-wrap" }
-const shortcutChip: React.CSSProperties = { background: "var(--accent-soft)", color: "var(--accent-text)", border: "1px solid var(--accent-line)", fontWeight: 700, padding: "1px 8px", borderRadius: 999 }
+const shortcutChip: React.CSSProperties = { background: "var(--vio-bg)", color: "var(--text-2)", border: "1px solid var(--vio-line)", fontWeight: 700, padding: "1px 8px", borderRadius: 999 }
 const tile: React.CSSProperties = { ...inner, display: "flex", flexDirection: "column", alignItems: "center", gap: 6, padding: "16px 8px" }
 const varChip: React.CSSProperties = { background: "var(--field)", border: "1px solid var(--soft)", borderRadius: 999, padding: "3px 11px", fontSize: 12, cursor: "pointer", color: "var(--text-2)" }
 const moreBtn: React.CSSProperties = { background: "none", border: "none", cursor: "pointer", fontSize: 13, fontWeight: 600, color: "var(--text-2)", padding: "14px 0 0", display: "inline-flex", alignItems: "center", gap: 4 }
-const previewBox: React.CSSProperties = { background: "var(--ok-bg)", border: "1px solid var(--ok-line)", borderRadius: 10, padding: "8px 10px", marginTop: 10 }
+const previewBox: React.CSSProperties = { background: "var(--vio-bg)", border: "1px solid var(--vio-line)", borderRadius: 10, padding: "8px 10px", marginTop: 10 }
