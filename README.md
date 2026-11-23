@@ -33,7 +33,9 @@ Abre em `http://localhost:3001`. Cadastre sua conta, entre, e gere o token.
 
 1. `chrome://extensions` → Modo do desenvolvedor → **Carregar sem compactação**
    → pasta `extension`.
-2. Clique no ícone, cole a URL do sistema e o token, **Salvar e testar**.
+2. Clique no ícone e cole o token (fica em Configurações, no site). A URL do
+   sistema já vem preenchida com o endereço no ar (`extension/config.js`).
+   Quem usava `localhost` passa sozinho pro endereço novo, uma vez só.
 3. Abra o web.whatsapp.com e clique no botão roxo ✦.
 
 Endereços `*.vercel.app` já estão liberados em `host_permissions` no
@@ -53,10 +55,11 @@ Endereços `*.vercel.app` já estão liberados em `host_permissions` no
    - `AUTH_TRUST_HOST` = `true`
 3. Depois de mexer nas variáveis: **Deployments → ⋯ → Redeploy** (variável nova
    só vale em deploy novo).
-4. Na extensão: **Desconectar** e conectar de novo com a URL da Vercel e o token
-   (Configurações do site).
-5. Domínio próprio (opcional): **Settings → Domains**. Depois atualize o
-   `NEXTAUTH_URL`, a URL na extensão e o `host_permissions` do manifest.
+4. Na extensão: o endereço já vem preenchido (`extension/config.js`), é só colar
+   o token (Configurações do site).
+5. Domínio próprio (opcional): **Settings → Domains**. Depois troque o endereço
+   em `extension/config.js`, acrescente o domínio em `host_permissions` do
+   manifest e, se tiver `NEXTAUTH_URL`, atualize também.
 
 O site da Vercel e o `npm run dev` usam o **mesmo banco**: mesma conta, mesmos
 dados. O Supabase grátis pausa depois de 7 dias sem uso; se o login começar a

@@ -446,7 +446,7 @@ function restoreTyped(body, t) {
 }
 
 function renderBody() {
-  if (state.status === "no_config") return empty("Extensão não configurada", "Clique no ícone da extensão no Chrome e informe a URL do sistema e o token (gerado em Configurações).")
+  if (state.status === "no_config") return empty("Extensão não configurada", "Clique no ícone da extensão no Chrome e cole o seu token (fica em Configurações, no site).")
   if (state.status === "bad_token") return empty("Token inválido", "Gere um token novo em Configurações no painel web e atualize na extensão.")
   if (state.status === "offline") return empty("Sem conexão", "Confira a URL do sistema no ícone da extensão. O sistema precisa estar no ar.")
   if (state.tab === "respostas") return renderReplies()

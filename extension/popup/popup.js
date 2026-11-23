@@ -8,8 +8,9 @@ function api(path) {
 
 async function check() {
   const cfg = await chrome.storage.local.get(["apiUrl", "token"])
-  $("apiUrl").value = cfg.apiUrl || ""
-  if (!cfg.apiUrl || !cfg.token) { $("msg").textContent = ""; return view("off") }
+  // o endereço do sistema já vem preenchido (config.js): só falta colar o token
+  $("apiUrl").value = cfg.apiUrl || VCRM_DEFAULT_URL
+  if (!cfg.token) { $("msg").textContent = ""; return view("off") }
 
   view("loading")
   const res = await api("/api/crm/me")
@@ -27,9 +28,10 @@ async function check() {
 }
 
 $("save").addEventListener("click", async () => {
-  const apiUrl = $("apiUrl").value.trim().replace(/\/+$/, "")
+  let apiUrl = $("apiUrl").value.trim().replace(/\/+$/, "") || VCRM_DEFAULT_URL
+  if (!/^https?:\/\//i.test(apiUrl)) apiUrl = "https://" + apiUrl // esqueceu o https://
   const token = $("token").value.trim()
-  if (!apiUrl || !token) { $("msg").textContent = "Preencha a URL e o token."; return }
+  if (!token) { $("msg").textContent = "Cole o token (fica em Configurações, no site)."; return }
   await chrome.storage.local.set({ apiUrl, token })
   $("token").value = ""
   await check()
@@ -39,7 +41,7 @@ $("save").addEventListener("click", async () => {
 
 $("open").addEventListener("click", async () => {
   const { apiUrl } = await chrome.storage.local.get("apiUrl")
-  chrome.tabs.create({ url: apiUrl + "/dashboard" })
+  chrome.tabs.create({ url: (apiUrl || VCRM_DEFAULT_URL) + "/dashboard" })
 })
 
 $("out").addEventListener("click", async () => {

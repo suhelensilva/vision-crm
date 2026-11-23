@@ -4,10 +4,26 @@
 //   1. A CSP do WhatsApp Web bloquearia fetch pra outro domínio.
 //   2. Com host_permissions, o service worker tem acesso cross-origin sem CORS.
 
+importScripts("config.js") // VCRM_DEFAULT_URL: o endereço do sistema no ar
+
+const OLD_LOCAL = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?\/?$/i
+
+// Quem usava o sistema no próprio computador (localhost) passa pro endereço no ar. Uma vez só:
+// se depois alguém escolher outro endereço no popup, ele fica.
+async function migrateUrl() {
+  const { apiUrl, vcrmUrlMigrated } = await chrome.storage.local.get(["apiUrl", "vcrmUrlMigrated"])
+  if (vcrmUrlMigrated) return
+  const set = { vcrmUrlMigrated: true }
+  if (!apiUrl || OLD_LOCAL.test(apiUrl)) set.apiUrl = VCRM_DEFAULT_URL
+  await chrome.storage.local.set(set)
+}
+chrome.runtime.onInstalled.addListener(() => { migrateUrl() })
+migrateUrl()
+
 async function getConfig() {
   const { apiUrl, token } = await chrome.storage.local.get(["apiUrl", "token"])
   return {
-    apiUrl: (apiUrl || "").replace(/\/+$/, ""),
+    apiUrl: (apiUrl || VCRM_DEFAULT_URL).replace(/\/+$/, ""),
     token: token || "",
   }
 }
