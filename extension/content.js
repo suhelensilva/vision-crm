@@ -826,7 +826,12 @@ function renderReplies() {
       <div class="vc-sec first">Preferências</div>
       <div class="rp-line"><span>Estilo dos chips</span><span class="rp-seg"><button type="button" data-rp-act="style-icon" class="${prefs.chipStyle === "icon" ? "on" : ""}">Ícone</button><button type="button" data-rp-act="style-color" class="${prefs.chipStyle === "color" ? "on" : ""}">Colorido</button></span></div>
       <label class="vc-check"><input type="checkbox" data-pref="sendDirect" ${prefs.sendDirect ? "checked" : ""}/> <span>Mensagem sai direto</span></label>
-      <div class="rp-line" style="margin-top:8px"><span>Mensagem antes do Pix</span><select data-pixintro class="vc-search" style="max-width:160px"><option value="">Nenhuma</option>${state.replies.filter((r) => r.type === "TEXT").map((r) => `<option value="${esc(r.id)}" ${prefs.pixIntroId === r.id ? "selected" : ""}>${esc(r.name)}</option>`).join("")}</select></div>
+      <div class="vc-sec">Botão Pix</div>
+      <label class="rp-l" for="vcrm-pixintro">Mensagem antes do Pix <span>· opcional</span></label>
+      <textarea id="vcrm-pixintro" name="pixIntroText" data-pixintro-text rows="3" maxlength="1000" placeholder="Ex.: Amiga, vou te mandar a minha chave Pix 👇">${esc(pixIntroText())}</textarea>
+      <label class="rp-l" for="vcrm-pixkey">Sua chave Pix</label>
+      <input id="vcrm-pixkey" name="pixKey" data-pixkey maxlength="140" placeholder="CPF, celular, e-mail ou chave aleatória" value="${esc(prefs.pixKey || "")}" />
+      <p class="vc-hint">No botão Pix, a mensagem vai primeiro (com "digitando…") e, 2 segundos depois, a chave sozinha, pra cliente copiar fácil.</p>
     </div>` : ""
 
   return `<div class="rp-top">
@@ -878,39 +883,6 @@ function renderReplyForm() {
 
 async function onReplyAction(act, id, btn) {
   const r = id ? state.replies.find((x) => x.id === id) : null
-  if (act === "pixtest") {
-    const who = state.name || "esta conversa"
-    if (!window.confirm("Enviar a SUA chave Pix (a salva no WhatsApp) para " + who + " agora? Use uma conversa sua, de teste.")) return
-    toast("Enviando o Pix…")
-    const v = await askBridge("sendpixkey", 25000, { chat: state.chatKey })
-    if (v && v.ok) return toast("Pix enviado. Veja na conversa se apareceu o cartão com o botão de copiar.", 8000)
-    const txt = JSON.stringify(v, null, 1)
-    try { await navigator.clipboard.writeText(txt) } catch {}
-    try {
-      const a = document.createElement("a")
-      a.href = URL.createObjectURL(new Blob([txt], { type: "text/plain;charset=utf-8" }))
-      a.download = "vision-pix-envio.txt"
-      document.body.appendChild(a); a.click(); a.remove()
-    } catch {}
-    const dd = (v && v.dbg) || {}
-    return toast(((v && v.erro) || "Não consegui enviar o Pix.") + " [" + (dd.erros || []).join(" | ").slice(0, 300) + (dd.excecao || "") + "] (detalhes em Downloads: vision-pix-envio.txt)", 30000)
-  }
-  if (act === "pixdiag") {
-    toast("Procurando o Pix no WhatsApp…")
-    const r = await askBridge("pixdump", 40000)
-    const d = (r && r.dbg) || {}
-    const txt = JSON.stringify(d, null, 1)
-    try { await navigator.clipboard.writeText(txt) } catch {}
-    // também salva num arquivo na pasta Downloads (assim ninguém precisa colar texto comprido)
-    try {
-      const a = document.createElement("a")
-      a.href = URL.createObjectURL(new Blob([txt], { type: "text/plain;charset=utf-8" }))
-      a.download = "vision-pix-completo.txt"
-      document.body.appendChild(a); a.click(); a.remove()
-    } catch {}
-    const tipos = Object.entries(d.tiposDiferentes || {}).map(([t, v]) => t + (v.fluxo ? "(" + v.fluxo + ")" : "")).join(", ")
-    return toast("Módulos: " + (d.modulos || []).slice(0, 14).join(", ") + " | Tipos de mensagem diferentes: " + (tipos || "nenhum") + " (diagnóstico copiado e salvo em Downloads como vision-pix-completo.txt)", 60000)
-  }
   if (act === "new") return openReplyForm({})
   if (act === "newcat") { rp.newCat = true; render(); const i = document.querySelector("#vcrm-root [data-newcat]"); if (i) i.focus(); return }
   if (act === "cancelcat") { rp.newCat = false; return render() }
@@ -1673,7 +1645,7 @@ function ensureBar() {
   }).join("")
   const html =
     `<button class="vb-filter${prefs.barCat ? " on" : ""}" data-bar="filter" title="Filtrar por categoria">${icon("filter", 15)}</button>` +
-    `<button class="vb-chip vb-pix" data-bar="pix" title="Enviar a sua chave Pix (cartão com botão de copiar)"><i class="vb-ic">${icon("pix", 12)}</i><span>Pix</span></button>` +
+    `<button class="vb-chip vb-pix" data-bar="pix" title="${esc(prefs.pixKey ? "Enviar a sua chave Pix: " + prefs.pixKey : "Cadastrar a sua chave Pix")}"><i class="vb-ic">${icon("pix", 12)}</i><span>Pix</span></button>` +
     `<button class="vb-min" data-bar="min" title="${prefs.barMin ? "Mostrar respostas" : "Recolher"}">${prefs.barMin ? icon("plus", 13) : "−"}</button>` +
     (prefs.barMin ? "" : `<div class="vb-chips">${chips || '<span class="vb-none">Nenhuma resposta nesta categoria.</span>'}</div><button class="vb-next" data-bar="next" title="Mais">${icon("chevronright", 14)}</button>`)
   if (bar.dataset.sig !== html) {
@@ -1781,35 +1753,58 @@ function onBarClick(e) {
   if (k === "pix") return sendMyPix()
 }
 
-/** Manda a chave Pix que você salvou no WhatsApp (cartão nativo com botão de copiar) pra conversa aberta. */
+/** A mensagem que vai antes do Pix (você digita nas Preferências). Quem tinha escolhido uma resposta rápida pra isso: o texto dela vira o ponto de partida. */
+function pixIntroText() {
+  if (typeof prefs.pixIntroText === "string") return prefs.pixIntroText
+  const r = prefs.pixIntroId ? state.replies.find((x) => x.id === prefs.pixIntroId && x.type === "TEXT") : null
+  return r ? r.text || "" : ""
+}
+
+/** Abre as Preferências das respostas rápidas no campo da chave Pix. */
+function openPixPrefs() {
+  state.open = true
+  state.tab = "respostas"
+  rp.form = null
+  rp.prefsOpen = true
+  render()
+  const i = document.querySelector("#vcrm-root [data-pixkey]")
+  if (i) { i.scrollIntoView({ block: "center" }); i.focus() }
+  toast("Digite a sua chave Pix aqui. Depois é só clicar no Pix de novo.", 6000)
+}
+
+/** Manda um texto pra conversa certa, em segundo plano. Plano B: se ela ainda está aberta, escreve no campo e envia. */
+async function sendTextTo(target, text) {
+  const t = await askBridge("sendtext", 20000, { chat: target, text })
+  if (t && t.ok) return true
+  const now = await askBridge("chat", 1500)
+  if (now && now.key === target && insertIntoComposer(text)) { await new Promise((res) => setTimeout(res, 150)); await clickSend(1500); return true }
+  return false
+}
+
+/**
+ * Botão Pix: a mensagem que você escreveu (com "digitando…" por 5 segundos), uma pausa de 2 segundos
+ * e a sua chave Pix SOZINHA, como mensagem normal, pra cliente segurar em cima e copiar.
+ * (O cartão do Pix com botão de copiar aparecia como "atualize o seu WhatsApp" pra quem não tem o Business.)
+ */
 async function sendMyPix() {
   const target = state.chatKey
   if (!target) return toast("Abra uma conversa pra mandar o Pix.")
+  const key = String(prefs.pixKey || "").trim()
+  if (!key) return openPixPrefs()
   const who = state.name || "a cliente"
-  // a mensagem curta que vai ANTES do Pix (uma das suas respostas rápidas de texto), sem "digitando"
-  const intro = prefs.pixIntroId ? state.replies.find((r) => r.id === prefs.pixIntroId && r.type === "TEXT") : null
-  const introText = intro ? renderVariables(intro.text || "") : ""
-  toast(intro ? `Enviando a mensagem e o Pix para ${who}…` : `Enviando seu Pix para ${who}…`)
+  const introText = renderVariables(pixIntroText().trim())
+  toast(introText ? `Enviando a mensagem e o Pix para ${who}…` : `Enviando seu Pix para ${who}…`)
   const v = await enqueueSend(target, async () => {
     if (introText) {
-      // como se você estivesse escrevendo: "digitando…" por 5 segundos, aí a mensagem sai
       if (prefs.simulate) await simulateState("typing", 5000, target)
-      const t = await askBridge("sendtext", 20000, { chat: target, text: introText })
-      if (t && t.ok) api("POST", `/api/crm/quick-replies/${intro.id}/use`)
-      else {
-        // plano B: se a conversa ainda é a aberta, escreve no campo e envia
-        const now = await askBridge("chat", 1500)
-        if (now && now.key === target && insertIntoComposer(introText)) { await new Promise((res) => setTimeout(res, 150)); await clickSend(1500) }
-        else return { ok: false, erro: "Não consegui mandar a mensagem antes do Pix. O Pix não foi enviado." }
-      }
+      if (!(await sendTextTo(target, introText))) return { ok: false, erro: "Não consegui mandar a mensagem antes do Pix. O Pix não foi enviado." }
+      await new Promise((res) => setTimeout(res, 2000)) // uma pausinha antes da chave
     }
-    if (introText) await new Promise((res) => setTimeout(res, 2000)) // uma pausinha antes do Pix
-    return askBridge("sendpixkey", 25000, { chat: target })
+    if (!(await sendTextTo(target, key))) return { ok: false, erro: "Não consegui mandar a chave Pix. Volte na conversa e clique de novo." }
+    return { ok: true }
   })
   if (v && v.ok) return toast(`Enviado para ${who}.`)
-  try { await navigator.clipboard.writeText(JSON.stringify(v, null, 1)) } catch {}
-  const dd = (v && v.dbg) || {}
-  toast(((v && v.erro) || "Não consegui enviar o Pix.") + " [" + (dd.erros || []).join(" | ").slice(0, 200) + "]", 15000)
+  toast((v && v.erro) || "Não consegui enviar o Pix.", 10000)
 }
 
 function closePop() { const p = document.getElementById(POP_ID); if (p) p.remove() }
@@ -2172,7 +2167,8 @@ async function onSubmit(e) {
 }
 
 function onInput(e) {
-  if (e.target.matches("[data-pixintro]")) { prefs.pixIntroId = e.target.value || null; savePrefs(); return }
+  if (e.target.matches("[data-pixintro-text]")) { prefs.pixIntroText = e.target.value; savePrefs(); return }
+  if (e.target.matches("[data-pixkey]")) { prefs.pixKey = e.target.value.trim(); savePrefs(); ensureBar(); return }
   if (e.target.matches("[data-pref]")) {
     prefs[e.target.getAttribute("data-pref")] = e.target.checked
     savePrefs()

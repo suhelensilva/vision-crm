@@ -941,6 +941,8 @@
   }
 
   // ── O "/pix" nativo: manda a chave Pix que você já salvou no WhatsApp (cartão com botão de copiar) ──
+  // NÃO USADO desde 23/11/2026: o cartão aparecia como "atualize o seu WhatsApp" pra quem não tem o
+  // WhatsApp Business. O botão Pix agora manda a chave como texto (content.js, sendMyPix).
   async function sendPixKey(arg) {
     const dbg = { versao: "pixkey1" }
     try {

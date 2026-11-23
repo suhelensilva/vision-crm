@@ -190,6 +190,14 @@ Página **Respostas rápidas** (`/dashboard/respostas`): mensagens prontas.
 - Regra única de nomes em `lib/names.ts` (tira a palavra "cliente" e ignora
   "Cliente WhatsApp"), usada por mensagens, cobranças e Meta.
 
+**Botão Pix** (na barra de respostas e na barrinha ao lado da conversa): manda a
+mensagem antes do Pix (opcional, com "digitando…" por 5 s) e, 2 s depois, a
+chave Pix **sozinha, como texto normal**, pra cliente segurar em cima e copiar.
+As duas ficam em **Respostas rápidas → Preferências** (engrenagem) e são
+digitadas por ela. Sem chave cadastrada, o botão abre esse campo. O cartão
+nativo do Pix (com botão de copiar) foi abandonado: pra quem não tem WhatsApp
+Business ele aparecia como "atualize o seu WhatsApp".
+
 ## Importar do WhatsApp (extensão v0.4)
 
 Aba **Importar** da extensão: lê, pelos dados internos do WhatsApp Web (`page-bridge.js`), as **etiquetas** (viram listas, com a cor), os **contatos** e o **estado da conversa** (última mensagem foi sua ou da cliente, não lidas, arquivada). Manda pro CRM em lotes de 250 (`POST /api/crm/import`). Nunca apaga nada, não sobrescreve nome já cadastrado e não duplica (compara pelos 8 últimos dígitos do telefone). Grupos, canais e conversas sem telefone descoberto ficam de fora. Testado só num WhatsApp simulado; no real pode precisar de ajuste (botão **Copiar diagnóstico da leitura**).

@@ -250,9 +250,10 @@ html.vcrm-on #app { width: calc(100vw - var(--vcrm-pad, 44px)) !important; max-w
 .rp-actions button { width: 26px; height: 26px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 7px; background: transparent; color: var(--vcrm-text-2); cursor: pointer; }
 .rp-actions button:hover { background: rgba(255, 255, 255, 0.12); color: #fff; }
 .rp-actions button[data-rp-act="del"]:hover { color: #ff7a8a; }
-.rp-form label.rp-l { font-size: 12px; font-weight: 600; color: var(--text); margin-top: 4px; }
-.rp-form label.rp-l span { font-weight: 400; color: var(--faint); }
+.rp-form label.rp-l, .rp-prefs label.rp-l { font-size: 12px; font-weight: 600; color: var(--text); margin-top: 4px; }
+.rp-form label.rp-l span, .rp-prefs label.rp-l span { font-weight: 400; color: var(--faint); }
 .rp-form label.rp-l b { color: var(--vcrm-btn); }
+.rp-prefs textarea { min-height: 64px; }
 .rp-vars { display: flex; flex-wrap: wrap; gap: 6px; }
 .rp-vars button { padding: 4px 10px; border-radius: 999px; border: 1px solid var(--soft); background: rgba(255, 255, 255, 0.07); color: var(--vcrm-text-2); font-size: 11px; cursor: pointer; }
 .rp-vars button:hover { background: rgba(255, 255, 255, 0.14); }
