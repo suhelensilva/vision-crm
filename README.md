@@ -36,8 +36,31 @@ Abre em `http://localhost:3001`. Cadastre sua conta, entre, e gere o token.
 2. Clique no ícone, cole a URL do sistema e o token, **Salvar e testar**.
 3. Abra o web.whatsapp.com e clique no botão roxo ✦.
 
-Em produção, adicione o domínio do CRM em `host_permissions` no
-`extension/manifest.json`.
+Endereços `*.vercel.app` já estão liberados em `host_permissions` no
+`extension/manifest.json`. Domínio próprio precisa ser acrescentado lá.
+
+## Publicar na Vercel
+
+1. Importe o repositório com **Root Directory = `server`** (o resto a Vercel
+   detecta sozinha: Next.js, `npm run build`).
+2. Em **Settings → Environment Variables**, as mesmas do `server/.env`:
+   - `DATABASE_URL` e `DIRECT_URL`
+   - `NEXTAUTH_SECRET` **igual ao do computador**. A chave que tranca os tokens
+     do Meta sai dele: se mudar, os pixels precisam ser salvos de novo.
+   - `NEXTAUTH_URL` = o endereço do site na Vercel. Nunca `localhost` (o login
+     quebra, porque o NextAuth reescreve os pedidos pra esse endereço). Pode
+     também ficar sem.
+   - `AUTH_TRUST_HOST` = `true`
+3. Depois de mexer nas variáveis: **Deployments → ⋯ → Redeploy** (variável nova
+   só vale em deploy novo).
+4. Na extensão: **Desconectar** e conectar de novo com a URL da Vercel e o token
+   (Configurações do site).
+5. Domínio próprio (opcional): **Settings → Domains**. Depois atualize o
+   `NEXTAUTH_URL`, a URL na extensão e o `host_permissions` do manifest.
+
+O site da Vercel e o `npm run dev` usam o **mesmo banco**: mesma conta, mesmos
+dados. O Supabase grátis pausa depois de 7 dias sem uso; se o login começar a
+dizer "e-mail incorreto" do nada, é só reativar o projeto no Supabase.
 
 ## Conversões pro Meta (Conversions API, vários pixels)
 
@@ -171,7 +194,7 @@ Página `/dashboard/pendencias`: lembretes com data e hora por cliente, agrupado
 
 ## Tema Vision (visual)
 
-Todas as cores ficam em variáveis no topo de `server/src/app/globals.css` (fundo azul-marinho, vinho fluorescente `--accent`, vermelho do Visão `--vred`, dourado `--gold`). Estilos compartilhados de botões, cartões e selos ficam em `server/src/lib/ui.ts`. Pra criar o tema claro, basta trocar os valores dessas variáveis. Menu lateral em `components/dash-nav.tsx`, ícones Lucide.
+Todas as cores ficam em variáveis no topo de `server/src/app/globals.css`, as **mesmas da extensão** (`extension/panel.css`, variáveis `--vcrm-*`): fundo grafite `#141515`, cartões e barras `#202222`, ícones cinza `#9a9b9b`, botões rosa `#ff02a6` com letra branca, sem brilho. Estilos compartilhados de botões, cartões e selos ficam em `server/src/lib/ui.ts`. Pra criar o tema claro, basta trocar os valores dessas variáveis. Menu lateral em `components/dash-nav.tsx`, ícones Lucide.
 
 ## Extensão no WhatsApp Web (v0.2)
 
