@@ -62,6 +62,17 @@ O site da Vercel e o `npm run dev` usam o **mesmo banco**: mesma conta, mesmos
 dados. O Supabase grátis pausa depois de 7 dias sem uso; se o login começar a
 dizer "e-mail incorreto" do nada, é só reativar o projeto no Supabase.
 
+## Esqueceu a senha?
+
+Na pasta `server` (precisa do `server/.env`):
+
+```bash
+node scripts/trocar-senha.mjs email@da-conta.com
+```
+
+A senha nova é digitada escondida (só aparecem asteriscos) e vale na hora,
+no site da Vercel e no do computador (é o mesmo banco).
+
 ## Conversões pro Meta (Conversions API, vários pixels)
 
 Cada compra vira um evento **Purchase** com valor, data e telefone criptografado (SHA-256). `action_source = chat` (WhatsApp Web; o formato business_messaging exige a API oficial).
