@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { ChevronDown, ChevronRight, Copy, Paperclip, Pencil, Plus, Search, Star, Trash2 } from "lucide-react"
+import { ChevronDown, ChevronRight, Copy, CopyPlus, Paperclip, Pencil, Plus, Search, Star, Trash2 } from "lucide-react"
 import type { QuickReplyView } from "@/lib/quick-replies"
 import {
   MAX_ACCOUNT_BYTES, MAX_CAPTION, MEDIA_RULES, QUICK_REPLY_TYPES, TYPE_INFO, formatBytes, isMediaKind,
@@ -66,6 +66,8 @@ export function QuickRepliesBoard() {
   const [filter, setFilter] = useState<Filter>("todas")
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
   const [editor, setEditor] = useState<Editor>(null)
+  const [copyingCat, setCopyingCat] = useState<string | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     try {
@@ -127,6 +129,25 @@ export function QuickRepliesBoard() {
     }
   }
 
+  /** Copia a categoria inteira (todas as mensagens) para uma categoria nova. */
+  async function duplicateCategory(key: string) {
+    const source = key === NO_CATEGORY ? null : key
+    const suggestion = `${key} (CÓPIA)`.slice(0, 40)
+    const newName = prompt(`Copiar a categoria "${key}" com todas as mensagens.\n\nNome da categoria nova:`, suggestion)
+    if (newName === null) return // cancelou
+    setCopyingCat(key)
+    try {
+      const r = await call("POST", "/api/crm/quick-replies/duplicate-category", { category: source, newName: newName.trim() || undefined })
+      await load()
+      setError(null)
+      setNotice(`Categoria "${r.category}" criada com ${r.copied} mensage${r.copied === 1 ? "m" : "ns"}.${r.skipped ? ` (${r.skipped} não puderam ser copiadas.)` : ""}`)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Não consegui copiar a categoria.")
+    } finally {
+      setCopyingCat(null)
+    }
+  }
+
   async function remove(i: QuickReplyView) {
     if (!confirm(`Excluir "${i.name}"? Não dá pra desfazer.`)) return
     try {
@@ -181,6 +202,12 @@ export function QuickRepliesBoard() {
       </div>
 
       {error && <p style={{ ...errorText, margin: 0 }}>{error}</p>}
+      {notice && !error && (
+        <p style={{ margin: 0, fontSize: 13, color: "var(--text-2)", display: "flex", alignItems: "center", gap: 8 }}>
+          {notice}
+          <button onClick={() => setNotice(null)} aria-label="Fechar aviso" style={{ ...iconBtn, fontSize: 12 }}>✕</button>
+        </p>
+      )}
 
       {items === null ? (
         <p style={empty}>Carregando...</p>
@@ -193,14 +220,25 @@ export function QuickRepliesBoard() {
           const closed = collapsed.has(key)
           return (
             <div key={key}>
-              <button onClick={() => toggleGroup(key)} style={groupHeader}>
-                <span style={{ width: 8, height: 8, flex: "none", borderRadius: "50%", background: catColor(key) }} />
-                <span style={{ fontWeight: 700, fontSize: 12, letterSpacing: 1, color: "var(--vred)" }}>{key}</span>
-                <span style={{ fontSize: 12, color: "var(--faint)" }}>({list.length})</span>
-                <span style={{ marginLeft: "auto", color: "var(--faint)", display: "grid" }}>
-                  {closed ? <ChevronRight size={16} /> : <ChevronDown size={16} />}
-                </span>
-              </button>
+              <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                <button onClick={() => toggleGroup(key)} style={groupHeader}>
+                  <span style={{ width: 8, height: 8, flex: "none", borderRadius: "50%", background: catColor(key) }} />
+                  <span style={{ fontWeight: 700, fontSize: 12, letterSpacing: 1, color: "var(--vred)" }}>{key}</span>
+                  <span style={{ fontSize: 12, color: "var(--faint)" }}>({list.length})</span>
+                  <span style={{ marginLeft: "auto", color: "var(--faint)", display: "grid" }}>
+                    {closed ? <ChevronRight size={16} /> : <ChevronDown size={16} />}
+                  </span>
+                </button>
+                <button
+                  title="Copiar categoria (com todas as mensagens)"
+                  aria-label={`Copiar a categoria ${key}`}
+                  onClick={() => duplicateCategory(key)}
+                  disabled={copyingCat !== null}
+                  style={{ ...iconBtn, flex: "none", opacity: copyingCat === key ? 0.5 : 1 }}
+                >
+                  <CopyPlus size={16} />
+                </button>
+              </div>
               {!closed && (
                 <div style={{ display: "flex", flexDirection: "column", gap: 9, marginTop: 8 }}>
                   {list.map((i) => (

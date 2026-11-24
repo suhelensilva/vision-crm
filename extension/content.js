@@ -73,6 +73,7 @@ const ICONS = {
   filter: '<path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z"/>',
   chevronright: '<path d="m9 18 6-6-6-6"/>',
   copy: '<rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>',
+  copyplus: '<line x1="15" x2="15" y1="12" y2="18"/><line x1="12" x2="18" y1="15" y2="15"/><rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>',
   pencil: '<path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/><path d="m15 5 4 4"/>',
   alarm: '<circle cx="12" cy="13" r="8"/><path d="M12 9v4l2 2"/><path d="M5 3 2 6"/><path d="m22 6-3-3"/><path d="M6.38 18.7 4 21"/><path d="M17.64 18.67 20 21"/>',
   circlecheck: '<circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/>',
@@ -847,7 +848,7 @@ function renderReplies() {
       const closed = !!(prefs.collapsed && prefs.collapsed[c])
       const items = groups.get(c)
       const canDel = !items.length && (prefs.extraCats || []).includes(c)
-      return `<div class="rp-group" data-rp-drop="${esc(c)}"><div class="rp-cat-head" data-rp-act="toggle" data-rp-cat="${esc(c)}"><i style="background:${c === "Sem categoria" ? "var(--faint)" : `hsl(${catHue(c)} 60% 55%)`}"></i><b>${esc(c.toUpperCase())}</b><span>(${items.length})</span>${canDel ? `<button class="rp-catdel" data-rp-act="delcat" data-rp-cat="${esc(c)}" title="Apagar categoria vazia">${icon("x", 12)}</button>` : ""}<em>${icon(closed ? "chevronright" : "chevrondown", 14)}</em></div>${closed ? "" : items.length ? items.map(rpCard).join("") : '<div class="rp-empty">Arraste uma resposta pra cá</div>'}</div>`
+      return `<div class="rp-group" data-rp-drop="${esc(c)}"><div class="rp-cat-head" data-rp-act="toggle" data-rp-cat="${esc(c)}"><i style="background:${c === "Sem categoria" ? "var(--faint)" : `hsl(${catHue(c)} 60% 55%)`}"></i><b>${esc(c.toUpperCase())}</b><span>(${items.length})</span>${items.length ? `<button class="rp-catdup" data-rp-act="dupcat" data-rp-cat="${esc(c)}" title="Copiar categoria (com todas as mensagens)">${icon("copyplus", 13)}</button>` : ""}${canDel ?`<button class="rp-catdel" data-rp-act="delcat" data-rp-cat="${esc(c)}" title="Apagar categoria vazia">${icon("x", 12)}</button>` : ""}<em>${icon(closed ? "chevronright" : "chevrondown", 14)}</em></div>${closed ? "" : items.length ? items.map(rpCard).join("") : '<div class="rp-empty">Arraste uma resposta pra cá</div>'}</div>`
     }).join("") : `<p class="vc-muted">${state.replies.length ? "Nenhuma resposta encontrada." : "Você ainda não tem respostas rápidas. Clique em + Nova pra criar a primeira."}</p>`}`
 }
 
@@ -894,6 +895,18 @@ async function onReplyAction(act, id, btn) {
     rp.newCat = false
     toast("Categoria criada. Arraste as respostas pra ela.")
     return render()
+  }
+  if (act === "dupcat") {
+    // Copia a categoria inteira (todas as mensagens) para uma categoria nova
+    const cat = btn && btn.dataset.rpCat
+    if (!cat) return
+    const newName = prompt(`Copiar a categoria "${cat.toUpperCase()}" com todas as mensagens.\n\nNome da categoria nova:`, `${cat.toUpperCase()} (CÓPIA)`.slice(0, 40))
+    if (newName === null) return
+    toast("Copiando a categoria…")
+    const res = await api("POST", "/api/crm/quick-replies/duplicate-category", { category: cat === "Sem categoria" ? null : cat, newName: newName.trim() || undefined })
+    if (!res.ok) return toast((res.data && res.data.error) || "Não consegui copiar a categoria.")
+    await loadReplies(); ensureBar(); render()
+    return toast(`Categoria ${res.data.category} criada com ${res.data.copied} mensage${res.data.copied === 1 ? "m" : "ns"}.`)
   }
   if (act === "delcat") {
     const cat = btn && btn.dataset.rpCat
